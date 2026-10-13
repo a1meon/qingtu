@@ -1,4 +1,5 @@
 import {api,desktop,readFile} from '../api.js';
+import {canvasThumbnail} from './thumbnail.js';
 
 let database;
 const request=req=>new Promise((resolve,reject)=>{req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error);});
@@ -16,7 +17,7 @@ export const repository={
  async list(){
   if(desktop)return api.stitchList();
   const tx=(await db()).transaction('projects'),all=await request(tx.objectStore('projects').getAll());
-  return all.map(p=>({id:p.id,name:p.name,updatedAt:p.updatedAt,count:p.images.length})).sort((a,b)=>b.updatedAt-a.updatedAt);
+  return all.map(p=>({id:p.id,name:p.name,updatedAt:p.updatedAt,count:p.images.length,thumbnail:p.thumbnail})).sort((a,b)=>b.updatedAt-a.updatedAt);
  },
  async load(id){
   if(desktop)return api.stitchLoad(id);
@@ -26,10 +27,11 @@ export const repository={
  async save(project){
   const value=clean(project);
   try{
+   value.thumbnail=await canvasThumbnail(project);
    if(desktop)return await api.stitchSave(value);
    const tx=(await db()).transaction(['projects','assets'],'readwrite',{durability:'strict'}),done=finished(tx);
    tx.objectStore('projects').put(value);
-   await done;return {saved:true,updatedAt:value.updatedAt};
+   await done;return {saved:true,updatedAt:value.updatedAt,thumbnail:value.thumbnail};
   }catch(error){throw storageError(error);}
  },
  async import(file){

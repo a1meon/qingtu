@@ -50,6 +50,9 @@ Build app UI in `src/`. Keep `.openai/hosting.json`, `worker/index.js`, `scripts
 
 ## Stitching / quality branch requirements (2026-10-13)
 
+- Latest workspace feedback (2026-10-14) supersedes the old stitching queue: bottom cards represent entire project canvases and provide open/create/delete/batch selection. Remove the top project tabs and individual-image queue; retain right-hand layout choices. Image controls belong to the canvas region. Selection borders use a separate foreground overlay aligned exactly with each image's box, without changing image stacking order. Project-card thumbnails use only small previews of the active project and persist with its manifest.
+- Double-click single-image editing with paired crop sliders/numbers is requested. Clarifications are pending on simultaneous horizontal/vertical crops and automatic-layout dragging; do not invent those product rules before the user responds.
+
 - Development baseline is private `qingtu` commit `70144d5`, application directory `qingtu/`. Work on `codex/stitch-and-quality`; preserve existing changes. Prefer Node 24 and the existing dependency lock. Do not merge main or publish installers without separate release confirmation. Public `halframe-releases` is only the distribution repository.
 - Module changes preserve each module's images, settings and editing state. Keep the icon rail, tooltips, blue rounded tactile controls, collapsing inspector, bottom image queue, drag/drop and plus import.
 - Final stitch canvas, not individual input images: each edge <=5999 px; long/short ratio <=2.5; default long edge 5999. Export is rectangular with zero outer margin and zero automatic-layout gaps. Checkerboard is display-only. Resolutions remain proportional.

@@ -19,7 +19,7 @@ async function waitFor(win,expr){for(let n=0;n<160;n++){if(await win.webContents
   assert.equal(await js("document.querySelector('#width').value"),'3840','empty dimensions use 4K');
   assert.equal(await js("document.querySelector('#height').value"),'2160');
   assert.equal(await js("document.querySelector('#format').textContent"),'PNG');
-  assert.equal(await js("document.querySelectorAll('.film-select').length"),0);
+  assert.equal(await js("document.querySelectorAll('.module-content:not([hidden]) .film-select').length"),0);
   await fs.mkdir(path.join(__dirname,'../artifacts'),{recursive:true});
   await js("Promise.all(Array.from(document.images,img=>img.decode()))");
   await pause(400);
@@ -43,9 +43,11 @@ async function waitFor(win,expr){for(let n=0;n<160;n++){if(await win.webContents
   await waitFor(win,"document.querySelector('.stitch-stage').getBoundingClientRect().width>0 && !document.querySelector('[aria-label=\"添加拼接图片\"]').disabled");
   await js("(()=>{const input=document.querySelector('#stitch-long-edge');Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(input,'1200');input.dispatchEvent(new Event('input',{bubbles:true}));})()");
   await js("document.querySelector('[aria-label=\"添加拼接图片\"]').click()");
-  await waitFor(win,"document.querySelectorAll('.stitch-stage .film-select').length===1 && document.querySelector('.stitch-info').textContent.includes('字节') && document.querySelector('.save-status').textContent==='已自动保存'");
+  await waitFor(win,"document.querySelectorAll('.stitch-layer').length===1 && document.querySelector('.stitch-info').textContent.includes('字节') && document.querySelector('.save-status').textContent==='已自动保存'");
   const savedProject=(await store.list())[0],restored=await store.load(savedProject.id);
   assert.equal(restored.images.length,1);assert.equal(restored.export.longEdge,1200);assert.equal(restored.canvas.width,1200);assert.ok((await store.readAsset(restored.images[0].assetId)).length>0);
+  assert.equal(await js("document.querySelectorAll('.project-bar,[aria-label=\"拼接图片队列\"]').length"),0,'project cards replace top tabs and individual image queue');
+  assert.equal(await js("document.querySelectorAll('.canvas-card').length"),1);assert.ok(restored.thumbnail?.startsWith('data:image/png;base64,'));
   await fs.writeFile(path.join(__dirname,'../artifacts/native-stitch-workbench.png'),(await win.webContents.capturePage()).toPNG());
   await js("document.querySelectorAll('.layout-options button')[1].click()");
   await waitFor(win,"document.querySelector('.layout-options button:nth-child(2)').getAttribute('aria-pressed')==='true' && document.querySelector('.stitch-info').textContent.includes('字节')");
@@ -55,8 +57,18 @@ async function waitFor(win,expr){for(let n=0;n<160;n++){if(await win.webContents
   await js("document.querySelectorAll('.layout-options button')[3].click()");
   await waitFor(win,"!!document.querySelector('.stitch-layer.movable') && document.querySelector('.stitch-info').textContent.includes('字节')");
   await js("document.querySelector('[aria-label=\"添加拼接图片\"]').click()");
-  await waitFor(win,"document.querySelectorAll('.stitch-stage .film-select').length===2 && document.querySelector('.save-status').textContent==='已自动保存'");
+  await waitFor(win,"document.querySelectorAll('.stitch-layer').length===2 && document.querySelector('.save-status').textContent==='已自动保存'");
   assert.equal(await js("document.querySelector('.stitch-stage').parentElement.querySelector('.export-button').disabled"),true,'over-wide free canvas blocks export without hiding images');
+  await js("document.querySelector('.stitch-layer').focus();new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)))");
+  const selection=await js("(()=>{const image=document.querySelector('.stitch-layer.selected').getBoundingClientRect(),box=document.querySelector('.stitch-selection').getBoundingClientRect();return {image:[image.x,image.y,image.width,image.height],box:[box.x,box.y,box.width,box.height],right:box.right,middle:box.y+box.height/2,viewport:innerWidth};})()");
+  assert.deepEqual(selection.box,selection.image,'selection bounds must hug the actual image');
+  const borderShot=(await win.webContents.capturePage()).toPNG(),borderSharp=(await import('sharp')).default,shotMeta=await borderSharp(borderShot).metadata(),shotScale=shotMeta.width/selection.viewport;
+  await fs.writeFile(path.join(__dirname,'../artifacts/native-selection-edge.png'),borderShot);
+  // Fractional Windows display scaling and colour profiles can shift capture
+  // pixels; inspect the narrow edge band rather than demand one sRGB value.
+  const borderPixels=await borderSharp(borderShot).extract({left:Math.floor(selection.right*shotScale)-2,top:Math.floor(selection.middle*shotScale),width:5,height:1}).removeAlpha().raw().toBuffer();
+  let blueEdge=false;for(let i=0;i<borderPixels.length;i+=3)if(borderPixels[i]<45&&borderPixels[i+1]>145&&borderPixels[i+2]>230)blueEdge=true;
+  assert.ok(blueEdge,'right selection edge remains blue above the adjacent image');
   const dragPoints=await js("(()=>{const first=document.querySelectorAll('.stitch-layer')[0].getBoundingClientRect(),second=document.querySelectorAll('.stitch-layer')[1].getBoundingClientRect();return {start:{x:second.x+second.width/2,y:second.y+second.height/2},end:{x:first.x+second.width/2+3,y:first.y+second.height/2+3}};})()");
   const beforeDrag=stitchCalls;
   win.webContents.debugger.attach('1.3');
@@ -77,6 +89,19 @@ async function waitFor(win,expr){for(let n=0;n<160;n++){if(await win.webContents
   const resized=await store.load(savedProject.id),selectedImage=resized.images[1];assert.ok(Math.abs(resized.positions[selectedImage.id].width-freeProject.positions[selectedImage.id].width*.8)<2);
   const ratio=await js("(()=>{const r=document.querySelector('.stitch-layer.selected').getBoundingClientRect();return r.width/r.height;})()");assert.ok(Math.abs(ratio-selectedImage.width/selectedImage.height)<.002);
   await fs.writeFile(path.join(__dirname,'../artifacts/native-stitch-free.png'),(await win.webContents.capturePage()).toPNG());
+  await js("document.querySelector('[aria-label=\"新建画布\"]').click()");
+  await waitFor(win,"document.querySelectorAll('.canvas-card').length===2 && document.querySelectorAll('.stitch-layer').length===0 && document.querySelector('.save-status').textContent==='已自动保存'");
+  await js("(()=>{const input=document.querySelector('#stitch-long-edge');Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(input,'800');input.dispatchEvent(new Event('input',{bubbles:true}));})()");
+  await js("document.querySelector('[aria-label=\"添加拼接图片\"]').click()");
+  await waitFor(win,"document.querySelectorAll('.stitch-layer').length===1 && document.querySelectorAll('.canvas-card img').length===2 && document.querySelector('.save-status').textContent==='已自动保存' && document.querySelector('.stitch-info').textContent.includes('字节')");
+  await js("document.querySelector('[aria-label=\"打开画布 画布 1\"]').click()");
+  await waitFor(win,"document.querySelectorAll('.stitch-layer').length===2 && document.querySelector('.stitch-info').textContent.includes('字节')");
+  for(const item of await store.list())assert.ok(item.thumbnail?.startsWith('data:image/png;base64,'));
+  await js("document.querySelectorAll('.canvas-card-check').forEach(input=>input.click())");
+  await waitFor(win,"document.querySelector('.batch-project-export').textContent==='批量导出 2 个项目'");
+  await js("document.querySelector('.batch-project-export').click()");
+  await waitFor(win,"document.querySelector('.notice')?.textContent.includes('已导出 2 个项目')");
+  const canvasExports=await fs.readdir(temp);assert.equal(canvasExports.length,2);for(const name of canvasExports)assert.ok((await fs.stat(path.join(temp,name))).size<=10000000);
   await js("document.querySelector('[aria-label=\"压缩调整\"]').click(); document.querySelector('.module-content:not([hidden]) [aria-label=\"收起导出设置\"]').click()");
   await pause(400);
   assert.equal(await js("document.querySelector('.inspector-shell').getBoundingClientRect().width"),0);
@@ -106,7 +131,7 @@ async function waitFor(win,expr){for(let n=0;n<160;n++){if(await win.webContents
   assert.deepEqual([...service.results.keys()],tokens,'sidebar toggle does not start a new encoding job');
   await js("document.querySelector('.export-button').click()");
   await waitFor(win,"document.querySelector('.notice')?.textContent.includes('已导出 1 张')");
-  const saved=path.join(temp,(await fs.readdir(temp))[0]);
+  const saved=path.join(temp,'alpine-lake-qingtu.png');
   const sharp=(await import('sharp')).default;
   assert.equal((await sharp(saved).metadata()).format,'png');
   assert.ok((await fs.stat(saved)).size<=10000000);
@@ -114,12 +139,12 @@ async function waitFor(win,expr){for(let n=0;n<160;n++){if(await win.webContents
   assert.equal([...service.results.values()][0].output.paddedBytes,0);
   await js("document.querySelector('[aria-label=\"清空图片\"]').click(); document.querySelector('[aria-label=\"重置设置\"]').click()");
   await waitFor(win,"document.querySelectorAll('.module-content:not([hidden]) .film-select').length===0");
-  assert.equal(await js("document.querySelectorAll('.stitch-stage .film-select').length"),2,'clearing compression must retain the independent stitch project');
+  assert.equal(await js("document.querySelectorAll('.stitch-layer').length"),2,'clearing compression must retain the independent stitch project');
   assert.equal(await js("document.querySelector('#width').value"),'3840');
   assert.equal(await js("document.querySelector('#height').value"),'2160');
   assert.equal(await js("document.querySelector('#format').textContent"),'PNG');
   await fs.mkdir(path.join(__dirname,'../artifacts'),{recursive:true});
-  await fs.writeFile(path.join(__dirname,'../artifacts/ui-smoke.json'),JSON.stringify({passed:true,empty4K:true,defaultPngExport:true,hoverAndFocusLabels:true,hiddenControlsInert:true,sidebarRetainsOutput:true,sidebarDoesNotReencode:true,workingStitching:true,stitchOriginalCopy:true,stitchAutosave:true,fourLayouts:true,freeInvalidCanvasEditable:true,freeSnap:true,freeProportionalResize:true,noEncodingDuringDrag:true,noEncodingDuringResize:true,reducedMotion:true},null,2));
+  await fs.writeFile(path.join(__dirname,'../artifacts/ui-smoke.json'),JSON.stringify({passed:true,empty4K:true,defaultPngExport:true,hoverAndFocusLabels:true,hiddenControlsInert:true,sidebarRetainsOutput:true,sidebarDoesNotReencode:true,workingStitching:true,stitchOriginalCopy:true,stitchAutosave:true,canvasCards:true,canvasSwitchAndBatchExport:true,selectionFitsImage:true,rightSelectionEdgeVisible:true,fourLayouts:true,freeInvalidCanvasEditable:true,freeSnap:true,freeProportionalResize:true,noEncodingDuringDrag:true,noEncodingDuringResize:true,reducedMotion:true},null,2));
   console.log('UI smoke passed: 4K empty state, PNG export, tooltip, working stitching with autosave, sidebar state retained');
   win.destroy();app.quit();
  }finally{await fs.rm(temp,{recursive:true,force:true});await fs.rm(projectRoot,{recursive:true,force:true});}

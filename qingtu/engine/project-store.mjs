@@ -41,6 +41,7 @@ export class ProjectStore{
  validate(project){
   if(!project||!validId(project.id)||!Array.isArray(project.images)||project.images.length>100)throw new Error('项目数据无效');
   if(Buffer.byteLength(JSON.stringify(project))>2*1024*1024)throw new Error('项目数据过大');
+  if(project.thumbnail!=null&&(typeof project.thumbnail!=='string'||!project.thumbnail.startsWith('data:image/png;base64,')||project.thumbnail.length>200000))throw new Error('画布缩略图无效');
   let bytes=0;
   for(const image of project.images){this.assetFile(image.assetId);if(!validId(image.id)||![image.width,image.height,image.bytes].every(v=>Number.isInteger(v)&&v>0))throw new Error('图片数据无效');bytes+=image.bytes;}
   if(bytes>500*1024*1024)throw new Error('每个项目最多 100 张、500 MB');
@@ -52,14 +53,14 @@ export class ProjectStore{
    const location=this.file(copy.id);
    // The backup always contains a verified prior committed generation.
    try{const prior=await this.load(copy.id);delete prior.recovered;await atomicWrite(this.file(copy.id,'.backup.json'),JSON.stringify(prior));}catch(error){if(error.code!=='ENOENT')throw error;}
-   copy.updatedAt=Date.now();await atomicWrite(location,JSON.stringify(copy));return {saved:true,updatedAt:copy.updatedAt};
+   copy.updatedAt=Date.now();await atomicWrite(location,JSON.stringify(copy));return {saved:true,updatedAt:copy.updatedAt,thumbnail:copy.thumbnail};
   });this.pending=task;return task;
  }
  async list(){
   await fs.mkdir(path.join(this.root,'projects'),{recursive:true});
   const names=await fs.readdir(path.join(this.root,'projects')),out=[];
   for(const name of names.filter(n=>n.endsWith('.json')&&!n.endsWith('.backup.json'))){
-   try{const p=await this.load(name.slice(0,-5));out.push({id:p.id,name:p.name,updatedAt:p.updatedAt,count:p.images.length,recovered:p.recovered});}
+   try{const p=await this.load(name.slice(0,-5));out.push({id:p.id,name:p.name,updatedAt:p.updatedAt,count:p.images.length,recovered:p.recovered,thumbnail:p.thumbnail});}
    catch{out.push({id:name.slice(0,-5),name:'项目恢复失败',error:'项目文件损坏，请保留数据并检查备份'});}
   }return out.sort((a,b)=>(b.updatedAt||0)-(a.updatedAt||0));
  }

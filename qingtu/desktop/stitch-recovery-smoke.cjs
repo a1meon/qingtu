@@ -22,7 +22,7 @@ async function waitFor(win,expression){for(let n=0;n<300;n++){if(await win.webCo
  if(phase==='write'){
   console.log('Importing source');
   await js("document.querySelector('[aria-label=\"添加拼接图片\"]').click()");
-  await waitFor(win,"document.querySelectorAll('.stitch-stage .film-select').length===1 && document.querySelector('.save-status').textContent==='已自动保存'");
+  await waitFor(win,"document.querySelectorAll('.stitch-layer').length===1 && document.querySelector('.save-status').textContent==='已自动保存'");
   const save=store.save.bind(store);store.save=async value=>{await pause(200);return save(value);};
   console.log('Editing then closing');
   await js("(()=>{const input=document.querySelector('#stitch-long-edge');Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(input,'2400');input.dispatchEvent(new Event('input',{bubbles:true}));})()");
@@ -30,7 +30,7 @@ async function waitFor(win,expression){for(let n=0;n<300;n++){if(await win.webCo
   await js("window.qingtu.windowAction('close')");
   console.log('Close requested');
  }else if(phase==='gesture'){
-  await waitFor(win,"document.querySelectorAll('.stitch-stage .film-select').length===1");
+  await waitFor(win,"document.querySelectorAll('.stitch-layer').length===1");
   await js("document.querySelectorAll('.layout-options button')[3].click()");
   await waitFor(win,"!!document.querySelector('.stitch-layer.movable') && document.querySelector('.save-status').textContent==='已自动保存'");
   const point=await js("(()=>{const r=document.querySelector('.stitch-layer').getBoundingClientRect();return {x:r.x+r.width/2,y:r.y+r.height/2};})()");
@@ -39,7 +39,7 @@ async function waitFor(win,expression){for(let n=0;n<300;n++){if(await win.webCo
   // Quit before mouse release: application's Quit also waits for this gesture.
   app.quit();
  }else{
-  await waitFor(win,"document.querySelectorAll('.stitch-stage .film-select').length===1");
+  await waitFor(win,"document.querySelectorAll('.stitch-layer').length===1");
   assert.equal(await js("document.querySelector('#stitch-long-edge').value"),'2400');
   assert.equal(await js("document.querySelector('#stitch-format').textContent"),'PNG');
   const project=await store.load((await store.list())[0].id);assert.equal(project.images.length,1);assert.equal(project.export.longEdge,2400);

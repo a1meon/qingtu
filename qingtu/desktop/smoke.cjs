@@ -19,13 +19,13 @@ async function waitFor(win,expr){for(let n=0;n<100;n++){if(await win.webContents
    assert.equal(await win.webContents.executeJavaScript("document.querySelector('.brand').getBoundingClientRect().left >= 90 && !document.querySelector('.mac-controls')"),true);
   }
   assert.equal(await win.webContents.executeJavaScript("typeof window.require"),'undefined');
-  assert.equal(await win.webContents.executeJavaScript("document.querySelectorAll('.film-select').length"),0);
+  assert.equal(await win.webContents.executeJavaScript("document.querySelectorAll('.module-content:not([hidden]) .film-select').length"),0);
   assert.equal(service.files.size,0);
   assert.equal(await win.webContents.executeJavaScript("document.querySelector('#target-size').value"),'10');
   assert.equal(await win.webContents.executeJavaScript("document.querySelector('.export-button').disabled"),true);
   for(const selector of ['#target-size','#width','#height','#scale','#format'])assert.equal(await win.webContents.executeJavaScript(`(()=>{const el=document.querySelector(${JSON.stringify(selector)});el.focus();return getComputedStyle(el).outlineStyle;})()`),'none',selector);
   await win.webContents.executeJavaScript("document.querySelector('.add-tile').click()");
-  await waitFor(win,"document.querySelectorAll('.film-select').length===1 && document.querySelector('.processed-label')?.textContent.startsWith('处理后')");
+  await waitFor(win,"document.querySelectorAll('.module-content:not([hidden]) .film-select').length===1 && document.querySelector('.processed-label')?.textContent.startsWith('处理后')");
   await win.webContents.executeJavaScript(`(()=>{const input=document.querySelector('#scale');Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(input,'50');input.dispatchEvent(new Event('input',{bubbles:true}));})()`);
   await waitFor(win,"document.querySelector('.processed-label')?.textContent==='处理中'");
   assert.equal(await win.webContents.executeJavaScript("!document.querySelector('.compare-image:not(.original-image)')"),true,'pending result must not display the source as a processed image');

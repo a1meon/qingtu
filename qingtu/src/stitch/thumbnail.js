@@ -1,0 +1,18 @@
+import {calculateLayout} from '../../engine/stitch-layout.mjs';
+
+// A small project thumbnail uses only the active canvas's low-resolution images.
+// Originals and thumbnails of other projects are never decoded here.
+export async function canvasThumbnail(project){
+ if(!project.images.length)return null;
+ if(project.images.some(image=>!image.preview))return project.thumbnail||null;
+ let layout;try{layout=calculateLayout(project,{draft:true});}catch{return null;}
+ const scale=160/Math.max(layout.width,layout.height),canvas=document.createElement('canvas');
+ canvas.width=Math.max(1,Math.round(layout.width*scale));canvas.height=Math.max(1,Math.round(layout.height*scale));
+ const context=canvas.getContext('2d');
+ for(const rect of layout.rects){
+  const source=project.images.find(image=>image.id===rect.id),image=new Image();image.src=source.preview;await image.decode();
+  const crop=rect.crop||{},left=crop.left||0,right=crop.right||0,top=crop.top||0,bottom=crop.bottom||0;
+  context.drawImage(image,image.naturalWidth*left,image.naturalHeight*top,image.naturalWidth*(1-left-right),image.naturalHeight*(1-top-bottom),rect.x*scale,rect.y*scale,rect.width*scale,rect.height*scale);
+ }
+ return canvas.toDataURL('image/png');
+}

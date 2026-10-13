@@ -14,7 +14,7 @@ export function useProjects(){
   const task=pending.current.catch(()=>{}).then(()=>repository.save(value));pending.current=task;
   task.then(result=>{
    failure.current=null;
-   setProjects(old=>[{id:value.id,name:value.name,count:value.images.length,updatedAt:result.updatedAt},...old.filter(p=>p.id!==value.id)]);
+   setProjects(old=>[{id:value.id,name:value.name,count:value.images.length,updatedAt:result.updatedAt,thumbnail:result.thumbnail},...old.filter(p=>p.id!==value.id)]);
   }).catch(error=>{failure.current=error;setSaveError(error.message);}).finally(()=>{if(pending.current===task)setSaving(false);});
   return task;
  };
@@ -33,10 +33,11 @@ export function useProjects(){
    current.current=ready;setProject(ready);
    setSaveError('');
    if(value.recovered)setSaveError('已恢复上次完整保存；请检查编辑状态后重试保存');
+   else if(!value.thumbnail&&value.images.length)persist(ready);
   }catch(error){setSaveError(error.message);throw error;}finally{if(revision===loadRevision.current)setLoading(false);}
  };
  const create=async()=>{
-  await flush();const value=newProject();value.name=`拼图 ${projects.length+1}`;
+  await flush();const value=newProject();value.name=`画布 ${projects.length+1}`;
   if(current.current)await api.stitchRelease(current.current.id);
   current.current=value;setProject(value);persist(value);return value;
  };
