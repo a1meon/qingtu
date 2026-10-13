@@ -17,6 +17,15 @@ test('an unchanged PNG that fits the budget is reused byte for byte without re-e
  assert.ok(result.buffer.equals(source));
  assert.equal(result.buffer.length,source.length);
 });
+test('fitting unchanged inputs bypass every raster encoder, while explicit format and size edits still apply',async()=>{
+ const png=await sharp({create:{width:80,height:60,channels:3,background:'#556677'}}).png({compressionLevel:0}).toBuffer();
+ const encodePng=sharp.prototype.png,encodeJpeg=sharp.prototype.jpeg;
+ sharp.prototype.png=sharp.prototype.jpeg=function(){throw new Error('unnecessary raster encoder');};
+ try{for(const [source,format] of [[photo,'auto'],[photo,'jpeg'],[png,'png']]){const r=await processImage(source,{...settings,format});assert.ok(r.unchanged);assert.ok(r.buffer.equals(source));}}
+ finally{sharp.prototype.png=encodePng;sharp.prototype.jpeg=encodeJpeg;}
+ const resized=await processImage(png,{...settings,format:'png',resize:{type:'scale',percent:50}});assert.deepEqual([resized.width,resized.height],[40,30]);
+ const converted=await processImage(photo,{...settings,format:'png'});assert.equal(converted.format,'png');assert.equal(converted.unchanged,false);
+});
 test('an infeasible noisy PNG keeps full-colour candidates and rejects visible degradation',async()=>{
  const source=await noise(240,160).png({compressionLevel:0}).toBuffer();
  const png=sharp.prototype.png;let fullEncodes=0;
@@ -108,6 +117,6 @@ test('a compressed JPG uses the highest fitting whole-number quality',async()=>{
  const r=await processImage(source,{...settings,format:'jpeg',targetBytes:30000});
  assert.ok(r.buffer.length<=30000 && r.buffer.length>=29000);
  assert.ok(r.quality<100);
- const next=await sharp(source).rotate().resize(280,184,{fit:'fill'}).toColourspace('srgb').flatten({background:'#fff'}).jpeg({quality:r.quality+1,mozjpeg:true}).toBuffer();
+ const next=await sharp(source).rotate().resize(280,184,{fit:'fill'}).toColourspace('srgb').flatten({background:'#fff'}).jpeg({quality:r.quality+1,chromaSubsampling:r.chromaSubsampling,mozjpeg:r.mozjpeg,optimiseCoding:true}).toBuffer();
  assert.ok(next.length>30000,'the next quality must exceed the budget');
 });

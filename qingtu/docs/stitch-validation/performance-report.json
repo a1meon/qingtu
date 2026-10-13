@@ -1,0 +1,253 @@
+{
+  "platform": "win32",
+  "node": "v24.14.0",
+  "baseline": "698127c",
+  "pngBefore": [
+    {
+      "name": "photo",
+      "width": 1536,
+      "height": 1024,
+      "sourceBytes": 671221,
+      "target": 2504360,
+      "bytes": 2486137,
+      "difference": {
+        "maxError": 2,
+        "alphaMaxError": 0,
+        "mae": 0.7647268507215712,
+        "rmse": 1.1289518670498022,
+        "psnr": 47.077295085862325
+      },
+      "strength": 91,
+      "elapsedMs": 8748
+    },
+    {
+      "name": "texture",
+      "width": 1600,
+      "height": 900,
+      "sourceBytes": 2950707,
+      "target": 2599687,
+      "bytes": 2593616,
+      "difference": {
+        "maxError": 2,
+        "alphaMaxError": 0,
+        "mae": 1.1007988425925925,
+        "rmse": 1.354654783822555,
+        "psnr": 45.49423090864163
+      },
+      "strength": 92,
+      "elapsedMs": 7137
+    },
+    {
+      "name": "attachment",
+      "width": 5504,
+      "height": 3072,
+      "sourceBytes": 27254812,
+      "target": 10000000,
+      "error": "保持当前分辨率与高保真 PNG 无法满足体积上限，请增加上限",
+      "elapsedMs": 26468
+    }
+  ],
+  "pngAfter": [
+    {
+      "name": "photo",
+      "width": 1536,
+      "height": 1024,
+      "sourceBytes": 671221,
+      "target": 2504360,
+      "bytes": 2486137,
+      "difference": {
+        "maxError": 2,
+        "alphaMaxError": 0,
+        "mae": 0.7647268507215712,
+        "rmse": 1.1289518670498022,
+        "psnr": 47.077295085862325
+      },
+      "strength": 91,
+      "elapsedMs": 4316
+    },
+    {
+      "name": "texture",
+      "width": 1600,
+      "height": 900,
+      "sourceBytes": 2950707,
+      "target": 2599687,
+      "bytes": 2593616,
+      "difference": {
+        "maxError": 2,
+        "alphaMaxError": 0,
+        "mae": 1.1007988425925925,
+        "rmse": 1.354654783822555,
+        "psnr": 45.49423090864163
+      },
+      "strength": 92,
+      "elapsedMs": 3414
+    },
+    {
+      "name": "attachment",
+      "width": 5504,
+      "height": 3072,
+      "sourceBytes": 27254812,
+      "target": 10000000,
+      "error": "保持当前分辨率与高保真 PNG 无法满足体积上限，请增加上限",
+      "elapsedMs": 25037,
+      "retryError": "保持当前分辨率与高保真 PNG 无法满足体积上限，请增加上限",
+      "retryMs": 28
+    }
+  ],
+  "pngComparisons": [
+    {
+      "name": "photo",
+      "byteIdentical": true,
+      "sha256": "875dcfec7b9a9c6467a88016b685477fd10bc03e09ff12087beff3bb24cff718"
+    },
+    {
+      "name": "texture",
+      "byteIdentical": true,
+      "sha256": "debfc005f2e3de9f45fe274405b89679404d86e7e04f6b439e9d08b9142fb67e"
+    }
+  ],
+  "jpeg": [
+    {
+      "name": "photo-budget",
+      "targetBytes": 400000,
+      "baseline": {
+        "ms": 1470,
+        "bytes": 378842,
+        "quality": 89,
+        "difference": {
+          "maxError": 45,
+          "alphaMaxError": 0,
+          "mae": 2.2325717078314886,
+          "rmse": 3.3313902913847313,
+          "psnr": 37.67829329370092
+        }
+      },
+      "optimized": {
+        "ms": 885,
+        "bytes": 378842,
+        "quality": 89,
+        "chromaSubsampling": "4:2:0",
+        "difference": {
+          "maxError": 45,
+          "alphaMaxError": 0,
+          "mae": 2.2325717078314886,
+          "rmse": 3.3313902913847313,
+          "psnr": 37.67829329370092
+        }
+      }
+    },
+    {
+      "name": "enlarged-photo",
+      "targetBytes": 10000000,
+      "baseline": {
+        "ms": 1752,
+        "bytes": 3766361,
+        "quality": 100,
+        "difference": {
+          "maxError": 14,
+          "alphaMaxError": 0,
+          "mae": 0.42735146417445485,
+          "rmse": 0.7623455770293414,
+          "psnr": 50.4877659095754
+        }
+      },
+      "optimized": {
+        "ms": 352,
+        "bytes": 7297503,
+        "quality": 100,
+        "chromaSubsampling": "4:4:4",
+        "difference": {
+          "maxError": 4,
+          "alphaMaxError": 0,
+          "mae": 0.3249219314641745,
+          "rmse": 0.6292809029588141,
+          "psnr": 52.15391256392336
+        }
+      }
+    },
+    {
+      "name": "fine-colour-edges",
+      "targetBytes": 10000000,
+      "baseline": {
+        "ms": 30,
+        "bytes": 100751,
+        "quality": 100,
+        "difference": {
+          "maxError": 154,
+          "alphaMaxError": 0,
+          "mae": 92.49875944444445,
+          "rmse": 106.68771640998685,
+          "psnr": 7.568515220650147
+        }
+      },
+      "optimized": {
+        "ms": 10,
+        "bytes": 334541,
+        "quality": 100,
+        "chromaSubsampling": "4:4:4",
+        "difference": {
+          "maxError": 3,
+          "alphaMaxError": 0,
+          "mae": 0.18729166666666666,
+          "rmse": 0.4367652560459553,
+          "psnr": 55.32584193542598
+        }
+      }
+    }
+  ],
+  "fittingAttachment": {
+    "width": 5504,
+    "height": 3072,
+    "limitBytes": 40000000,
+    "sourceBytes": 27254812,
+    "savedBytes": 27254812,
+    "byteIdenticalSavedFile": true,
+    "unchanged": true,
+    "elapsedMs": 1.193
+  },
+  "actualStitchExport": {
+    "width": 5995,
+    "height": 2398,
+    "bytes": 19474380,
+    "limitBytes": 40000000,
+    "format": "png",
+    "isPalette": false,
+    "hasAlpha": true
+  },
+  "ui": {
+    "passed": true,
+    "alignedModules": true,
+    "whitePreviews": true,
+    "removedCanvasAddDelete": true,
+    "removedStitchViewSwitch": true,
+    "oneClickExactRatio": true,
+    "oneClickOneEncode": true,
+    "oneClickIdempotent": true,
+    "percentageEditorPreservesState": true,
+    "empty4K": true,
+    "defaultPngExport": true,
+    "hoverAndFocusLabels": true,
+    "hiddenControlsInert": true,
+    "sidebarRetainsOutput": true,
+    "sidebarDoesNotReencode": true,
+    "workingStitching": true,
+    "stitchOriginalCopy": true,
+    "stitchAutosave": true,
+    "canvasCards": true,
+    "canvasSwitchAndBatchExport": true,
+    "selectionFitsImage": true,
+    "rightSelectionEdgeVisible": true,
+    "doubleClickEditor": true,
+    "exclusiveCropDirections": true,
+    "cropNumbersAndReset": true,
+    "noEncodingDuringCropSlider": true,
+    "threeAutomaticReorderLayouts": true,
+    "fourLayouts": true,
+    "freeInvalidCanvasEditable": true,
+    "freeSnap": true,
+    "freeProportionalResize": true,
+    "noEncodingDuringDrag": true,
+    "noEncodingDuringResize": true,
+    "reducedMotion": true
+  }
+}

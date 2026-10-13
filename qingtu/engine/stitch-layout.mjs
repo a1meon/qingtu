@@ -37,8 +37,13 @@ export function snapPosition(rect,others,tolerance=8){
  }
  return {x,y,guides};
 }
-function resolution(width,height,longEdge,draft=false){
+function resolution(width,height,longEdge,draft=false,exact=false){
  if(!Number.isInteger(longEdge)||longEdge<1||longEdge>MAX_EDGE)throw new Error('长边须为 1–5999 像素');
+ if(exact){
+  if(!draft&&longEdge%5!==0)throw new Error('严格 2.5:1 的长边须为 5 的倍数（5–5995 px）');
+  longEdge=Math.floor(longEdge/5)*5;
+  if(longEdge<5)throw new Error('严格 2.5:1 的长边至少为 5 像素');
+ }
  const factor=longEdge/Math.max(width,height);
  let w=Math.max(1,Math.round(width*factor)),h=Math.max(1,Math.round(height*factor));
  // Round the short side up at the ratio boundary, never extend a canvas.
@@ -47,13 +52,17 @@ function resolution(width,height,longEdge,draft=false){
 }
 export function calculateLayout(project,{draft=false}={}){
  const originals=project.images||[];if(!originals.length)throw new Error('请添加图片');
+ if(originals.some(i=>![i.width,i.height].every(v=>Number.isInteger(v)&&v>0)))throw new Error('图片尺寸无效');
  const images=originals.map(image=>{const source=imageGeometry(image,project.edits?.[image.id]);return {...image,original:image,source,width:source.width,height:source.height};});
- if(images.length>100||images.some(i=>![i.width,i.height].every(v=>Number.isInteger(v)&&v>0)))throw new Error('图片尺寸无效');
+ if(images.length>100||images.some(i=>![i.width,i.height].every(v=>Number.isFinite(v)&&v>0)))throw new Error('图片尺寸无效');
  let longEdge=Number(project.export?.longEdge??MAX_EDGE);if(draft&&(!Number.isInteger(longEdge)||longEdge<1||longEdge>MAX_EDGE))longEdge=MAX_EDGE;
- const type=project.layout||'horizontal',resolve=(w,h)=>resolution(w,h,longEdge,draft);
+ const type=project.layout||'horizontal',resolve=(w,h,exact=false)=>resolution(w,h,longEdge,draft,exact);
+ const cropDetails=image=>({crop:cropFractions(image.original,image.source),...(project.edits?.[image.id]?.fraction!=null?{proportionalCrop:true}:{})});
  let width,height,rects;
  if(type==='horizontal'){
   let ratios=images.map(i=>i.width/i.height),ratio=ratios.reduce((a,b)=>a+b,0);
+  const exact=images.every(i=>project.edits?.[i.id]?.fraction!=null)&&Math.abs(ratio-MAX_RATIO)<1e-12;
+  if(exact)ratio=MAX_RATIO;
   if(!draft&&ratio<1/MAX_RATIO)throw new Error('横排画布比例超过 2.5，请调整布局');
   const cropIndices=images.map((i,n)=>i.original.width*16===i.original.height*9&&!i.source.left&&!i.source.top?n:-1).filter(n=>n>=0);
   if(ratio>MAX_RATIO&&(!draft||cropIndices.length&&ratio-MAX_RATIO<cropIndices.reduce((s,n)=>s+ratios[n],0))){
@@ -63,23 +72,23 @@ export function calculateLayout(project,{draft=false}={}){
    for(const n of cropIndices){if(ratios[n]<=amount)throw new Error('9:16 图片不足以满足比例限制，请调整布局');ratios[n]-=amount;}
    ratio=MAX_RATIO;
   }
-  ({width,height}=resolve(ratio,1));
+  ({width,height}=resolve(ratio,1,exact));
   // Keep uncropped image widths at rounded equal-height scale. Distribute the
   // remaining integer pixels among the eligible cropped pictures.
-  const widths=ratios.map(r=>Math.round(r*height));
+  const widths=ratios.map(r=>exact?Math.floor(r*height):Math.round(r*height));
   let difference=width-widths.reduce((s,w)=>s+w,0);
-  const eligible=ratio===MAX_RATIO&&cropIndices.length?cropIndices:images.map((_,i)=>i);
+  const eligible=exact?images.map((_,i)=>i).sort((a,b)=>(ratios[b]*height-widths[b])-(ratios[a]*height-widths[a])):ratio===MAX_RATIO&&cropIndices.length?cropIndices:images.map((_,i)=>i);
   for(let k=0;difference!==0;k++){const n=eligible[k%eligible.length],delta=Math.sign(difference);if(widths[n]+delta<1)throw new Error('分辨率过低，请增加长边');widths[n]+=delta;difference-=delta;}
   let x=0;
   rects=images.map((image,n)=>{
    const sourceWidth=image.width/image.height*height;
    const cropped=cropIndices.includes(n)&&ratios[n]<image.width/image.height;
-   const rect={id:image.id,assetId:image.assetId,x,y:0,width:widths[n],height,autoCrop:cropped,crop:cropped?{left:(1-widths[n]/sourceWidth)/2,right:(1-widths[n]/sourceWidth)/2}:cropFractions(image.original,image.source)};x+=widths[n];return rect;
+   const rect={id:image.id,assetId:image.assetId,x,y:0,width:widths[n],height,autoCrop:cropped,...cropDetails(image)};if(cropped)rect.crop={left:(1-widths[n]/sourceWidth)/2,right:(1-widths[n]/sourceWidth)/2};x+=widths[n];return rect;
   });
  }else if(type==='vertical'){
   const ratio=images.reduce((s,i)=>s+i.height/i.width,0);if(!draft&&Math.max(ratio,1/ratio)>MAX_RATIO)throw new Error('竖排比例超过 2.5，请调整布局');
   ({width,height}=resolve(1,ratio));let y=0;
-  rects=images.map((image,n)=>{const bottom=n===images.length-1?height:Math.round(images.slice(0,n+1).reduce((s,i)=>s+i.height/i.width*width,0));const rect={id:image.id,assetId:image.assetId,x:0,y,width,height:bottom-y,crop:cropFractions(image.original,image.source)};y=bottom;return rect;});
+  rects=images.map((image,n)=>{const bottom=n===images.length-1?height:Math.round(images.slice(0,n+1).reduce((s,i)=>s+i.height/i.width*width,0));const rect={id:image.id,assetId:image.assetId,x:0,y,width,height:bottom-y,...cropDetails(image)};y=bottom;return rect;});
  }else if(type==='grid'){
   const rows=Number(project.grid?.rows),columns=Number(project.grid?.columns);
   if(![rows,columns].every(v=>Number.isInteger(v)&&v>=1&&v<=100)||images.length<rows||images.length>rows*columns)throw new Error('行列无法容纳全部图片，请调整宫格');
@@ -98,14 +107,14 @@ export function calculateLayout(project,{draft=false}={}){
    for(let col=0;col<group.images.length;col++){
     const image=group.images[col];ratioSum+=image.width/image.height;
     const right=col===group.images.length-1?width:Math.round(ratioSum/sum*width);
-    rects.push({id:image.id,assetId:image.assetId,x,y,width:right-x,height:bottom-y,crop:cropFractions(image.original,image.source)});x=right;
+    rects.push({id:image.id,assetId:image.assetId,x,y,width:right-x,height:bottom-y,...cropDetails(image)});x=right;
    }y=bottom;
   }
  }else if(type==='free'){
   const positions=project.positions||{};
   const source=images.map(image=>{
    const r=positions[image.id];if(!r||![r.x,r.y,r.width].every(Number.isFinite)||r.width<=0)throw new Error('自由画布图片位置无效');
-   return {id:image.id,assetId:image.assetId,x:r.x,y:r.y,width:r.width,height:r.width*image.height/image.width,crop:cropFractions(image.original,image.source)};
+   return {id:image.id,assetId:image.assetId,x:r.x,y:r.y,width:r.width,height:r.width*image.height/image.width,...cropDetails(image)};
   });
   // User-confirmed: bounds always include every complete image.
   const left=Math.min(...source.map(r=>r.x)),top=Math.min(...source.map(r=>r.y));

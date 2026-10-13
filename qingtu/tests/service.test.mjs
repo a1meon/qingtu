@@ -75,3 +75,16 @@ test('a queued export is never discarded by newer live preview settings',async()
  assert.equal(results[1].value.width,15);assert.equal(results[1].value.height,10);assert.equal(results[1].value.format,'png');
  assert.equal(service.result(results[1].value.token).output.format,'png','later previews must retain export bytes until actual save');
 });
+test('an in-flight obsolete preview stops at its encoding boundary while a true export remains queued and completes',async()=>{
+ const service=new ImageService(),data=Buffer.alloc(52*34*3);let seed=333;for(let i=0;i<data.length;i++){seed=(Math.imul(seed,1664525)+1013904223)>>>0;data[i]=seed>>>24;}
+ const source=await sharp(data,{raw:{width:52,height:34,channels:3}}).png({compressionLevel:0}).toBuffer(),file=await service.add(source,'in-flight.png');
+ let enter,release,signalled=false,encodes=0;const entered=new Promise(resolve=>enter=resolve),gate=new Promise(resolve=>release=resolve),png=sharp.prototype.png;
+ sharp.prototype.png=function(options){const pipeline=png.call(this,options),toBuffer=pipeline.toBuffer;pipeline.toBuffer=async function(...args){if(options?.compressionLevel===9){encodes++;if(!signalled){signalled=true;enter();await gate;}}return toBuffer.apply(this,args);};return pipeline;};
+ const settings={mode:'smart',format:'png',resize:{type:'scale',percent:100},targetBytes:64};
+ try{
+  const old=service.process(file.id,settings,{latest:true}),oldResult=Promise.allSettled([old]);await entered;
+  const exported=service.process(file.id,{...settings,format:'jpeg',targetBytes:1000000}),newest=service.process(file.id,{...settings,targetBytes:1000000},{latest:true});release();
+  const [obsolete]=await oldResult;assert.equal(obsolete.status,'rejected');assert.match(obsolete.reason.message,/预览参数已更新/);
+  const [actual,latest]=await Promise.all([exported,newest]);assert.equal(actual.format,'jpeg');assert.ok(service.result(actual.token));assert.equal(latest.unchanged,true);assert.equal(encodes,2,'only the two running lossless probes finish; obsolete lossy searches never start');
+ }finally{release();sharp.prototype.png=png;}
+});

@@ -1,5 +1,6 @@
 import sharp from 'sharp';
 import {encodeFaithfulPng} from './png-quality.mjs';
+import {encodeJpeg} from './jpeg-quality.mjs';
 
 sharp.cache({memory:64,files:0,items:20});
 sharp.concurrency(2);
@@ -81,7 +82,7 @@ async function losslessWithDimensions(source,meta,settings){
 
 // The entered size is a hard ceiling. Keep fitting originals; after a resize or
 // format conversion, use the available budget for the highest fitting quality.
-async function smartSize(source,meta,settings,target){
+async function smartSize(source,meta,settings,target,options){
   const requested=settings.format||'auto';
   if(!['auto','jpeg','png'].includes(requested))throw new Error('输出格式支持 JPG 和 PNG');
   const limit=target;
@@ -108,29 +109,15 @@ async function smartSize(source,meta,settings,target){
   const base=sharp(source,INPUT_OPTIONS).rotate().resize(size.width,size.height,{fit:'fill'}).toColourspace('srgb');
   if(format==='png'){
     const {data,info}=await base.clone().raw().toBuffer({resolveWithObject:true});
-    try{return finish({...await encodeFaithfulPng(data,info,limit),...size,format,unchanged:false});}
-    catch(error){if(requested!=='auto'||meta.hasAlpha)throw error;format='jpeg';}
+    try{return finish({...await encodeFaithfulPng(data,info,limit,options),...size,format,unchanged:false});}
+    catch(error){if(error.message==='预览参数已更新'||requested!=='auto'||meta.hasAlpha)throw error;format='jpeg';}
   }
   // Decode and resample once, rather than on each quality-search iteration.
   const {data,info}=await (format==='jpeg'?base.clone().flatten({background:'#fff'}):base).raw().toBuffer({resolveWithObject:true});
-  const encode=async quality=>{
-    const pipeline=sharp(data,{raw:{width:info.width,height:info.height,channels:info.channels}});
-    return pipeline.jpeg({quality,mozjpeg:true}).toBuffer();
-  };
-  let quality=100,buffer=await encode(quality);
-  if(buffer.length>limit){
-    let low=1,high=99,best=await encode(1),bestQuality=1;
-    if(best.length>limit)throw new Error('当前尺寸无法达到此体积，请缩小分辨率');
-    while(low<=high){
-      const q=Math.floor((low+high)/2),candidate=await encode(q);
-      if(candidate.length<=limit){best=candidate;bestQuality=q;low=q+1;}else high=q-1;
-    }
-    buffer=best;quality=bestQuality;
-  }
-  return finish({buffer,...size,format,quality,unchanged:false,lossless:false});
+  return finish({...await encodeJpeg(data,info,limit,options),...size,format,unchanged:false});
 }
 
-export async function processImage(source, settings) {
+export async function processImage(source, settings,options={}) {
   if (!Buffer.isBuffer(source) || source.length>100*1024*1024) throw new Error('单张图片须小于 100 MB');
   const meta=await sharp(source,INPUT_OPTIONS).metadata();
   if(!SUPPORTED.includes(meta.format)) throw new Error('不支持此图片格式');
@@ -138,7 +125,7 @@ export async function processImage(source, settings) {
   const target=Number(settings.targetBytes);
   const hasTarget=['target','smart'].includes(settings.mode)||settings.targetBytes!==undefined;
   if(hasTarget && (!Number.isInteger(target) || target<64 || target>100*1024*1024)) throw new Error('目标大小须介于 64 字节与 100 MB 之间');
-  if(settings.mode==='smart')return smartSize(source,meta,settings,target);
+  if(settings.mode==='smart')return smartSize(source,meta,settings,target,options);
   const finish=result=>{
     const imageBytes=result.buffer.length;
     if(hasTarget && imageBytes>target)throw new Error(`无法无损达到此大小（优化后 ${(imageBytes/1024/1024).toFixed(3)} MB）。请增加大小或缩小尺寸。`);
@@ -154,11 +141,14 @@ export async function processImage(source, settings) {
   if(format==='jpeg') base.flatten({background:'#ffffff'});
   if(format==='png'){
     const {data,info}=await base.raw().toBuffer({resolveWithObject:true});
-    return finish({...await encodeFaithfulPng(data,info,target),...size,format,unchanged:false});
+    return finish({...await encodeFaithfulPng(data,info,target,options),...size,format,unchanged:false});
+  }
+  if(format==='jpeg'){
+    const {data,info}=await base.raw().toBuffer({resolveWithObject:true});
+    return finish({...await encodeJpeg(data,info,target,options),...size,format,unchanged:false});
   }
   const encode=async quality => {
     const p=base.clone();
-    if(format==='jpeg') return p.jpeg({quality,mozjpeg:true}).toBuffer();
     return p.webp({quality,effort:4}).toBuffer();
   };
   let quality=100, buffer=await encode(quality);

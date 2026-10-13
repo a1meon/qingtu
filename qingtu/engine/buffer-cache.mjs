@@ -6,6 +6,7 @@ export class BufferCache {
     if(buffer){this.entries.delete(key);this.entries.set(key,buffer);}
     return buffer;
   }
+  delete(key){const buffer=this.entries.get(key);if(buffer){this.bytes-=buffer.length;this.entries.delete(key);}}
   set(key,buffer){
     const previous=this.entries.get(key);
     if(previous){this.bytes-=previous.length;this.entries.delete(key);}

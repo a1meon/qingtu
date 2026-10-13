@@ -153,7 +153,7 @@ export function CompressionApp(){
       <label>输出文件夹</label>
       <button className="folder-control" disabled={!!batch} onClick={chooseFolder} title={folder?.path}><FolderSimple size={24} weight="bold"/><span>{folder?.name||'选择文件夹'}</span></button>
       <button className="primary export-button" disabled={!items.length||loading||!!batch||!!error} onClick={exportAll}>{batch?<><SpinnerGap size={22} className="spin"/>导出 {batch.current} / {batch.total}</>:<>导出 {items.length} 张图片</>}</button>
-      {batch&&<button className="cancel-button" onClick={()=>{cancel.current=true;}}>取消后续</button>}
+      <div className="export-secondary">{batch&&<button className="cancel-button" onClick={()=>{cancel.current=true;}}>取消后续</button>}</div>
      </div>
     </aside>
    </div>

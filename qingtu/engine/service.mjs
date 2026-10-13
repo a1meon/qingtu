@@ -35,17 +35,18 @@ export class ImageService {
     const revision=options?.latest===true?(file.previewRevision=(file.previewRevision||0)+1):null;
     const job=(file.pending||Promise.resolve()).catch(()=>{}).then(()=>{
       if(revision!==null && revision!==file.previewRevision)throw new Error('预览参数已更新');
-      return this.processQueued(id,settings,{exportTask:revision===null});
+      return this.processQueued(id,settings,{exportTask:revision===null,isObsolete:()=>revision!==null&&revision!==file.previewRevision});
     });
     file.pending=job;
     return job;
   }
   pinExport(result,stored){const token=randomUUID();this.results.set(token,{...stored,exportTask:true});return {...result,token};}
   trimPreviews(){let bytes=0;for(const [token,value] of [...this.results].reverse())if(!value.exportTask){bytes+=value.output.buffer.length;if(bytes>64*1024*1024)this.results.delete(token);}}
-  async processQueued(id,settings,{exportTask=false}={}) {
+  async processQueued(id,settings,{exportTask=false,isObsolete}={}) {
     const file=this.original(id),key=JSON.stringify(settings);
     if(file.last?.key===key && this.results.has(file.last.result.token))return exportTask?this.pinExport(file.last.result,this.results.get(file.last.result.token)):file.last.result;
-    const output=await processImage(file.buffer,settings);
+    const output=await processImage(file.buffer,settings,{isObsolete});
+    if(isObsolete?.())throw new Error('预览参数已更新');
     const token=randomUUID();
     const outputPreview=output.unchanged?{url:file.item.preview,width:file.item.previewWidth,height:file.item.previewHeight}:await preview(output.buffer,{width:file.item.previewWidth,height:file.item.previewHeight,fit:output.width===file.item.width&&output.height===file.item.height?'fill':'inside'});
     const result={token,bytes:output.buffer.length,imageBytes:output.imageBytes,paddedBytes:output.paddedBytes,width:output.width,height:output.height,format:output.format,quality:output.quality,lossless:output.lossless,encoding:output.encoding,difference:output.difference,limitBytes:output.limitBytes,unchanged:output.unchanged,preview:outputPreview.url,previewWidth:outputPreview.width,previewHeight:outputPreview.height};

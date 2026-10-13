@@ -57,7 +57,7 @@ export function StitchCanvas({project,layout,onChange,onEdit,onRemove,onReorder,
   return onChange({...project.positions,[g.id]:position});
  }
  return <div className="stitch-canvas-area" ref={area}>
-  {layout?<div ref={canvas} className="stitch-canvas checkerboard" style={{width:layout.width*scale,height:layout.height*scale}}>
+  {layout?<div ref={canvas} className="stitch-canvas" style={{width:layout.width*scale,height:layout.height*scale}}>
    {layout.rects.map(rect=>{
     const image=project.images.find(i=>i.id===rect.id);
     return <div data-image-id={rect.id} className={`stitch-layer ${selected===rect.id?'selected':''} ${project.layout==='free'?'movable':'reorderable'}`} key={rect.id} style={{left:rect.x*scale,top:rect.y*scale,width:rect.width*scale,height:rect.height*scale}} tabIndex={0} role="button" aria-label={`编辑 ${image.name}`} onFocus={()=>onSelect(rect.id)} onPointerDown={e=>start(e,rect)} onPointerMove={move} onPointerUp={end} onPointerCancel={e=>end(e,true)} onClick={()=>onSelect(rect.id)} onDoubleClick={()=>{if(!disabled)onEdit(rect.id);}} onKeyDown={event=>{

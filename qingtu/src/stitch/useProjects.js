@@ -37,7 +37,7 @@ export function useProjects(){
   }catch(error){setSaveError(error.message);throw error;}finally{if(revision===loadRevision.current)setLoading(false);}
  };
  const create=async()=>{
-  await flush();const value=newProject();value.name=`画布 ${projects.length+1}`;
+  await flush();const value=newProject();value.name=`图像 ${projects.length+1}`;
   if(current.current)await api.stitchRelease(current.current.id);
   current.current=value;setProject(value);persist(value);return value;
  };

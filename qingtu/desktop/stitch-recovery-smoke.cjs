@@ -18,7 +18,7 @@ async function waitFor(win,expression){for(let n=0;n<300;n++){if(await win.webCo
  const js=expression=>win.webContents.executeJavaScript(expression);
  await waitFor(win,"!!document.querySelector('[aria-label=\"图像拼接\"]')");
  await js("document.querySelector('[aria-label=\"图像拼接\"]').click()");
- await waitFor(win,"!document.querySelector('[aria-label=\"添加拼接图片\"]').disabled");
+ await waitFor(win,"!!document.querySelector('.project-name') && !document.querySelector('.project-name').disabled");
  if(phase==='write'){
   console.log('Importing source');
   await js("document.querySelector('[aria-label=\"添加拼接图片\"]').click()");

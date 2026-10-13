@@ -7,7 +7,8 @@ import sharp from 'sharp';
 import {ProjectStore} from '../engine/project-store.mjs';
 import {ImageService} from '../engine/service.mjs';
 import {StitchService} from '../engine/stitch-service.mjs';
-import {moveImage} from '../engine/stitch-layout.mjs';
+import {moveImage,initializeFree,calculateLayout} from '../engine/stitch-layout.mjs';
+import {optimizeHorizontal} from '../engine/stitch-optimize.mjs';
 async function setup(t){const root=await fs.mkdtemp(path.join(os.tmpdir(),'qingtu-stitch-'));t.after(()=>fs.rm(root,{recursive:true,force:true}));const store=new ProjectStore(path.join(root,'store')),images=new ImageService();return {root,store,images,service:new StitchService(store,images)};}
 const settings={longEdge:120,format:'png',targetBytes:1000000};
 async function solid(store,name,width,height,color){const source=await sharp({create:{width,height,channels:4,background:color}}).png().toBuffer();const item=await store.import(source,name);delete item.preview;return item;}
@@ -73,4 +74,53 @@ test('manual crop coordinates follow EXIF-oriented display pixels rather than en
  const item=await store.import(source,'rotated.jpg');delete item.preview;assert.deepEqual([item.width,item.height],[60,90]);
  const p={id:'exif-crop',images:[item],layout:'horizontal',edits:{[item.id]:{axis:'horizontal',amount:5}},export:{...settings,longEdge:90}},r=await service.render(p),actual=await sharp(images.result(r.token).output.buffer).ensureAlpha().raw().toBuffer();
  const expected=await sharp(source).rotate().extract({left:5,top:0,width:50,height:90}).ensureAlpha().raw().toBuffer();assert.deepEqual([r.width,r.height],[50,90]);assert.ok(actual.equals(expected));
+});
+
+test('one-click 4K crop removes both sides of every ratio and saves an exact transparent 5995 x 2398 PNG',async t=>{
+ const {root,store,images,service}=await setup(t),files=[],buffers=[],colors=['#ff0000','#00ff00','#0000ff','#ffff0080'];
+ for(const [n,[width,height]] of [[3072,4096],[3072,4096],[2160,3840],[2160,3840]].entries()){
+  const strip=await sharp({create:{width:30,height,channels:4,background:'#ff00ff'}}).png().toBuffer();
+  const source=await sharp({create:{width,height,channels:4,background:colors[n]}}).composite([{input:strip,left:0,top:0},{input:strip,left:width-30,top:0}]).png().toBuffer();
+  buffers.push(source);const image=await store.import(source,'original-'+n+'.png');delete image.preview;files.push(image);
+ }
+ const p={id:'one-click-4k',name:'一键优化',images:files,layout:'horizontal',edits:{[files[0].id]:{axis:'vertical',amount:30}},export:{...settings,longEdge:5999}},optimized=optimizeHorizontal(p);
+ await store.save(optimized);const reopened=new ProjectStore(store.root),restored=await reopened.load(p.id);
+ assert.deepEqual(restored.edits,optimized.edits);assert.equal(restored.export.longEdge,5995);
+ const r=await service.render(restored),saved=await images.save(r.token,root),meta=await sharp(saved.path).metadata();
+ assert.deepEqual([meta.width,meta.height],[5995,2398]);assert.equal(meta.width*2,meta.height*5);assert.equal(meta.format,'png');assert.equal((await fs.stat(saved.path)).size,saved.bytes);assert.ok(saved.bytes<=settings.targetBytes);
+ const {data,info}=await sharp(saved.path).ensureAlpha().raw().toBuffer({resolveWithObject:true});
+ for(const [n,rect] of r.layout.rects.entries()){
+  const expected=n===0?[255,0,0,255]:n===1?[0,255,0,255]:n===2?[0,0,255,255]:[255,255,0,128];
+  for(const [x,y] of [[rect.x,0],[rect.x+rect.width-1,info.height-1]]){const offset=(y*info.width+x)*4;assert.deepEqual([...data.subarray(offset,offset+4)],expected,'both source side strips removed, square corners retained');}
+  assert.ok(rect.proportionalCrop&&!rect.autoCrop);assert.ok((await reopened.readAsset(files[n].assetId)).equals(buffers[n]));
+ }
+});
+
+test('percentage crop samples original centres symmetrically at different export sizes and after entering free',async t=>{
+ const {store,images,service}=await setup(t),data=Buffer.alloc(140*100*4);
+ for(let y=0;y<100;y++)for(let x=0;x<140;x++){const offset=(y*140+x)*4;data[offset]=x;data[offset+1]=y;data[offset+2]=180;data[offset+3]=y<50?255:128;}
+ const source=await sharp(data,{raw:{width:140,height:100,channels:4}}).png().toBuffer(),a=await store.import(source,'a.png'),b=await store.import(source,'b.png');delete a.preview;delete b.preview;
+ for(const longEdge of [250,500]){
+  const p=optimizeHorizontal({id:'centred-'+longEdge,images:[a,b],layout:'horizontal',export:{...settings,longEdge}}),r=await service.render(p);
+  assert.equal(r.width*2,r.height*5);
+  const raw=await sharp(images.result(r.token).output.buffer).ensureAlpha().raw().toBuffer();
+  for(const rect of r.layout.rects){const pixel=x=>raw.subarray((Math.floor(r.height*.25)*r.width+x)*4,(Math.floor(r.height*.25)*r.width+x)*4+4);const left=pixel(rect.x),right=pixel(rect.x+rect.width-1);assert.ok(left[0]>=6&&left[0]<=9);assert.ok(right[0]>=130&&right[0]<=132);assert.ok(Math.abs(left[0]-(139-right[0]))<=1);assert.equal(left[3],255);}
+  for(const layout of ['vertical','grid','free']){
+   const single={...p,images:[a],grid:{rows:1,columns:1},layout:'horizontal'};
+   const next=layout==='free'?initializeFree(single,calculateLayout(single),'centres'):{...single,layout};
+   const result=await service.render(next);assert.deepEqual([result.width,result.height],[longEdge,Math.round(longEdge/1.25)]);
+   const actual=await sharp(images.result(result.token).output.buffer).ensureAlpha().raw().toBuffer();
+   assert.ok(actual[0]>=6&&actual[0]<=9);assert.equal(actual[3],255);assert.equal(actual[actual.length-1],128);assert.equal(result.layout.rects[0].crop.top,0);
+  }
+ }
+});
+test('obsolete in-flight compositions stop loading remaining originals without discarding true exports',async t=>{
+ const {store,images,service}=await setup(t),a=await solid(store,'a',80,80,'#ff0000'),b=await solid(store,'b',80,80,'#0000ff');
+ const p={id:'in-flight-stitch',images:[a,b],layout:'horizontal',export:settings};
+ let enter,release,reads=0;const entered=new Promise(resolve=>enter=resolve),gate=new Promise(resolve=>release=resolve),read=store.readAsset.bind(store);
+ store.readAsset=async id=>{if(++reads===1){enter();await gate;}return read(id);};
+ const obsolete=Promise.allSettled([service.render(p,{latest:true})]);await entered;
+ const exported=service.render(p),latest=service.render({...p,export:{...settings,longEdge:100}},{latest:true});release();
+ const [old]=await obsolete;assert.equal(old.status,'rejected');assert.match(old.reason.message,/预览参数已更新/);
+ const [result,newest]=await Promise.all([exported,latest]);assert.equal(reads,5,'obsolete composition reads only its current asset');assert.equal(newest.width,100);assert.ok(images.result(result.token));
 });
