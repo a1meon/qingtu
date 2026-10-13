@@ -1,0 +1,26 @@
+qingtu/node_modules/
+qingtu/dist/
+qingtu/release/
+qingtu/artifacts/
+qingtu/.cache/
+.DS_Store
+
+# Local credentials and signing material
+**/.env
+**/.env.*
+!**/.env.example
+**/*.key
+**/*.pem
+**/*.p12
+**/*.pfx
+**/*.p8
+**/*.mobileprovision
+**/*.certSigningRequest
+
+# Generated packaging configuration and native bridge binaries
+qingtu/build/*
+!qingtu/build/icon.png
+!qingtu/build/icon.icns
+!qingtu/build/icon.ico
+!qingtu/build/source/
+!qingtu/build/source/**

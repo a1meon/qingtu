@@ -1,0 +1,79 @@
+name: Build Qingtu desktop
+on:
+  workflow_dispatch:
+  push:
+    tags: ['v*']
+permissions:
+  contents: read
+jobs:
+  desktop:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            target: mac
+            native: darwin
+            arch: arm64
+          - os: macos-latest
+            target: mac
+            native: darwin
+            arch: x64
+          - os: windows-latest
+            target: win
+            native: win32
+            arch: x64
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        working-directory: qingtu
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: qingtu/package-lock.json
+      - run: npm ci
+      - run: node node_modules/electron/install.js
+      - run: npm test
+      - run: npm run build
+      - run: npm run smoke:desktop
+      - run: node scripts/prepare-native.mjs ${{ matrix.native }} ${{ matrix.arch }}
+      - if: matrix.target == 'mac'
+        run: node scripts/prepare-sparkle-key.cjs
+        env:
+          QINGTU_SPARKLE_SEED: ${{ secrets.QINGTU_SPARKLE_SEED }}
+      - if: matrix.target == 'mac'
+        run: node scripts/prepare-sparkle.cjs ${{ matrix.arch }}
+      - run: node scripts/prepare-update-build.cjs ${{ matrix.native }} ${{ matrix.arch }}
+        env:
+          QINGTU_UPDATE_GITEE: ${{ vars.QINGTU_UPDATE_GITEE }}
+          QINGTU_UPDATE_URL: ${{ vars.QINGTU_UPDATE_URL }}
+      - if: matrix.target == 'mac'
+        run: npx electron-builder --config build/update-builder.json --mac dmg zip --${{ matrix.arch }} --publish never
+        env:
+          CSC_LINK: ${{ secrets.MAC_CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.MAC_CSC_KEY_PASSWORD }}
+          APPLE_API_KEY: ${{ secrets.APPLE_API_KEY }}
+          APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
+          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
+      - if: matrix.target == 'win'
+        run: npx electron-builder --config build/update-builder.json --win nsis zip --x64 --publish never
+      - run: node scripts/prepare-update-metadata.cjs ${{ matrix.native }} ${{ matrix.arch }}
+      - if: matrix.target == 'win'
+        run: npm run release:chunks
+      - if: matrix.target == 'mac'
+        run: node scripts/prepare-mac-release.cjs release/latest-${{ matrix.arch }}-mac.yml release/gitee-publish ${{ matrix.arch }}
+      - if: matrix.target == 'mac'
+        run: node scripts/prepare-mac-installer.cjs release/gitee-publish ${{ matrix.arch }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Qingtu-${{ matrix.target }}-${{ matrix.arch }}
+          path: |
+            qingtu/release/*.dmg
+            qingtu/release/*.zip
+            qingtu/release/*.exe
+            qingtu/release/*.yml
+            qingtu/release/*.blockmap
+            qingtu/release/gitee-publish/*

@@ -1,0 +1,16 @@
+const fs=require('node:fs/promises');const path=require('node:path');const {createHash,createPrivateKey,sign}=require('node:crypto');const yaml=require('js-yaml');const {splitRelease}=require('./prepare-chunk-release.cjs');
+async function prepareMacRelease(metadataPath,out,arch,keyPath='.cache/sparkle-signing/update-seed.txt',partSize){
+ if(!['arm64','x64'].includes(arch))throw new Error('Invalid architecture');
+ const {metadata}=await splitRelease(metadataPath,out,partSize,{zipOnly:true});const info=yaml.load(await fs.readFile(metadata,'utf8'));const file=info.files.find(f=>f.url.endsWith('.zip'));if(!file)throw new Error('Mac update ZIP missing');
+ const seed=Buffer.from((await fs.readFile(keyPath,'utf8')).trim(),'base64');if(seed.length!==32)throw new Error('Invalid signing seed');
+ const key=createPrivateKey({key:Buffer.concat([Buffer.from('302e020100300506032b657004220420','hex'),seed]),format:'der',type:'pkcs8'});
+ file.edSignature=sign(null,await fs.readFile(path.join(path.dirname(metadataPath),file.url)),key).toString('base64');const payload=Buffer.from(JSON.stringify({version:info.version,arch,file}));
+ await fs.writeFile(path.join(out,`mac-${arch}.json`),JSON.stringify({payload:payload.toString('base64'),signature:sign(null,payload,key).toString('base64')})+'\n');
+ const source=require('../desktop/update-source.json');const base=`https://gitee.com/${source.owner}/${source.repo}/releases/download/v${info.version}/`;
+ const downloads=file.qingtuParts.map(p=>`fetch_part '${p.url}' '${Buffer.from(p.sha512,'base64').toString('hex')}'`).join('\n');
+ const bootstrap=`#!/bin/bash\nset -euo pipefail\nwork="$HOME/Downloads/Qingtu-${info.version}-${arch}"\nmkdir -p "$work"\ncd "$work"\nfetch_part() {\n  file="$1"; expected="$2"\n  if [ ! -f "$file" ] || [ "$(/usr/bin/shasum -a 512 "$file" | /usr/bin/awk '{print $1}')" != "$expected" ]; then\n    echo "下载 $file"\n    /usr/bin/curl --fail --location --proto '=https' --proto-redir '=https' --retry 2 --connect-timeout 20 --max-time 1200 '${base}'"$file" -o "$file.partial"\n    echo "$expected  $file.partial" | /usr/bin/shasum -a 512 -c -\n    /bin/mv "$file.partial" "$file"\n  fi\n}\n${downloads}\n/bin/cat ${file.qingtuParts.map(p=>`'${p.url}'`).join(' ')} > '${file.url}'\necho '${Buffer.from(file.sha512,'base64').toString('hex')}  ${file.url}' | /usr/bin/shasum -a 512 -c -\n/usr/bin/ditto -x -k '${file.url}' "$work"\n[ -e "$work/Applications" ] || /bin/ln -s /Applications "$work/Applications"\necho '下载完成。请将轻图拖入 Applications，然后打开轻图。'\n/usr/bin/open "$work"\n`;
+ const helper=`Install-Qingtu-${info.version}-Mac-${arch}.command`;await fs.writeFile(path.join(out,helper),bootstrap,{mode:0o755});
+ const names=[`mac-${arch}.json`,helper,...file.qingtuParts.map(p=>p.url)];await fs.writeFile(path.join(out,`SHA256SUMS-Mac-${arch}.txt`),(await Promise.all(names.map(async n=>createHash('sha256').update(await fs.readFile(path.join(out,n))).digest('hex')+'  '+n))).join('\n')+'\n');
+ return {manifest:path.join(out,`mac-${arch}.json`),bootstrap:path.join(out,helper),file};
+}
+module.exports={prepareMacRelease};if(require.main===module)prepareMacRelease(...process.argv.slice(2)).then(result=>console.log('Mac signed multipart release ready: '+result.manifest)).catch(error=>{console.error(error.message);process.exitCode=1;});

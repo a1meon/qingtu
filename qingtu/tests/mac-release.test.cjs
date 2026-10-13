@@ -1,0 +1,14 @@
+const {test}=require('node:test');const assert=require('node:assert/strict');const fs=require('node:fs/promises');const path=require('node:path');const os=require('node:os');const {prepareKey}=require('../scripts/prepare-sparkle-key.cjs');const {prepareMacRelease}=require('../scripts/prepare-mac-release.cjs');const {decodeEnvelope}=require('../desktop/mac-updater.cjs');const {createHash,verify,createPublicKey}=require('node:crypto');const yaml=require('js-yaml');
+test('Mac publisher signs both immutable archive and bounded manifest, reuses private key and emits small bootstrap',async t=>{
+ const dir=await fs.mkdtemp(path.join(os.tmpdir(),'qingtu-mac-release-'));t.after(()=>fs.rm(dir,{recursive:true,force:true}));const key=await prepareKey(path.join(dir,'keys'),path.join(dir,'public.json'));assert.equal((await fs.stat(key.keyPath)).mode&0o777,0o600);assert.equal((await prepareKey(path.join(dir,'keys'),path.join(dir,'public.json'))).publicKey,key.publicKey);
+ const zip=Buffer.from('test signed archive'),name='Qingtu-0.4.4-mac-arm64.zip';await fs.writeFile(path.join(dir,name),zip);await fs.writeFile(path.join(dir,'latest-arm64-mac.yml'),yaml.dump({version:'0.4.4',files:[{url:name,size:zip.length,sha512:createHash('sha512').update(zip).digest('base64')},{url:'Qingtu-0.4.4-mac-arm64.dmg',size:zip.length,sha512:createHash('sha512').update(zip).digest('base64')}]}));
+ await fs.writeFile(path.join(dir,'Qingtu-0.4.4-mac-arm64.dmg'),zip);const output=path.join(dir,'out');await prepareMacRelease(path.join(dir,'latest-arm64-mac.yml'),output,'arm64',key.keyPath,4);
+ assert.equal((await fs.readdir(output)).some(n=>n.includes('.dmg.part')),false);
+ const envelope=JSON.parse(await fs.readFile(path.join(output,'mac-arm64.json'),'utf8'));const manifest=decodeEnvelope(envelope,key.publicKey,'arm64','https://gitee.com/a1meon_admin/halframe-releases/releases/download/v0.4.4/');
+ const publicKey=createPublicKey({key:Buffer.concat([Buffer.from('302a300506032b6570032100','hex'),Buffer.from(key.publicKey,'base64')]),format:'der',type:'spki'});assert.ok(verify(null,zip,publicKey,Buffer.from(manifest.file.edSignature,'base64')));assert.equal(manifest.file.qingtuParts.length,5);
+ const bootstrap=await fs.readFile(path.join(output,'Install-Qingtu-0.4.4-Mac-arm64.command'),'utf8');assert.match(bootstrap,/shasum -a 512/);assert.doesNotMatch(bootstrap,/xattr|spctl|sudo/);assert.match(bootstrap,/ditto/);
+});
+
+test('a missing private key cannot silently replace an already published trust root',async t=>{
+ const dir=await fs.mkdtemp(path.join(os.tmpdir(),'qingtu-key-loss-'));t.after(()=>fs.rm(dir,{recursive:true,force:true}));const root=path.join(dir,'keys'),pub=path.join(dir,'pub.json');const key=await prepareKey(root,pub);await fs.rm(key.keyPath);await assert.rejects(prepareKey(root,pub),/恢复|丢失/);await assert.rejects(fs.stat(key.keyPath),{code:'ENOENT'});
+});
