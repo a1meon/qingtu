@@ -126,6 +126,18 @@
         "rmse": 0,
         "alphaMaxError": 0
       }
+    },
+    "canvasTools": {
+      "background": "transparent",
+      "border": "transparent",
+      "shadow": "none",
+      "hoverChangesForegroundOnly": true,
+      "labels": [
+        "一键优化",
+        "编辑选中图片",
+        "重置裁剪与顺序"
+      ],
+      "nativeDefaultAndHoverChecks": true
     }
   },
   "notVerified": [

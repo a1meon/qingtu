@@ -51,6 +51,8 @@ async function waitFor(win,expr){for(let n=0;n<160;n++){if(await win.webContents
   assert.deepEqual(await js(measure),compressionBounds,'shared controls and stage regions retain identical positions across modules');
   assert.deepEqual(await js("Array.from(document.querySelectorAll('.layout-options button'),e=>e.textContent)"),['横排','宫格','竖排','自由']);
   assert.equal(await js("document.querySelector('.file-toolbar .canvas-actions').getAttribute('aria-label')"),'画布工具');
+  assert.equal(await js("getComputedStyle(document.querySelector('.canvas-actions')).backgroundColor"),'rgba(0, 0, 0, 0)');
+  assert.deepEqual(await js("Array.from(document.querySelectorAll('.canvas-actions button'),e=>{const s=getComputedStyle(e);return [s.backgroundColor,s.boxShadow,s.borderTopColor];})"),Array.from({length:3},()=>['rgba(0, 0, 0, 0)','none','rgba(0, 0, 0, 0)']),'all three canvas tools have no background, border or raised shadow');
   await js("document.querySelector('#stitch-format').click()");await waitFor(win,"document.querySelectorAll('[role=option]').length===2");
   assert.deepEqual(await js("Array.from(document.querySelectorAll('[role=option]'),e=>e.textContent)"),['JPG','PNG']);
   await js("document.querySelector('[role=listbox]').dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true}))");
@@ -82,11 +84,12 @@ async function waitFor(win,expr){for(let n=0;n<160;n++){if(await win.webContents
   await js("document.querySelector('[aria-label=\"重置裁剪与顺序\"]').click()");await waitFor(win,"document.querySelector('.save-status').textContent==='已自动保存' && document.querySelector('.stitch-info').textContent.includes(' MB')");
   assert.deepEqual((await store.load(savedProject.id)).edits,{});
   await js("document.querySelector('.stitch-layer').dispatchEvent(new MouseEvent('dblclick',{bubbles:true}))");await waitFor(win,"!!document.querySelector('.image-editor')");
+  await js("new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)))");
   const beforeCrop=stitchCalls;
   const sliderPoints=await js("(()=>{const input=document.querySelector('.crop-slider'),r=input.getBoundingClientRect();return {start:{x:r.x+8.5,y:r.y+r.height/2},end:{x:r.x+8.5+(r.width-17)*80/Number(input.max),y:r.y+r.height/2}};})()");
   win.webContents.debugger.attach('1.3');await win.webContents.debugger.sendCommand('Input.dispatchMouseEvent',{type:'mousePressed',...sliderPoints.start,button:'left',clickCount:1});
   for(let n=1;n<=24;n++)await win.webContents.debugger.sendCommand('Input.dispatchMouseEvent',{type:'mouseMoved',x:sliderPoints.start.x+(sliderPoints.end.x-sliderPoints.start.x)*n/24,y:sliderPoints.end.y,button:'left',buttons:1});
-  await pause(1100);const heldCrop=Number(await js("document.querySelector('#crop-amount').value"));assert.ok(heldCrop>=70&&heldCrop<=90);
+  await pause(1100);const heldCrop=Number(await js("document.querySelector('#crop-amount').value"));assert.ok(heldCrop>=70&&heldCrop<=90,JSON.stringify({heldCrop,sliderPoints}));
   assert.equal(stitchCalls,beforeCrop,'crop slider movement must not encode full-resolution images');
   assert.equal((await store.load(savedProject.id)).edits?.[restored.images[0].id],undefined,'unreleased slider remains a local draft');
   await win.webContents.debugger.sendCommand('Input.dispatchMouseEvent',{type:'mouseReleased',...sliderPoints.end,button:'left',clickCount:1});win.webContents.debugger.detach();
@@ -164,7 +167,8 @@ async function waitFor(win,expr){for(let n=0;n<160;n++){if(await win.webContents
   win.webContents.debugger.attach('1.3');await win.webContents.debugger.sendCommand('Input.dispatchMouseEvent',{type:'mousePressed',...point,button:'left',clickCount:1});await win.webContents.debugger.sendCommand('Input.dispatchMouseEvent',{type:'mouseReleased',...point,button:'left',clickCount:1});win.webContents.debugger.detach();
   await waitFor(win,"document.querySelector('.stitch-info').textContent.includes('1200 × 480') && document.querySelector('.stitch-info').textContent.includes(' MB') && document.querySelector('.save-status').textContent==='已自动保存'");
   const optimized=await store.load(savedProject.id);assert.equal(optimized.canvas.width*2,optimized.canvas.height*5);assert.ok(optimized.images.every(image=>optimized.edits[image.id].fraction===optimized.edits[optimized.images[0].id].fraction));assert.equal(stitchCalls,beforeOptimize+1,'one click produces one full-resolution preview');
-  assert.equal(await js("getComputedStyle(document.querySelector('.canvas-optimize')).backgroundColor"),'rgb(21, 157, 225)','native mouse hover retains a blue background under white text');
+  assert.equal(await js("getComputedStyle(document.querySelector('.canvas-optimize')).backgroundColor"),'rgba(0, 0, 0, 0)','native mouse hover keeps the canvas tools transparent');
+  assert.equal(await js("getComputedStyle(document.querySelector('.canvas-optimize')).color"),'rgb(8, 116, 184)','hover changes only the blue foreground');
   const beforeAgain=stitchCalls;await js("document.querySelector('[aria-label=\"一键优化\"]').click()");await pause(650);assert.equal(stitchCalls,beforeAgain,'repeat optimization is idempotent');
   await js("(()=>{const input=document.querySelector('#stitch-long-edge');Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(input,'1201');input.dispatchEvent(new Event('input',{bubbles:true}));})()");
   await waitFor(win,"document.querySelector('.stitch-stage').parentElement.querySelector('[role=alert]')?.textContent.includes('5 的倍数')");assert.equal(await js("document.querySelector('.stitch-stage').parentElement.querySelector('.export-button').disabled"),true);
