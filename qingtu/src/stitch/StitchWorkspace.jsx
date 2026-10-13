@@ -88,15 +88,15 @@ export const StitchWorkspace=forwardRef(function StitchWorkspace({active,inspect
  async function chooseFolder(){const value=await api.chooseFolder();if(value)setFolder(value);return value;}
  async function runExport(ids){
   if(busy||!ids.length)return;
-  cancel.current=false;setBatch({current:0,total:ids.length});let success=0;const failures=[];
+  cancel.current=false;setBatch({current:0,total:ids.length});let success=0;const failures=[],adjusted=[];
   try{
    await flushEditor();await flush();const current=getCurrent();if(!folder&&!await chooseFolder())return;setNotice('');
    for(let n=0;n<ids.length;n++){
     if(cancel.current)break;setBatch({current:n+1,total:ids.length});
-    try{const snapshot=ids[n]===current.id?structuredClone(current):await repository.load(ids[n]);snapshot.export={...snapshot.export,format:explicitFormat(snapshot.export?.format)};await repository.prepare(snapshot,{previews:false});const result=await api.stitchRender(snapshot);await api.save(result.token);success++;}
+    try{const snapshot=ids[n]===current.id?structuredClone(current):await repository.load(ids[n]);snapshot.export={...snapshot.export,format:explicitFormat(snapshot.export?.format)};await repository.prepare(snapshot,{previews:false});const result=await api.stitchRender(snapshot);await api.save(result.token);success++;if(result.autoResized)adjusted.push(`${canvasName(snapshot.name)} ${result.width} × ${result.height}`);}
     catch(e){failures.push(`${canvasName(projects.find(p=>p.id===ids[n])?.name)}：${e.message}`);}
    }
-   setNotice(`已导出 ${success} 张图像${failures.length?'；'+failures.join('；'):cancel.current?'，已取消':''}`);
+   setNotice(`已导出 ${success} 张图像${failures.length?'；'+failures.join('；'):cancel.current?'，已取消':''}${adjusted.length?'；等比调整：'+adjusted.join('，'):''}`);
   }finally{setBatch(null);}
  }
  function exportProjects(ids){if(busy||exportLock.current||!ids.length)return exportTask.current;exportLock.current=true;const task=runExport(ids).catch(e=>setNotice(e.message)).finally(()=>{exportLock.current=false;});exportTask.current=task;return task;}
@@ -133,10 +133,10 @@ export const StitchWorkspace=forwardRef(function StitchWorkspace({active,inspect
     </div>
     {project?.images.length?<>
      <div className="canvas-area"><div className="canvas-content"><div className="stitch-editing-surface">
-      <StitchCanvas project={displayProject} layout={layout} selected={selected} onSelect={selectImage} onEdit={editImage} onContext={contextImage} onRemove={removeImage} onReorder={reorder} onChange={positions=>update({positions})} disabled={busy||!!cropDraft}/>
+      <StitchCanvas project={displayProject} layout={layout} preview={!cropDraft&&output?.autoResized?output.preview:null} selected={selected} onSelect={selectImage} onEdit={editImage} onContext={contextImage} onRemove={removeImage} onReorder={reorder} onChange={positions=>update({positions})} disabled={busy||!!cropDraft}/>
       {editingImage&&<ImageEditor key={editingImage.id} ref={editor} image={editingImage} value={editingValue} anchor={editorAnchor} hidden={!active} disabled={busy} onPreview={edit=>setCropDraft(edit?{id:editingImage.id,edit}:null)} onCommit={edit=>commitCrop(editingImage.id,edit)} onClose={()=>{setEditing(null);setCropDraft(null);}}/>}
      </div>
-     <div className="preview-info stitch-info" aria-live="polite"><span>{layout?`${layout.width} × ${layout.height}`:calculation.error}</span>{layout?.rects.some(r=>r.autoCrop)&&<span>9:16 居中裁切</span>}<span className="preview-status" title={output?`${output.bytes.toLocaleString()} 字节${output.difference?`；RGB 最大误差 ${output.difference.maxError}/255，RMSE ${output.difference.rmse.toFixed(4)}；透明度误差 ${output.difference.alphaMaxError}`:''}`:undefined}>{cropDraft?'编辑中…':processing?'计算中…':output?`${output.encoding||output.format.toUpperCase()} · ${megabytes(output.bytes)}`:error}</span></div></div></div>
+     <div className="preview-info stitch-info" aria-live="polite"><span title={output?.autoResized?`设置 ${output.requestedWidth} × ${output.requestedHeight}；为满足体积上限已等比调整`:undefined}>{output?`${output.width} × ${output.height}${output.autoResized?' · 等比调整':''}`:layout?`${layout.width} × ${layout.height}`:calculation.error}</span>{layout?.rects.some(r=>r.autoCrop)&&<span>9:16 居中裁切</span>}<span className="preview-status" title={output?`${output.bytes.toLocaleString()} 字节${output.difference?`；RGB 最大误差 ${output.difference.maxError}/255，RMSE ${output.difference.rmse.toFixed(4)}；透明度误差 ${output.difference.alphaMaxError}${output.autoResized?'（以实际尺寸的等比缩放图为基准）':''}`:''}`:undefined}>{cropDraft?'编辑中…':processing?'计算中…':output?`${output.encoding||output.format.toUpperCase()} · ${megabytes(output.bytes)}`:error}</span></div></div></div>
     </>:<div className="canvas-area"><div className="empty-state"><img className="empty-illustration" src="./assets/blue-file-empty.png" alt=""/><button className="primary import-button" aria-label="添加拼接图片" disabled={busy||!project} onClick={add}><Plus size={28} weight="bold"/>{loading?'恢复中…':'添加图片'}</button></div></div>}
    </div>
    <CanvasCards projects={projects} currentId={project?.id} disabled={busy} onOpen={openCanvas} onCreate={createCanvas} onClear={requestClear} onContext={contextCanvas}/>

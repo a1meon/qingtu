@@ -2,7 +2,7 @@ import {useEffect,useRef,useState} from 'react';
 import {snapPosition} from '../../engine/stitch-layout.mjs';
 import {addFlushHandler} from '../lifecycle.js';
 
-export function StitchCanvas({project,layout,onChange,onEdit,onContext,onRemove,onReorder,selected,onSelect,disabled}){
+export function StitchCanvas({project,layout,onChange,onEdit,onContext,onRemove,onReorder,selected,onSelect,disabled,preview}){
  const area=useRef(),canvas=useRef(),gesture=useRef(),frame=useRef(),flushRef=useRef(),[bounds,setBounds]=useState({width:600,height:360});
  flushRef.current=()=>finish(false);
  useEffect(()=>addFlushHandler(()=>flushRef.current()),[]);
@@ -25,6 +25,7 @@ export function StitchCanvas({project,layout,onChange,onEdit,onContext,onRemove,
   frame.current=requestAnimationFrame(()=>{
    frame.current=null;
    if(gesture.current!==g)return;
+   canvas.current.dataset.interacting='true';
    const rect=nextRect(g);
    g.next=rect;
    if(g.order){g.element.style.transform=`translate(${(g.dx||0)*scale}px,${(g.dy||0)*scale}px)`;g.element.style.opacity='.65';}
@@ -49,6 +50,7 @@ export function StitchCanvas({project,layout,onChange,onEdit,onContext,onRemove,
  function finish(cancelled){
   const g=gesture.current;if(!g)return;
   cancelAnimationFrame(frame.current);frame.current=null;
+  delete canvas.current.dataset.interacting;
   const rect=nextRect(g);gesture.current=null;canvas.current.querySelector('.snap-guides').replaceChildren();
   g.element.style.transform='';g.element.style.opacity='';
   if(cancelled){showRect(g.element,g.rect);showRect(canvas.current.querySelector('.stitch-selection'),g.rect);return;}
@@ -58,7 +60,8 @@ export function StitchCanvas({project,layout,onChange,onEdit,onContext,onRemove,
   return onChange({...project.positions,[g.id]:position});
  }
  return <div className="stitch-canvas-area" ref={area}>
-  {layout?<div ref={canvas} className="stitch-canvas" style={{width:layout.width*scale,height:layout.height*scale}}>
+  {layout?<div ref={canvas} className={`stitch-canvas ${preview?'has-output-preview':''}`} style={{width:layout.width*scale,height:layout.height*scale}}>
+   {preview&&<img className="stitch-output-preview" src={preview} alt="实际导出预览" draggable={false}/>}
    {layout.rects.map(rect=>{
     const image=project.images.find(i=>i.id===rect.id);
     return <div data-image-id={rect.id} className={`stitch-layer ${selected===rect.id?'selected':''} ${project.layout==='free'?'movable':'reorderable'}`} key={rect.id} style={{left:rect.x*scale,top:rect.y*scale,width:rect.width*scale,height:rect.height*scale}} tabIndex={0} role="button" aria-label={`编辑 ${image.name}`} onFocus={()=>onSelect(rect.id)} onPointerDown={e=>start(e,rect)} onPointerMove={move} onPointerUp={end} onPointerCancel={e=>end(e,true)} onClick={()=>onSelect(rect.id)} onContextMenu={event=>{event.preventDefault();if(!disabled)onContext(rect.id,{x:event.clientX,y:event.clientY});}} onDoubleClick={event=>{if(!disabled)editAt(event,rect.id);}} onKeyDown={event=>{

@@ -1,4 +1,5 @@
 import sharp from 'sharp';
+import {encodePngWithinBudget} from './png-budget.mjs';
 import {encodeFaithfulPng} from './png-quality.mjs';
 import {encodeJpeg} from './jpeg-quality.mjs';
 
@@ -109,7 +110,12 @@ async function smartSize(source,meta,settings,target,options){
   const base=sharp(source,INPUT_OPTIONS).rotate().resize(size.width,size.height,{fit:'fill'}).toColourspace('srgb');
   if(format==='png'){
     const {data,info}=await base.clone().raw().toBuffer({resolveWithObject:true});
-    try{return finish({...await encodeFaithfulPng(data,info,limit,options),...size,format,unchanged:false});}
+    try{
+      // Legacy Auto clients may choose JPEG at the requested resolution. Both
+      // current menus use explicit formats; explicit PNG always stays PNG.
+      const result=requested==='auto'&&!meta.hasAlpha?{...await encodeFaithfulPng(data,info,limit,options),...size}:await encodePngWithinBudget(data,info,limit,options);
+      return finish({...result,format,unchanged:false});
+    }
     catch(error){if(error.message==='预览参数已更新'||requested!=='auto'||meta.hasAlpha)throw error;format='jpeg';}
   }
   // Decode and resample once, rather than on each quality-search iteration.
@@ -141,7 +147,7 @@ export async function processImage(source, settings,options={}) {
   if(format==='jpeg') base.flatten({background:'#ffffff'});
   if(format==='png'){
     const {data,info}=await base.raw().toBuffer({resolveWithObject:true});
-    return finish({...await encodeFaithfulPng(data,info,target,options),...size,format,unchanged:false});
+    return finish({...await encodePngWithinBudget(data,info,target,options),format,unchanged:false});
   }
   if(format==='jpeg'){
     const {data,info}=await base.raw().toBuffer({resolveWithObject:true});

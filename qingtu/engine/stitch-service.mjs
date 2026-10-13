@@ -1,7 +1,7 @@
 import sharp from 'sharp';
 import {randomUUID} from 'node:crypto';
 import {calculateLayout} from './stitch-layout.mjs';
-import {encodeFaithfulPng} from './png-quality.mjs';
+import {encodePngWithinBudget} from './png-budget.mjs';
 import {INPUT_OPTIONS} from './image.mjs';
 import {imageGeometry} from './stitch-edits.mjs';
 import {encodeJpeg} from './jpeg-quality.mjs';
@@ -35,7 +35,7 @@ async function encodeProject(data,info,settings,options){
  const target=Number(settings.targetBytes??10000000);
  if(!Number.isInteger(target)||target<64||target>100000000)throw new Error('大小须为 64 字节–100 MB');
  const requested=settings.format||'png';if(!['png','jpeg','auto'].includes(requested))throw new Error('格式无效');
- const png=async()=>({...await encodeFaithfulPng(data,info,target,options),format:'png'});
+ const png=async()=>({...await encodePngWithinBudget(data,info,target,{...options,maxRatio:2.5}),format:'png'});
  let result;
  if(requested==='png')result=await png();
  else if(requested==='auto'){
@@ -46,7 +46,7 @@ async function encodeProject(data,info,settings,options){
   result={...await encodeJpeg(flattened.data,flattened.info,target,options),format:'jpeg'};
  }
  if(result.buffer.length>target)throw new Error('输出超过体积上限');
- return {...result,width:info.width,height:info.height,imageBytes:result.buffer.length,limitBytes:target,paddedBytes:0};
+ return {...result,width:result.width??info.width,height:result.height??info.height,imageBytes:result.buffer.length,limitBytes:target,paddedBytes:0};
 }
 export class StitchService{
  constructor(store,images){this.store=store;this.images=images;this.pending=Promise.resolve();this.revisions=new Map();this.previews=new Map();}
@@ -66,7 +66,7 @@ export class StitchService{
     this.images.results.set(token,{id:copy.id,name:copy.name||'拼图',output,exportTask:revision===null});
     this.images.trimPreviews();
    }
-   return {token,width:info.width,height:info.height,bytes:output.buffer.length,limitBytes:output.limitBytes,format:output.format,lossless:output.lossless,encoding:output.encoding,difference:output.difference,layout,preview:'data:image/png;base64,'+preview.toString('base64')};
+   return {token,width:output.width,height:output.height,requestedWidth:output.requestedWidth,requestedHeight:output.requestedHeight,autoResized:output.autoResized,scalePercent:output.scalePercent,differenceReference:output.differenceReference,bytes:output.buffer.length,limitBytes:output.limitBytes,format:output.format,lossless:output.lossless,encoding:output.encoding,difference:output.difference,layout,preview:'data:image/png;base64,'+preview.toString('base64')};
   });this.pending=task;return task;
  }
  release(id){const token=this.previews.get(id);if(token)this.images.results.delete(token);this.previews.delete(id);this.revisions.delete(id);}

@@ -62,13 +62,13 @@ export function CompressionApp(){
  async function chooseFolder(){try{const value=await api.chooseFolder();if(value)setFolder(value);return value;}catch(e){setNotice({type:'error',text:e.message});return null;}}
  async function runExportAll(){
   if(!items.length||batch||loading||error)return;if(!folder&&!await chooseFolder())return;
-  const files=[...items],config=structuredClone(settings);cancel.current=false;setBatch({current:0,total:files.length});setNotice(null);setStatuses({});let success=0,failed=0;
+  const files=[...items],config=structuredClone(settings);cancel.current=false;setBatch({current:0,total:files.length});setNotice(null);setStatuses({});let success=0,failed=0,adjusted=0;
   for(let i=0;i<files.length;i++){
    if(cancel.current)break;const file=files[i];setBatch({current:i+1,total:files.length});setStatuses(old=>({...old,[file.id]:{type:'busy'}}));
-   try{const r=await api.process(file.id,config);await api.save(r.token);success++;setStatuses(old=>({...old,[file.id]:{type:'success',text:bytesText(r.bytes)}}));}
+   try{const r=await api.process(file.id,config);await api.save(r.token);success++;if(r.autoResized)adjusted++;setStatuses(old=>({...old,[file.id]:{type:'success',text:`${megabytes(r.bytes)}${r.autoResized?` · ${r.width} × ${r.height}`:''}`}}));}
    catch(e){failed++;setStatuses(old=>({...old,[file.id]:{type:'error',text:e.message}}));}
   }
-  setBatch(null);setNotice({type:failed?'error':'success',text:cancel.current?`已取消，导出 ${success} 张`:`已导出 ${success} 张${failed?`，${failed} 张未完成`:''}`,reveal:success>0&&desktop});
+  setBatch(null);setNotice({type:failed?'error':'success',text:`${cancel.current?'已取消，导出':'已导出'} ${success} 张${failed?`，${failed} 张未完成`:''}${adjusted?`，${adjusted} 张已等比调整尺寸`:''}`,reveal:success>0&&desktop});
  }
  function exportAll(){const task=runExportAll();exportTask.current=task;return task;}
  actions.current=module==='compress'?{add,export:exportAll}:{add:()=>stitch.current?.add(),export:()=>stitch.current?.export()};
@@ -100,8 +100,8 @@ export function CompressionApp(){
        <ImagePreview key={`${selected.id}:${previewReset}`} selected={selected} output={output} processing={processing} view={view} error={error}/>
        <div className="preview-info" aria-live="polite">
         <span>{bytesText(selected.bytes)}<span className="info-arrow">→</span>{output?bytesText(output.bytes):processing?'计算中…':'—'}</span>
-        <span>{selected.width} × {selected.height}{output&&(output.width!==selected.width||output.height!==selected.height)&&<> → {output.width} × {output.height}</>}</span>
-        <span className="preview-status" title={output?`${output.encoding||(output.lossless?'无损编码':`编码质量 ${output.quality}`)} · ${output.bytes.toLocaleString()} 字节`:undefined}>{output?`${output.format==='jpeg'?'JPG':output.format.toUpperCase()} · ${megabytes(output.bytes)}`:loading?'正在导入…':'就绪'}</span>
+        <span title={output?.autoResized?`为满足体积上限，已从设置的 ${output.requestedWidth} × ${output.requestedHeight} 等比调整` :undefined}>{selected.width} × {selected.height}{output&&(output.width!==selected.width||output.height!==selected.height)&&<> → {output.width} × {output.height}</>}{output?.autoResized&&' · 等比调整'}</span>
+        <span className="preview-status" title={output?`${output.encoding||(output.lossless?'无损编码':`编码质量 ${output.quality}`)} · ${output.bytes.toLocaleString()} 字节${output.autoResized?'；像素误差以实际尺寸的等比缩放图为基准':''}`:undefined}>{output?`${output.format==='jpeg'?'JPG':output.format.toUpperCase()} · ${megabytes(output.bytes)}`:loading?'正在导入…':'就绪'}</span>
        </div>
       </div>:<div className="empty-state">
        <img className="empty-illustration" src="./assets/blue-file-empty.png" alt="" draggable={false}/>

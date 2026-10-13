@@ -4,6 +4,9 @@ import {BufferCache} from './buffer-cache.mjs';
 
 const cache=new BufferCache();
 const losslessFilters=new Map();
+export class PngBudgetError extends Error{
+ constructor(losslessBytes,faithfulBytes){super('当前尺寸的高保真 PNG 超过体积上限');this.name='PngBudgetError';this.losslessBytes=losslessBytes;this.faithfulBytes=faithfulBytes;}
+}
 export function pixelDifference(a,b,channels=4){
  let squares=0,absolute=0,max=0,alphaMax=0,count=0;
  for(let i=0;i<a.length;i++){
@@ -40,9 +43,10 @@ export function prepareBoundedPixels(data,info){
 }
 export function boundedPixels(data,info,strength){return prepareBoundedPixels(data,info)(strength);}
 
-export async function encodeFaithfulPng(data,info,target,{key,isObsolete}={}){
+export async function encodeFaithfulPng(data,info,target,{key,isObsolete,refinementLimit=Infinity,compressionLevel=9}={}){
  const check=()=>{if(isObsolete?.())throw new Error('预览参数已更新');};check();
  key ||=createHash('sha256').update(data).digest('hex')+`:${info.width}x${info.height}:${info.channels}`;
+ key+=`:level:${compressionLevel}`;
  const raw={width:info.width,height:info.height,channels:info.channels};
  let prepared;
  const candidates=new BufferCache(32*1024*1024,3);
@@ -52,7 +56,7 @@ export async function encodeFaithfulPng(data,info,target,{key,isObsolete}={}){
   const existing=candidates.get(k)||cache.get(k);if(existing)return existing;
   if(strength)prepared??=prepareBoundedPixels(data,info);
   const pixels=strength?prepared(strength):data;
-  const buffer=cache.set(k,await sharp(pixels,{raw}).png({palette:false,compressionLevel:9,adaptiveFiltering:adaptive}).toBuffer());
+  const buffer=cache.set(k,await sharp(pixels,{raw}).png({palette:false,compressionLevel,adaptiveFiltering:adaptive}).toBuffer());
   check();
   // Keep a small, bounded set of neighbours even if the shared cache evicts
   // them. Large buffers are not retained by this temporary cache.
@@ -71,20 +75,20 @@ export async function encodeFaithfulPng(data,info,target,{key,isObsolete}={}){
  }
  if(full.length<=target)return {buffer:full,lossless:true,quality:null,encoding:'全彩无损 PNG',difference:pixelDifference(data,data,info.channels)};
  let strongest=await encode(100,true);
- if(strongest.length>target)throw new Error('保持当前分辨率与高保真 PNG 无法满足体积上限，请增加上限');
+ if(strongest.length>target)throw new PngBudgetError(full.length,strongest.length);
  let best=strongest,bestStrength=100,low=0,high=100,lowBytes=full.length,highBytes=strongest.length,iterations=0;
- while(high-low>1){
+ while(high-low>1&&iterations<refinementLimit){
   const estimate=Math.ceil(low+(lowBytes-target)/(lowBytes-highBytes)*(high-low));
   const s=iterations++===0?90:iterations>5?Math.floor((low+high)/2):Math.max(low+1,Math.min(high-1,estimate)),candidate=await encode(s,true);
   if(candidate.length<=target){best=candidate;bestStrength=s;high=s;highBytes=candidate.length;}else {low=s;lowBytes=candidate.length;}
  }
  // Check adjacent strengths: encoded sizes need not be perfectly monotonic.
- for(let s=Math.max(1,bestStrength-2);s<bestStrength;s++){
+ for(let s=Number.isFinite(refinementLimit)?bestStrength:Math.max(1,bestStrength-2);s<bestStrength;s++){
   const candidate=await encode(s,true);
   if(candidate.length<=target&&(s<bestStrength||(s===bestStrength&&candidate.length>best.length))){best=candidate;bestStrength=s;}
  }
  const decoded=await sharp(best).raw().toBuffer();
  const difference=pixelDifference(data,decoded,info.channels);
- if(difference.maxError>2||difference.alphaMaxError!==0||difference.rmse>1.5)throw new Error('PNG 画质校验未通过，请增加体积上限');
+ if(difference.maxError>2||difference.alphaMaxError!==0||difference.rmse>1.5)throw new PngBudgetError(full.length,full.length);
  return {buffer:best,lossless:false,quality:null,encoding:'全彩高保真 PNG',difference,strength:bestStrength};
 }

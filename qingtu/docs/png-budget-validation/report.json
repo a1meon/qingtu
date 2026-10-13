@@ -1,0 +1,273 @@
+{
+  "algorithm": "Full-colour PNG; proportional resolution fallback; RGB error <=2 and alpha exact against the output-sized resampling baseline. Resampling metrics separately quantify resolution loss.",
+  "fixtures": [
+    {
+      "name": "photo",
+      "sourceBytes": 671221,
+      "losslessBytes": 2768009,
+      "targetBytes": 1799205,
+      "width": 1404,
+      "height": 936,
+      "requestedWidth": 1536,
+      "requestedHeight": 1024,
+      "bytes": 1783205,
+      "autoResized": true,
+      "encoding": "全彩高保真 PNG",
+      "encodingDifference": {
+        "maxError": 2,
+        "alphaMaxError": 0,
+        "mae": 0.838676735578445,
+        "rmse": 1.1823181613976932,
+        "psnr": 46.676116393405785
+      },
+      "resamplingDifferenceAtOriginalViewingSize": {
+        "maxError": 135,
+        "alphaMaxError": 0,
+        "mae": 5.769035127427843,
+        "rmse": 10.486410025293388,
+        "psnr": 27.7182669106826
+      },
+      "elapsedMs": 3977,
+      "visibleDifferenceAtOriginalViewingSize": {
+        "maxError": 135,
+        "alphaMaxError": 0,
+        "mae": 5.769035127427843,
+        "rmse": 10.486410025293388,
+        "psnr": 27.7182669106826
+      },
+      "sha256": "6e2956a95e29a44365b2a0a01bc4b3ec7079f960ccf9368668e328fa4eac78be"
+    },
+    {
+      "name": "texture",
+      "sourceBytes": 2950707,
+      "losslessBytes": 2950707,
+      "targetBytes": 1917959,
+      "width": 1491,
+      "height": 839,
+      "requestedWidth": 1600,
+      "requestedHeight": 900,
+      "bytes": 1907163,
+      "autoResized": true,
+      "encoding": "全彩高保真 PNG",
+      "encodingDifference": {
+        "maxError": 2,
+        "alphaMaxError": 0,
+        "mae": 1.1957990826697704,
+        "rmse": 1.4118617422736306,
+        "psnr": 45.13496020563117
+      },
+      "resamplingDifferenceAtOriginalViewingSize": {
+        "maxError": 18,
+        "alphaMaxError": 0,
+        "mae": 3.546652314814815,
+        "rmse": 4.393304617592885,
+        "psnr": 35.27497727087935
+      },
+      "elapsedMs": 3433,
+      "visibleDifferenceAtOriginalViewingSize": {
+        "maxError": 18,
+        "alphaMaxError": 0,
+        "mae": 3.546652314814815,
+        "rmse": 4.393304617592885,
+        "psnr": 35.27497727087935
+      },
+      "sha256": "19150374c7e796a29861de804b9c52ee6d808126d424f27d44e9e3deb29e212f"
+    },
+    {
+      "name": "gradient",
+      "sourceBytes": 7665,
+      "losslessBytes": 7665,
+      "targetBytes": 4982,
+      "width": 1153,
+      "height": 649,
+      "requestedWidth": 1600,
+      "requestedHeight": 900,
+      "bytes": 4914,
+      "autoResized": true,
+      "encoding": "全彩无损 PNG",
+      "encodingDifference": {
+        "maxError": 0,
+        "alphaMaxError": 0,
+        "mae": 0,
+        "rmse": 0,
+        "psnr": null
+      },
+      "resamplingDifferenceAtOriginalViewingSize": {
+        "maxError": 1,
+        "alphaMaxError": 0,
+        "mae": 0.048541666666666664,
+        "rmse": 0.22032173444003808,
+        "psnr": 61.269656772174784
+      },
+      "elapsedMs": 232,
+      "visibleDifferenceAtOriginalViewingSize": {
+        "maxError": 1,
+        "alphaMaxError": 0,
+        "mae": 0.048541666666666664,
+        "rmse": 0.22032173444003808,
+        "psnr": 61.269656772174784
+      },
+      "sha256": "fa08affc5b309af31dec26550067a5f0c650382fa4a9fde277ee150703718752"
+    },
+    {
+      "name": "text",
+      "sourceBytes": 47196,
+      "losslessBytes": 47196,
+      "targetBytes": 30677,
+      "width": 944,
+      "height": 531,
+      "requestedWidth": 1600,
+      "requestedHeight": 900,
+      "bytes": 30318,
+      "autoResized": true,
+      "encoding": "全彩无损 PNG",
+      "encodingDifference": {
+        "maxError": 0,
+        "alphaMaxError": 0,
+        "mae": 0,
+        "rmse": 0,
+        "psnr": null
+      },
+      "resamplingDifferenceAtOriginalViewingSize": {
+        "maxError": 183,
+        "alphaMaxError": 0,
+        "mae": 0.791155787037037,
+        "rmse": 6.8962190895795565,
+        "psnr": 31.358582601406294
+      },
+      "elapsedMs": 336,
+      "visibleDifferenceAtOriginalViewingSize": {
+        "maxError": 183,
+        "alphaMaxError": 0,
+        "mae": 0.791155787037037,
+        "rmse": 6.8962190895795565,
+        "psnr": 31.358582601406294
+      },
+      "sha256": "0b75bfb4974e591ac81b0487388df2cb3e7675ec88af363863d76fac32370c6a"
+    },
+    {
+      "name": "transparent",
+      "sourceBytes": 239671,
+      "losslessBytes": 239671,
+      "targetBytes": 155786,
+      "width": 859,
+      "height": 483,
+      "requestedWidth": 1600,
+      "requestedHeight": 900,
+      "bytes": 146936,
+      "autoResized": true,
+      "encoding": "全彩无损 PNG",
+      "encodingDifference": {
+        "maxError": 0,
+        "alphaMaxError": 0,
+        "mae": 0,
+        "rmse": 0,
+        "psnr": null
+      },
+      "resamplingDifferenceAtOriginalViewingSize": {
+        "maxError": 255,
+        "alphaMaxError": 196,
+        "mae": 4.397427777777778,
+        "rmse": 16.10537604342103,
+        "psnr": 23.991386216901635
+      },
+      "elapsedMs": 585,
+      "visibleDifferenceAtOriginalViewingSize": {
+        "maxError": 129,
+        "alphaMaxError": 0,
+        "mae": 0.4034849537037037,
+        "rmse": 1.940630684520809,
+        "psnr": 42.371945728686704
+      },
+      "sha256": "0022059a751824904755265b00b2a717ef52cfefd5e59b8e9aaab95ce4f3713e"
+    },
+    {
+      "name": "attachment",
+      "sourceBytes": 27254812,
+      "losslessBytes": 19825800,
+      "targetBytes": 10000000,
+      "width": 3679,
+      "height": 2053,
+      "requestedWidth": 5504,
+      "requestedHeight": 3072,
+      "bytes": 9882791,
+      "autoResized": true,
+      "encoding": "全彩高保真 PNG",
+      "encodingDifference": {
+        "maxError": 2,
+        "alphaMaxError": 0,
+        "mae": 0.8304593489524961,
+        "rmse": 1.1766866092777928,
+        "psnr": 46.717587384677266
+      },
+      "resamplingDifferenceAtOriginalViewingSize": {
+        "maxError": 70,
+        "alphaMaxError": 0,
+        "mae": 2.03436507981569,
+        "rmse": 4.009246434841992,
+        "psnr": 36.06954857494971
+      },
+      "elapsedMs": 34687,
+      "visibleDifferenceAtOriginalViewingSize": {
+        "maxError": 70,
+        "alphaMaxError": 0,
+        "mae": 2.03436507981569,
+        "rmse": 4.009246434841992,
+        "psnr": 36.06954857494971
+      },
+      "sha256": "3a5a3fb82a2509a6de8ae3dee044321c6b1dc5096d4e6eb5d87ab04d1af9a5b7"
+    }
+  ],
+  "date": "2026-10-14",
+  "platform": "Windows x64",
+  "tests": {
+    "passed": 156,
+    "total": 156
+  },
+  "checks": {
+    "build": true,
+    "desktop": true,
+    "ui": true,
+    "recovery": true,
+    "optimizationClose": true,
+    "pngBudgetUi": true,
+    "fixedSizeQuality": true,
+    "browserActualExport": true
+  },
+  "nativeUi": {
+    "passed": true,
+    "platform": "win32",
+    "reports": [
+      {
+        "module": "compression",
+        "width": 25,
+        "height": 10,
+        "bytes": 719,
+        "requested": [
+          300,
+          120
+        ],
+        "actualSizeVisible": true
+      },
+      {
+        "module": "stitch",
+        "width": 25,
+        "height": 10,
+        "bytes": 720,
+        "requested": [
+          600,
+          240
+        ],
+        "actualSizeVisible": true,
+        "settingsAndOriginalRetained": true
+      }
+    ]
+  },
+  "notes": [
+    "Encoding error refers to output-sized Lanczos3 pixels, not original resolution.",
+    "Original-view unweighted RGBA errors include invisible RGB; white-composited visible error is listed separately.",
+    "Source-resolution reduction loses spatial detail; a lossless output-sized PNG is not lossless relative to the original.",
+    "The first size-search prototype took 81906 ms on the attachment; faster full-colour candidate encodes took 34687 ms. Timing excludes fixture/reference generation and is not a guarantee.",
+    "No Mac native or packaged installer validation. No release or main merge."
+  ]
+}

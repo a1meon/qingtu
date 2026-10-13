@@ -21,6 +21,6 @@ test('smooth gradients and high-contrast text edges remain pixel-exact during bo
  for(let y=0;y<info.height;y++)for(let x=0;x<info.width;x++){const i=(y*info.width+x)*4;data[i]=data[i+1]=data[i+2]=x<128?0:255;}
  assert.ok(boundedPixels(data,info,100).equals(data));
 });
-test('tiny budgets refuse degraded output instead of shrinking or changing format',async()=>{
- const {data,info}=texture();await assert.rejects(encodeFaithfulPng(data,info,64),/增加上限/);
+test('the fixed-size encoder reports its byte estimate without degrading pixels',async()=>{
+ const {data,info}=texture();await assert.rejects(encodeFaithfulPng(data,info,64),error=>error.name==='PngBudgetError'&&error.faithfulBytes>64&&error.losslessBytes>=error.faithfulBytes);
 });

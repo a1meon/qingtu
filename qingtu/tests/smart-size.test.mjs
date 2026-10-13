@@ -26,24 +26,26 @@ test('fitting unchanged inputs bypass every raster encoder, while explicit forma
  const resized=await processImage(png,{...settings,format:'png',resize:{type:'scale',percent:50}});assert.deepEqual([resized.width,resized.height],[40,30]);
  const converted=await processImage(photo,{...settings,format:'png'});assert.equal(converted.format,'png');assert.equal(converted.unchanged,false);
 });
-test('an infeasible noisy PNG keeps full-colour candidates and rejects visible degradation',async()=>{
+test('an oversized noisy PNG reduces resolution while keeping full-colour high-fidelity candidates',async()=>{
  const source=await noise(240,160).png({compressionLevel:0}).toBuffer();
  const png=sharp.prototype.png;let fullEncodes=0;
  sharp.prototype.png=function(options){assert.equal(options?.palette,false,'smart PNG must never enable a 256-colour palette');if(options?.palette===false)fullEncodes++;return png.call(this,options);};
  try{
-  await assert.rejects(processImage(source,{...settings,format:'png',targetBytes:65536}),/增加上限/);
-  assert.equal(fullEncodes,3,'two lossless filter strategies and one bounded-error candidate');
+  const result=await processImage(source,{...settings,format:'png',targetBytes:65536});
+  assert.equal(result.autoResized,true);assert.ok(result.width<240&&result.height<160);assert.ok(result.buffer.length<=65536);assert.equal(result.requestedWidth,240);assert.equal(result.requestedHeight,160);
+  assert.ok(result.difference.maxError<=2&&result.difference.alphaMaxError===0);assert.ok(fullEncodes>=4&&fullEncodes<45,'bounded search retains the PNG quality floor');
  }finally{sharp.prototype.png=png;}
 });
-test('changing an infeasible PNG budget reuses bounded candidates without lowering the quality floor',async()=>{
+test('repeating a tight PNG budget reuses bounded candidates without lowering the quality floor',async()=>{
  const source=await noise(248,168).png({compressionLevel:0}).toBuffer();
  const png=sharp.prototype.png;let calls=0;
  sharp.prototype.png=function(options){calls++;return png.call(this,options);};
  try{
-  await assert.rejects(processImage(source,{...settings,format:'png',targetBytes:65536}),/增加上限/);
+  const first=await processImage(source,{...settings,format:'png',targetBytes:65536});
   const previous=calls;
-  await assert.rejects(processImage(source,{...settings,format:'png',targetBytes:73728}),/增加上限/);
-  assert.equal(calls,previous,'a target change must not repeat the same PNG encodes');
+  const second=await processImage(source,{...settings,format:'png',targetBytes:65536});
+  assert.ok(first.buffer.equals(second.buffer));assert.equal(calls,previous,'the same target must not repeat the same PNG encodes');
+  const changed=await processImage(source,{...settings,format:'png',targetBytes:73728});assert.ok(changed.buffer.length<=73728);assert.ok(changed.difference.maxError<=2);
  }finally{sharp.prototype.png=png;}
 });
 test('cached PNG encodings cannot leak pixels between different source images',async()=>{
@@ -56,7 +58,7 @@ test('cached PNG encodings cannot leak pixels between different source images',a
 });
 test('changing dimensions cannot reuse the PNG from a different pixel grid',async()=>{
  const source=await noise(252,172).png({compressionLevel:0}).toBuffer();
- await assert.rejects(processImage(source,{...settings,format:'png',targetBytes:65536}),/增加上限/);
+ const first=await processImage(source,{...settings,format:'png',targetBytes:65536});assert.equal(first.autoResized,true);
  const result=await processImage(source,{...settings,format:'png',targetBytes:65536,resize:{type:'scale',percent:50}});
  const meta=await sharp(result.buffer).metadata();
  assert.equal(meta.width,126);assert.equal(meta.height,86);assert.ok(result.buffer.length<=65536);
