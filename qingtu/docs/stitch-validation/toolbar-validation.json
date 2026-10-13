@@ -138,6 +138,15 @@
         "重置裁剪与顺序"
       ],
       "nativeDefaultAndHoverChecks": true
+    },
+    "compressionIcon": {
+      "library": "Phosphor Icons",
+      "name": "ArrowsInSimple",
+      "size": 30,
+      "weight": "bold",
+      "visualChecked": true,
+      "tooltipAndModuleSwitchChecked": true,
+      "screenshot": "docs/stitch-validation/compression-icon-rail.png"
     }
   },
   "notVerified": [
