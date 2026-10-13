@@ -66,4 +66,4 @@ export const repository={
  }
 };
 
-export function newProject(){return {id:crypto.randomUUID(),name:'拼图',images:[],layout:'horizontal',grid:{rows:2,columns:2},positions:{},canvas:null,export:{format:'png',longEdge:5999,targetBytes:10000000,unit:'MB'},updatedAt:Date.now()};}
+export function newProject(){return {id:crypto.randomUUID(),name:'拼图',images:[],layout:'horizontal',grid:{rows:2,columns:2},positions:{},edits:{},canvas:null,export:{format:'png',longEdge:5999,targetBytes:10000000,unit:'MB'},updatedAt:Date.now()};}

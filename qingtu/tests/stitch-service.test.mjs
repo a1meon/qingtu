@@ -7,6 +7,7 @@ import sharp from 'sharp';
 import {ProjectStore} from '../engine/project-store.mjs';
 import {ImageService} from '../engine/service.mjs';
 import {StitchService} from '../engine/stitch-service.mjs';
+import {moveImage} from '../engine/stitch-layout.mjs';
 async function setup(t){const root=await fs.mkdtemp(path.join(os.tmpdir(),'qingtu-stitch-'));t.after(()=>fs.rm(root,{recursive:true,force:true}));const store=new ProjectStore(path.join(root,'store')),images=new ImageService();return {root,store,images,service:new StitchService(store,images)};}
 const settings={longEdge:120,format:'png',targetBytes:1000000};
 async function solid(store,name,width,height,color){const source=await sharp({create:{width,height,channels:4,background:color}}).png().toBuffer();const item=await store.import(source,name);delete item.preview;return item;}
@@ -48,4 +49,28 @@ test('grid composes mixed aspect ratios into completely filled rows without auto
  const {store,images,service}=await setup(t),items=[await solid(store,'a',60,80,'#ff0000'),await solid(store,'b',45,80,'#00ff00'),await solid(store,'c',90,60,'#0000ff')];
  const p={id:'grid-project',images:items,layout:'grid',grid:{rows:2,columns:2},export:settings},r=await service.render(p),{data}=await sharp(images.result(r.token).output.buffer).ensureAlpha().raw().toBuffer({resolveWithObject:true});
  assert.ok(r.layout.rects.every(i=>i.crop===null));for(let i=3;i<data.length;i+=4)assert.equal(data[i],255,'no hidden transparent grid cells or gaps');
+});
+test('actual manual crops keep exact centre source pixels, alpha and original copies',async t=>{
+ const {store,images,service}=await setup(t),width=120,height=100,data=Buffer.alloc(width*height*4);
+ for(let y=0;y<height;y++)for(let x=0;x<width;x++){const i=(y*width+x)*4;data[i]=x;data[i+1]=y;data[i+2]=(x*3+y*5)%256;data[i+3]=255;}
+ const source=await sharp(data,{raw:{width,height,channels:4}}).png().toBuffer(),item=await store.import(source,'pixel-pattern.png');delete item.preview;
+ for(const [axis,amount,longEdge] of [['horizontal',10,100],['vertical',20,120]]){
+  const p={id:'manual-'+axis,images:[item],layout:'horizontal',edits:{[item.id]:{axis,amount}},export:{...settings,longEdge}};
+  await store.save(p);const restored=await store.load(p.id),r=await service.render(restored),actual=await sharp(images.result(r.token).output.buffer).ensureAlpha().raw().toBuffer();
+  const expected=await sharp(source).extract(axis==='horizontal'?{left:10,top:0,width:100,height:100}:{left:0,top:20,width:120,height:60}).ensureAlpha().raw().toBuffer();
+  assert.ok(actual.equals(expected));assert.ok((await store.readAsset(item.assetId)).equals(source));assert.deepEqual(restored.edits,p.edits);
+ }
+});
+test('automatic layout reorder changes saved order and actual export colours',async t=>{
+ const {store,images,service}=await setup(t),red=await solid(store,'red',60,90,'#ff0000'),green=await solid(store,'green',60,90,'#00ff00'),blue=await solid(store,'blue',60,90,'#0000ff');
+ const p={id:'reordered',images:moveImage([red,green,blue],red.id,blue.id),layout:'horizontal',export:{...settings,longEdge:180}};await store.save(p);
+ const restored=await store.load(p.id),r=await service.render(restored),raw=await sharp(images.result(r.token).output.buffer).ensureAlpha().raw().toBuffer();
+ assert.deepEqual(restored.images.map(i=>i.id),[green.id,blue.id,red.id]);
+ for(const [x,color] of [[0,[0,255,0,255]],[60,[0,0,255,255]],[120,[255,0,0,255]]])assert.deepEqual([...raw.subarray(x*4,x*4+4)],color);
+});
+test('manual crop coordinates follow EXIF-oriented display pixels rather than encoded file axes',async t=>{
+ const {store,images,service}=await setup(t),source=await sharp({create:{width:90,height:60,channels:3,background:'#aa5544'}}).composite([{input:await sharp({create:{width:30,height:60,channels:3,background:'#3366aa'}}).png().toBuffer(),left:0,top:0}]).jpeg({quality:100}).withMetadata({orientation:6}).toBuffer();
+ const item=await store.import(source,'rotated.jpg');delete item.preview;assert.deepEqual([item.width,item.height],[60,90]);
+ const p={id:'exif-crop',images:[item],layout:'horizontal',edits:{[item.id]:{axis:'horizontal',amount:5}},export:{...settings,longEdge:90}},r=await service.render(p),actual=await sharp(images.result(r.token).output.buffer).ensureAlpha().raw().toBuffer();
+ const expected=await sharp(source).rotate().extract({left:5,top:0,width:50,height:90}).ensureAlpha().raw().toBuffer();assert.deepEqual([r.width,r.height],[50,90]);assert.ok(actual.equals(expected));
 });

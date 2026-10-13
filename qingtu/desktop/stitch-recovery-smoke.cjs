@@ -38,17 +38,26 @@ async function waitFor(win,expression){for(let n=0;n<300;n++){if(await win.webCo
   await js("new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)))");
   // Quit before mouse release: application's Quit also waits for this gesture.
   app.quit();
+ }else if(phase==='crop'){
+  await waitFor(win,"document.querySelectorAll('.stitch-layer').length===1 && document.querySelector('.save-status').textContent==='已自动保存'");
+  await js("document.querySelector('.stitch-layer').dispatchEvent(new MouseEvent('dblclick',{bubbles:true}))");
+  await waitFor(win,"!!document.querySelector('.crop-slider')");
+  await js("(()=>{const slider=document.querySelector('.crop-slider');slider.dispatchEvent(new PointerEvent('pointerdown',{bubbles:true,pointerId:9,buttons:1}));Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(slider,'20');slider.dispatchEvent(new Event('input',{bubbles:true}));return new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));})()");
+  const prior=await store.load((await store.list())[0].id);assert.equal(prior.edits?.[prior.images[0].id],undefined);
+  // Quit before the crop slider is released. The latest draft must flush.
+  app.quit();
  }else{
   await waitFor(win,"document.querySelectorAll('.stitch-layer').length===1");
   assert.equal(await js("document.querySelector('#stitch-long-edge').value"),'2400');
   assert.equal(await js("document.querySelector('#stitch-format').textContent"),'PNG');
   const project=await store.load((await store.list())[0].id);assert.equal(project.images.length,1);assert.equal(project.export.longEdge,2400);
   assert.equal(project.layout,'free');assert.ok(project.positions[project.images[0].id].x>0);assert.ok(project.positions[project.images[0].id].y>0);
+  assert.deepEqual(project.edits[project.images[0].id],{axis:'horizontal',amount:20});
   await js("document.querySelector('.module-content:not([hidden]) .export-button').click()");
   await waitFor(win,"document.querySelector('.notice')?.textContent.includes('已导出 1 个项目')");
   const filename=(await fs.readdir(exports))[0],sharp=(await import('sharp')).default,meta=await sharp(path.join(exports,filename)).metadata(),bytes=(await fs.stat(path.join(exports,filename))).size;
-  assert.deepEqual([meta.width,meta.height],[2400,1800]);assert.ok(bytes<=10000000);
-  await fs.writeFile(path.join(root,'result.json'),JSON.stringify({passed:true,closeBeforeReady:true,normalCloseFlush:true,closeDuringGesture:true,reopenedAfterSourceMoved:true,restoredDimensions:[meta.width,meta.height],format:meta.format,bytes,originalCopy:true},null,2));
+  assert.deepEqual([meta.width,meta.height],[2400,2000]);assert.ok(bytes<=10000000);
+  await fs.writeFile(path.join(root,'result.json'),JSON.stringify({passed:true,closeBeforeReady:true,normalCloseFlush:true,closeDuringGesture:true,closeDuringCropSlider:true,reopenedAfterSourceMoved:true,restoredDimensions:[meta.width,meta.height],format:meta.format,bytes,originalCopy:true},null,2));
   await js("window.qingtu.windowAction('close')");
  }
 })().catch(error=>{console.error(error);app.exit(1);});

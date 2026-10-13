@@ -3,6 +3,7 @@ import {randomUUID} from 'node:crypto';
 import {calculateLayout} from './stitch-layout.mjs';
 import {encodeFaithfulPng} from './png-quality.mjs';
 import {INPUT_OPTIONS} from './image.mjs';
+import {imageGeometry} from './stitch-edits.mjs';
 
 export async function composeProject(project,store){
  const layout=calculateLayout(project);let canvas=Buffer.alloc(layout.width*layout.height*4);
@@ -10,7 +11,9 @@ export async function composeProject(project,store){
   const source=await store.readAsset(rect.assetId),meta=await sharp(source,INPUT_OPTIONS).metadata(),image=project.images.find(i=>i.id===rect.id),rotated=[5,6,7,8].includes(meta.orientation);
   if(image.width!==(rotated?meta.height:meta.width)||image.height!==(rotated?meta.width:meta.height)||image.bytes!==source.length)throw new Error('原图副本与项目尺寸不一致，请检查项目数据');
   let pipeline=sharp(source,INPUT_OPTIONS).rotate().toColourspace('srgb');
-  if(rect.crop){
+  const geometry=imageGeometry(image,project.edits?.[image.id]);
+  if(geometry.left||geometry.top)pipeline=pipeline.extract(geometry);
+  if(rect.autoCrop){
    const resized=await pipeline.resize({height:rect.height}).ensureAlpha().raw().toBuffer({resolveWithObject:true});
    pipeline=sharp(resized.data,{raw:resized.info}).extract({left:Math.floor((resized.info.width-rect.width)/2),top:0,width:rect.width,height:rect.height});
   }else pipeline=pipeline.resize(rect.width,rect.height,{fit:'fill'});

@@ -3,6 +3,7 @@ import path from 'node:path';
 import {createHash,randomUUID} from 'node:crypto';
 import sharp from 'sharp';
 import {INPUT_OPTIONS,SUPPORTED} from './image.mjs';
+import {imageGeometry} from './stitch-edits.mjs';
 
 const validId=id=>typeof id==='string'&&/^[a-zA-Z0-9-]{1,80}$/.test(id);
 export async function atomicWrite(destination,bytes){
@@ -43,7 +44,8 @@ export class ProjectStore{
   if(Buffer.byteLength(JSON.stringify(project))>2*1024*1024)throw new Error('项目数据过大');
   if(project.thumbnail!=null&&(typeof project.thumbnail!=='string'||!project.thumbnail.startsWith('data:image/png;base64,')||project.thumbnail.length>200000))throw new Error('画布缩略图无效');
   let bytes=0;
-  for(const image of project.images){this.assetFile(image.assetId);if(!validId(image.id)||![image.width,image.height,image.bytes].every(v=>Number.isInteger(v)&&v>0))throw new Error('图片数据无效');bytes+=image.bytes;}
+  if(project.edits!=null&&(typeof project.edits!=='object'||Array.isArray(project.edits)))throw new Error('单图编辑数据无效');
+  for(const image of project.images){this.assetFile(image.assetId);if(!validId(image.id)||![image.width,image.height,image.bytes].every(v=>Number.isInteger(v)&&v>0))throw new Error('图片数据无效');imageGeometry(image,project.edits?.[image.id]);bytes+=image.bytes;}
   if(bytes>500*1024*1024)throw new Error('每个项目最多 100 张、500 MB');
  }
  save(project){

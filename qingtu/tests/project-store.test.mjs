@@ -10,11 +10,12 @@ async function setup(t){const root=await fs.mkdtemp(path.join(os.tmpdir(),'qingt
 const project=image=>({id:'test-project',name:'测试',images:[image],layout:'horizontal',positions:{},grid:{rows:1,columns:1},export:{longEdge:5999,format:'png',targetBytes:10000000}});
 test('original copies and complete edit states survive moved sources and a fresh store',async t=>{
  const {root,store}=await setup(t),source=path.join(root,'original.png'),buffer=await fixture();await fs.writeFile(source,buffer);
- const image=await store.import(await fs.readFile(source),'original.png');delete image.preview;const p=project(image);p.positions[image.id]={x:10,y:-2,width:800};p.crops={[image.id]:null};p.canvas={width:5999,height:4499};
+ const image=await store.import(await fs.readFile(source),'original.png');delete image.preview;const p=project(image);p.positions[image.id]={x:10,y:-2,width:800};p.crops={[image.id]:null};p.canvas={width:5999,height:4499};p.edits={[image.id]:{axis:'vertical',amount:5}};
  p.thumbnail='data:image/png;base64,'+buffer.toString('base64');await store.save(p);await fs.rename(source,path.join(root,'moved.png'));
  const reopened=new ProjectStore(root),restored=await reopened.load(p.id);assert.deepEqual(restored.images,p.images);assert.deepEqual(restored.positions,p.positions);assert.deepEqual(restored.export,p.export);assert.deepEqual(restored.canvas,p.canvas);
  assert.ok((await reopened.readAsset(image.assetId)).equals(buffer));assert.equal((await reopened.list()).length,1);
  assert.equal(restored.thumbnail,p.thumbnail);assert.equal((await reopened.list())[0].thumbnail,p.thumbnail);
+ assert.deepEqual(restored.edits,p.edits);
 });
 test('corrupt newest data recovers the prior committed generation and ignores partial temporary files',async t=>{
  const {store}=await setup(t),image=await store.import(await fixture(),'a.png');delete image.preview;const p=project(image);await store.save(p);

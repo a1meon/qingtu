@@ -55,5 +55,5 @@ export function useProjects(){
   const beforeUnload=e=>{if(saving||failure.current){e.preventDefault();e.returnValue='';}};
   window.addEventListener('beforeunload',beforeUnload);return()=>window.removeEventListener('beforeunload',beforeUnload);
  },[saving]);
- return {projects,project,update,open,create,remove,loading,saving,saveError,flush,retry:()=>{if(current.current)persist(current.current);}};
+ return {projects,project,update,open,create,remove,loading,saving,saveError,flush,getCurrent:()=>current.current,retry:()=>{if(current.current)persist(current.current);}};
 }
