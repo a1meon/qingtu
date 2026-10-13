@@ -11,6 +11,16 @@ async function call(method,...args){
  }catch(error){throw new Error(messageForUser(error));}
 }
 export const api={
+  stitchList:()=>call('stitchList'),
+  stitchLoad:id=>call('stitchLoad',id),
+  stitchSave:project=>call('stitchSave',project),
+  stitchDelete:id=>call('stitchDelete',id),
+  stitchImport:file=>call('stitchImport',file),
+  stitchChooseFiles:()=>call('stitchChooseFiles'),
+  stitchPreviews:ids=>call('stitchPreviews',ids),
+  stitchMissing:ids=>call('stitchMissing',ids),
+  stitchRender:(project,options)=>call('stitchRender',{...project,images:project.images.map(({preview,...image})=>image)},options),
+  stitchRelease:id=>call('stitchRelease',id),
   updateStatus:()=>desktop?call('updateStatus'):Promise.resolve({version:appPackage.version,phase:'preview',visible:false}),
   checkUpdate:()=>desktop?call('checkUpdate'):Promise.resolve({version:appPackage.version,phase:'preview',visible:true}),
   downloadUpdate:()=>desktop?call('downloadUpdate'):Promise.reject(new Error('请在桌面版更新')),

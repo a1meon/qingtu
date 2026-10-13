@@ -23,12 +23,13 @@ test('JPEG fits the byte ceiling and requested resolution', async () => {
   const m = await sharp(r.buffer).metadata();
   assert.equal(m.format,'jpeg'); assert.equal(m.width,240); assert.equal(m.height,160);
 });
-test('WebP and palette PNG meet target ceilings', async () => {
+test('WebP meets its ceiling and explicit PNG refuses a budget that requires visible degradation', async () => {
   const source = await input().png().toBuffer();
-  for (const format of ['webp','png']) {
+  for (const format of ['webp']) {
     const r = await processImage(source,{...settings,format,targetBytes:25000,resize:{type:'scale',percent:50}});
     assert.ok(r.buffer.length <= 25000); assert.equal((await sharp(r.buffer).metadata()).format,format);
   }
+  await assert.rejects(processImage(source,{...settings,format:'png',targetBytes:25000,resize:{type:'scale',percent:50}}),/增加上限/);
 });
 test('impossible target is an error rather than oversized success', async () => {
   await assert.rejects(processImage(await input().png().toBuffer(),{...settings,targetBytes:64}), /无法达到/);

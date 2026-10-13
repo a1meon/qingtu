@@ -7,7 +7,7 @@ const source=await sharp({create:{width:120,height:80,channels:4,background:{r:1
 const settings={mode:'lossless',format:'auto',exact:true,targetBytes:1048576,resize:{type:'pixels',width:60,height:40,locked:true,anchor:'width'}};
 test('default lossless workflow accepts pixel dimensions and encodes resized RGBA pixels losslessly',async()=>{
  const r=await processImage(source,settings);
- assert.equal(r.width,60);assert.equal(r.height,40);assert.equal(r.format,'png');assert.equal(r.buffer.length,1048576);
+ assert.equal(r.width,60);assert.equal(r.height,40);assert.equal(r.format,'png');assert.ok(r.buffer.length<1048576);assert.equal(r.paddedBytes,0);
  const expected=await sharp(source).resize(60,40,{fit:'fill'}).raw().toBuffer();
  assert.ok((await sharp(r.buffer).raw().toBuffer()).equals(expected));
 });

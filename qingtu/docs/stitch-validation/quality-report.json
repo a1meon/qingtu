@@ -1,0 +1,171 @@
+{
+  "algorithm": "Full-colour bounded RGB error <= 2/255; alpha exact; flat/ramp/strong-edge pixels exact",
+  "fixtures": [
+    {
+      "name": "photo",
+      "width": 1536,
+      "height": 1024,
+      "sourceBytes": 671221,
+      "fullColourBytes": 2768009,
+      "strongestBytes": 2240712,
+      "targetBytes": 2504360,
+      "resultBytes": 2486137,
+      "lossless": false,
+      "difference": {
+        "maxError": 2,
+        "alphaMaxError": 0,
+        "mae": 0.7647268507215712,
+        "rmse": 1.1289518670498022,
+        "psnr": 47.077295085862325
+      },
+      "encoding": "全彩高保真 PNG",
+      "elapsedMs": 8685,
+      "oldPaletteBytes": 663429,
+      "oldPaletteDifference": {
+        "maxError": 34,
+        "alphaMaxError": 0,
+        "mae": 3.3224853939480252,
+        "rmse": 4.322082414520636,
+        "psnr": 35.416942731495446
+      }
+    },
+    {
+      "name": "gradient",
+      "width": 1600,
+      "height": 900,
+      "sourceBytes": 105072,
+      "fullColourBytes": 7665,
+      "strongestBytes": 7665,
+      "targetBytes": 7665,
+      "resultBytes": 7665,
+      "lossless": true,
+      "difference": {
+        "maxError": 0,
+        "alphaMaxError": 0,
+        "mae": 0,
+        "rmse": 0,
+        "psnr": null
+      },
+      "encoding": "全彩无损 PNG",
+      "elapsedMs": 80,
+      "oldPaletteBytes": 9126,
+      "oldPaletteDifference": {
+        "maxError": 1,
+        "alphaMaxError": 0,
+        "mae": 0.09166666666666666,
+        "rmse": 0.30276503540974914,
+        "psnr": 58.5086892175731
+      }
+    },
+    {
+      "name": "text",
+      "width": 1600,
+      "height": 900,
+      "sourceBytes": 34825,
+      "fullColourBytes": 47196,
+      "strongestBytes": 49893,
+      "targetBytes": 48544,
+      "resultBytes": 33997,
+      "lossless": true,
+      "difference": {
+        "maxError": 0,
+        "alphaMaxError": 0,
+        "mae": 0,
+        "rmse": 0,
+        "psnr": null
+      },
+      "encoding": "全彩无损 PNG",
+      "elapsedMs": 116,
+      "oldPaletteBytes": 17183,
+      "oldPaletteDifference": {
+        "maxError": 2,
+        "alphaMaxError": 0,
+        "mae": 0.0016229166666666666,
+        "rmse": 0.04069705149024926,
+        "psnr": 75.93954469587027
+      }
+    },
+    {
+      "name": "transparent",
+      "width": 1600,
+      "height": 900,
+      "sourceBytes": 185509,
+      "fullColourBytes": 239671,
+      "strongestBytes": 252080,
+      "targetBytes": 245875,
+      "resultBytes": 182983,
+      "lossless": true,
+      "difference": {
+        "maxError": 0,
+        "alphaMaxError": 0,
+        "mae": 0,
+        "rmse": 0,
+        "psnr": null
+      },
+      "encoding": "全彩无损 PNG",
+      "elapsedMs": 197,
+      "oldPaletteBytes": 66671,
+      "oldPaletteDifference": {
+        "maxError": 255,
+        "alphaMaxError": 25,
+        "mae": 64.66752638888889,
+        "rmse": 80.4056498642514,
+        "psnr": 10.025072280809923
+      }
+    },
+    {
+      "name": "texture",
+      "width": 1600,
+      "height": 900,
+      "sourceBytes": 4327953,
+      "fullColourBytes": 2950707,
+      "strongestBytes": 2248667,
+      "targetBytes": 2599687,
+      "resultBytes": 2593616,
+      "lossless": false,
+      "difference": {
+        "maxError": 2,
+        "alphaMaxError": 0,
+        "mae": 1.1007988425925925,
+        "rmse": 1.354654783822555,
+        "psnr": 45.49423090864163
+      },
+      "encoding": "全彩高保真 PNG",
+      "elapsedMs": 6859,
+      "oldPaletteBytes": 1359956,
+      "oldPaletteDifference": {
+        "maxError": 6,
+        "alphaMaxError": 0,
+        "mae": 1.1405685185185186,
+        "rmse": 1.4406528227007211,
+        "psnr": 44.95961691885959
+      }
+    },
+    {
+      "name": "attachment",
+      "width": 5504,
+      "height": 3072,
+      "sourceBytes": 27254812,
+      "fullColourBytes": 19825800,
+      "strongestBytes": 19651933,
+      "targetBytes": 10000000,
+      "error": "保持当前分辨率与高保真 PNG 无法满足体积上限，请增加上限",
+      "strongestDifference": {
+        "maxError": 2,
+        "alphaMaxError": 0,
+        "mae": 0.7669904250507207,
+        "rmse": 1.1309035448359488,
+        "psnr": 47.06229230118418
+      },
+      "elapsedMs": 26009,
+      "oldPaletteBytes": 5801946,
+      "oldPaletteDifference": {
+        "maxError": 61,
+        "alphaMaxError": 0,
+        "mae": 1.7888601140458456,
+        "rmse": 2.587237023085815,
+        "psnr": 39.87407926238908
+      }
+    }
+  ]
+}

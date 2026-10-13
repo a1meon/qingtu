@@ -7,6 +7,16 @@ import sharp from 'sharp';
 import { ImageService } from '../engine/service.mjs';
 
 const config={mode:'target',targetBytes:10000,format:'jpeg',resize:{type:'scale',percent:50}};
+test('failed file saves release export buffers while retaining the reusable preview',async t=>{
+ const root=await fs.mkdtemp(path.join(os.tmpdir(),'qingtu-save-failure-'));t.after(()=>fs.rm(root,{recursive:true,force:true}));
+ const service=new ImageService(),source=await sharp({create:{width:80,height:60,channels:3,background:'#99bbaa'}}).png().toBuffer(),file=await service.add(source,'photo.png');
+ const result=await service.process(file.id,config);
+ await assert.rejects(service.save(result.token,path.join(root,'missing')),/ENOENT/);
+ assert.throws(()=>service.result(result.token),/失效/);
+ const preview=await service.process(file.id,config,{latest:true});assert.ok(service.result(preview.token));
+ const retry=await service.process(file.id,config),saved=await service.save(retry.token,root);assert.ok(saved.bytes<=10000);
+ assert.throws(()=>service.result(retry.token),/失效/);assert.ok(service.result(preview.token));
+});
 test('service imports real files, writes exclusive output names, and releases removed entries',async()=>{
   const dir=await fs.mkdtemp(path.join(os.tmpdir(),'qingtu-test-'));
   try {
@@ -32,14 +42,14 @@ test('rejects invalid imports, unknown tokens and animation, while retaining val
   await assert.rejects(s.save('arbitrary','/tmp'),/失效/);
   assert.throws(()=>s.original('arbitrary'),/已移除/);
 });
-test('concurrent previews serialize per file so newest token remains valid',async()=>{
+test('concurrent exports serialize per file and preserve each independent export token',async()=>{
  const s=new ImageService();
  const b=await sharp({create:{width:100,height:80,channels:3,background:'#778899'}}).png().toBuffer();
  const file=await s.add(b,'test.png');
  const promises=[s.process(file.id,{...config,format:'png'}),s.process(file.id,config),s.process(file.id,{...config,format:'webp'})];
  const results=await Promise.all(promises);
  assert.equal(s.result(results[2].token).output.format,'webp');
- assert.equal(s.results.size,1);
+ assert.equal(s.result(results[0].token).output.format,'png');assert.equal(s.result(results[1].token).output.format,'jpeg');assert.equal(s.results.size,4,'three pinned exports plus one bounded preview cache');
 });
 test('queued live previews skip obsolete settings while retaining the newest request',async()=>{
  const service=new ImageService();
@@ -63,4 +73,5 @@ test('a queued export is never discarded by newer live preview settings',async()
  ]);
  assert.deepEqual(results.map(result=>result.status),['rejected','fulfilled','fulfilled']);
  assert.equal(results[1].value.width,15);assert.equal(results[1].value.height,10);assert.equal(results[1].value.format,'png');
+ assert.equal(service.result(results[1].value.token).output.format,'png','later previews must retain export bytes until actual save');
 });

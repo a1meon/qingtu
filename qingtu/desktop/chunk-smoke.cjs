@@ -10,6 +10,8 @@ const {app,net}=require('electron');const fs=require('node:fs/promises');const {
   }
   transport=await new ChunkTransport(path.join(root,'parts'),{fetcher:(url,options)=>net.fetch(url,options)}).start();
   const updater=new NsisUpdater({provider:'custom',url:base,updateProvider:GiteeChunkProvider,transport,channel:'latest'});
+  // Keep this test's SDK cache inside its isolated temporary workspace.
+  Object.defineProperty(updater.app,'baseCachePath',{value:root});
   // A previous-version fixture exercises the real SDK's update decision.
   updater.currentVersion=new updater.currentVersion.constructor(process.env.QINGTU_TEST_CURRENT_VERSION||'0.4.2');updater.forceDevUpdateConfig=true;updater.autoDownload=false;updater.autoInstallOnAppQuit=false;updater.disableWebInstaller=true;
   const configPath=path.join(root,'app-update.yml');updater.updateConfigPath=configPath;await fs.writeFile(configPath,yaml.dump({updaterCacheDirName:'qingtu-test-'+path.basename(root)}));
@@ -20,7 +22,9 @@ const {app,net}=require('electron');const fs=require('node:fs/promises');const {
   const [downloaded]=await updater.downloadUpdate();assert.equal(ready,1);
   const expected=result.updateInfo.files.find(f=>f.url.endsWith('.exe'));const hash=createHash('sha512');for await(const b of createReadStream(downloaded))hash.update(b);assert.equal(hash.digest('base64'),expected.sha512);assert.equal((await fs.stat(downloaded)).size,expected.size);
   console.log(JSON.stringify({passed:true,realNsisSdk:true,version:result.updateInfo.version,bytes:expected.size,sha512:expected.sha512,installationTriggered:false,source:base}));
-  await fs.rm(updater.downloadedUpdateHelper.cacheDir,{recursive:true,force:true});
+  const cache=path.resolve(updater.downloadedUpdateHelper.cacheDir);
+  if(path.dirname(cache)!==path.resolve(root)||path.basename(cache)!=='qingtu-test-'+path.basename(root))throw new Error('Unexpected SDK smoke cache path');
+  await fs.rm(cache,{recursive:true,force:true});
  }finally{transport?.close();server?.close();await fs.rm(root,{recursive:true,force:true});}
  app.quit();
 })().catch(error=>{console.error(error);app.exit(1);});

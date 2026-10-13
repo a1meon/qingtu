@@ -1,11 +1,5 @@
 import sharp from 'sharp';
-import {padToExactSize} from './exact-size.mjs';
-import {createHash} from 'node:crypto';
-import {BufferCache} from './buffer-cache.mjs';
-
-// Cache only pre-padding encoded bytes. Limits still apply independently to
-// every request, and source content + output dimensions prevent stale reuse.
-const encodedPngs=new BufferCache();
+import {encodeFaithfulPng} from './png-quality.mjs';
 
 sharp.cache({memory:64,files:0,items:20});
 sharp.concurrency(2);
@@ -112,25 +106,16 @@ async function smartSize(source,meta,settings,target){
   if(meta.depth!=='uchar')throw new Error('高位深图片暂不支持尺寸或格式转换');
   let format=requested==='auto'?(meta.hasAlpha||meta.format==='png'?'png':'jpeg'):requested;
   const base=sharp(source,INPUT_OPTIONS).rotate().resize(size.width,size.height,{fit:'fill'}).toColourspace('srgb');
-  let pngKey;
   if(format==='png'){
-    pngKey=`${createHash('sha256').update(source).digest('hex')}:${size.width}x${size.height}`;
-    const fullKey=pngKey+':full';
-    const buffer=encodedPngs.get(fullKey)||encodedPngs.set(fullKey,await base.clone().png({compressionLevel:9,adaptiveFiltering:true,palette:false}).toBuffer());
-    if(buffer.length<=limit)return finish({buffer,...size,format,quality:null,unchanged:false,lossless:true});
-    if(requested==='auto' && !meta.hasAlpha)format='jpeg';
-    const best=format==='png'&&encodedPngs.get(pngKey+':palette:100');
-    if(best&&best.length<=limit)return finish({buffer:best,...size,format,quality:100,unchanged:false,lossless:false});
+    const {data,info}=await base.clone().raw().toBuffer({resolveWithObject:true});
+    try{return finish({...await encodeFaithfulPng(data,info,limit),...size,format,unchanged:false});}
+    catch(error){if(requested!=='auto'||meta.hasAlpha)throw error;format='jpeg';}
   }
   // Decode and resample once, rather than on each quality-search iteration.
   const {data,info}=await (format==='jpeg'?base.clone().flatten({background:'#fff'}):base).raw().toBuffer({resolveWithObject:true});
   const encode=async quality=>{
-    const cacheKey=pngKey+':palette:'+quality;
-    const cached=format==='png'&&encodedPngs.get(cacheKey);
-    if(cached)return cached;
     const pipeline=sharp(data,{raw:{width:info.width,height:info.height,channels:info.channels}});
-    if(format==='jpeg')return pipeline.jpeg({quality,mozjpeg:true}).toBuffer();
-    return encodedPngs.set(cacheKey,await pipeline.png({palette:true,colours:Math.max(2,Math.round(2+quality*2.54)),quality,compressionLevel:9,dither:0}).toBuffer());
+    return pipeline.jpeg({quality,mozjpeg:true}).toBuffer();
   };
   let quality=100,buffer=await encode(quality);
   if(buffer.length>limit){
@@ -157,8 +142,7 @@ export async function processImage(source, settings) {
   const finish=result=>{
     const imageBytes=result.buffer.length;
     if(hasTarget && imageBytes>target)throw new Error(`无法无损达到此大小（优化后 ${(imageBytes/1024/1024).toFixed(3)} MB）。请增加大小或缩小尺寸。`);
-    if(settings.exact && hasTarget)result.buffer=padToExactSize(result.buffer,target,result.format);
-    return {...result,imageBytes,paddedBytes:result.buffer.length-imageBytes};
+    return {...result,imageBytes,paddedBytes:0,limitBytes:hasTarget?target:undefined};
   };
   if(settings.mode==='lossless') return finish(await losslessWithDimensions(source,meta,settings));
   if(settings.mode!=='target') throw new Error('压缩模式无效');
@@ -168,12 +152,14 @@ export async function processImage(source, settings) {
   const size=dimensions(rotated,settings.resize);
   const base=sharp(source,INPUT_OPTIONS).rotate().resize(size.width,size.height,{fit:'fill'}).toColourspace('srgb');
   if(format==='jpeg') base.flatten({background:'#ffffff'});
+  if(format==='png'){
+    const {data,info}=await base.raw().toBuffer({resolveWithObject:true});
+    return finish({...await encodeFaithfulPng(data,info,target),...size,format,unchanged:false});
+  }
   const encode=async quality => {
     const p=base.clone();
     if(format==='jpeg') return p.jpeg({quality,mozjpeg:true}).toBuffer();
-    if(format==='webp') return p.webp({quality,effort:4}).toBuffer();
-    if(quality===100)return p.png({palette:false,compressionLevel:9,adaptiveFiltering:true}).toBuffer();
-    return p.png({palette:true,colours:Math.min(256,Math.max(2,Math.round(2+quality*2.54))),quality,compressionLevel:9,dither:0}).toBuffer();
+    return p.webp({quality,effort:4}).toBuffer();
   };
   let quality=100, buffer=await encode(quality);
   if(buffer.length>target) {

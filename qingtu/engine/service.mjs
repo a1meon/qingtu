@@ -35,23 +35,25 @@ export class ImageService {
     const revision=options?.latest===true?(file.previewRevision=(file.previewRevision||0)+1):null;
     const job=(file.pending||Promise.resolve()).catch(()=>{}).then(()=>{
       if(revision!==null && revision!==file.previewRevision)throw new Error('预览参数已更新');
-      return this.processQueued(id,settings);
+      return this.processQueued(id,settings,{exportTask:revision===null});
     });
     file.pending=job;
     return job;
   }
-  async processQueued(id,settings) {
+  pinExport(result,stored){const token=randomUUID();this.results.set(token,{...stored,exportTask:true});return {...result,token};}
+  trimPreviews(){let bytes=0;for(const [token,value] of [...this.results].reverse())if(!value.exportTask){bytes+=value.output.buffer.length;if(bytes>64*1024*1024)this.results.delete(token);}}
+  async processQueued(id,settings,{exportTask=false}={}) {
     const file=this.original(id),key=JSON.stringify(settings);
-    if(file.last?.key===key && this.results.has(file.last.result.token)) return file.last.result;
+    if(file.last?.key===key && this.results.has(file.last.result.token))return exportTask?this.pinExport(file.last.result,this.results.get(file.last.result.token)):file.last.result;
     const output=await processImage(file.buffer,settings);
     const token=randomUUID();
     const outputPreview=output.unchanged?{url:file.item.preview,width:file.item.previewWidth,height:file.item.previewHeight}:await preview(output.buffer,{width:file.item.previewWidth,height:file.item.previewHeight,fit:output.width===file.item.width&&output.height===file.item.height?'fill':'inside'});
-    const result={token,bytes:output.buffer.length,imageBytes:output.imageBytes,paddedBytes:output.paddedBytes,width:output.width,height:output.height,format:output.format,quality:output.quality,lossless:output.lossless,limitBytes:output.limitBytes,unchanged:output.unchanged,preview:outputPreview.url,previewWidth:outputPreview.width,previewHeight:outputPreview.height};
+    const result={token,bytes:output.buffer.length,imageBytes:output.imageBytes,paddedBytes:output.paddedBytes,width:output.width,height:output.height,format:output.format,quality:output.quality,lossless:output.lossless,encoding:output.encoding,difference:output.difference,limitBytes:output.limitBytes,unchanged:output.unchanged,preview:outputPreview.url,previewWidth:outputPreview.width,previewHeight:outputPreview.height};
     if(!this.files.has(id)) throw new Error('图片已移除');
     if(file.last) this.results.delete(file.last.result.token);
-    this.results.set(token,{id,name:file.item.name,output});
+    const stored={id,name:file.item.name,output,exportTask:false};this.results.set(token,stored);
     file.last={key,result};
-    return result;
+    const returned=exportTask?this.pinExport(result,stored):result;this.trimPreviews();return returned;
   }
   remove(id) {
     const file=this.files.get(id);
@@ -65,15 +67,16 @@ export class ImageService {
     return result;
   }
   async save(token,folder) {
-    const {name,output}=this.result(token);
+    const {name,output,exportTask}=this.result(token);
     const ext=output.format==='jpeg'?'jpg':output.format;
     const stem=path.parse(name).name.replace(/[<>:"/\\|?*\x00-\x1f]/g,'_').slice(0,120)||'image';
-    for(let n=1;n<=10000;n++) {
+    try{for(let n=1;n<=10000;n++) {
       const destination=path.join(folder,`${stem}-qingtu${n===1?'':`-${n}`}.${ext}`);
-      try {await fs.writeFile(destination,output.buffer,{flag:'wx'});return {path:destination,bytes:output.buffer.length};}
+      try {await fs.writeFile(destination,output.buffer,{flag:'wx'});const bytes=(await fs.stat(destination)).size;if(output.limitBytes&&bytes>output.limitBytes)throw new Error('保存文件超过体积上限');return {path:destination,bytes};}
       catch(error){if(error.code!=='EEXIST') throw error;}
     }
     throw new Error('同名文件过多，请更换保存目录');
+    }finally{if(exportTask)this.results.delete(token);}
   }
   download(token) {
     const {name,output}=this.result(token);

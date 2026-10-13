@@ -3,6 +3,8 @@ qingtu/dist/
 qingtu/release/
 qingtu/artifacts/
 qingtu/.cache/
+qingtu/.playwright-cli/
+qingtu/output/playwright/
 .DS_Store
 
 # Local credentials and signing material
