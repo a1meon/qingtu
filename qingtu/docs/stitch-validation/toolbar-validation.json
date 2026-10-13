@@ -1,0 +1,136 @@
+{
+  "date": "2026-10-14",
+  "platform": "Windows x64",
+  "node": "v24.14.0",
+  "tests": {
+    "passed": 142,
+    "total": 142
+  },
+  "build": true,
+  "desktop": {
+    "passed": true,
+    "emptyStartup": true,
+    "defaultMB": 10,
+    "originalView": true,
+    "dragPosition": 0.75,
+    "fieldsWithoutOuterRing": true,
+    "smartByteBudget": true,
+    "pendingResultDoesNotUseOriginal": true,
+    "originalLetterboxIsolated": true,
+    "nativeMacButtons": null,
+    "result": {
+      "bytes": 7297503,
+      "width": 5000,
+      "height": 2140,
+      "format": "jpeg",
+      "path": "temporary exclusive export"
+    },
+    "consoleErrors": []
+  },
+  "ui": {
+    "passed": true,
+    "toolbarToolsAtTopRight": true,
+    "formatMenusJpgPngOnly": true,
+    "gridSecond": true,
+    "decimalMbStatus": true,
+    "customCompressionIcon": true,
+    "cursorAnchoredEditor": true,
+    "untouched50pxPrefill": true,
+    "doneApplies50px": true,
+    "editorPortalHiddenBetweenModules": true,
+    "resetRestoresTrueImportOrder": true,
+    "resetPreservesSettings": true,
+    "alignedModules": true,
+    "whitePreviews": true,
+    "removedCanvasAddDelete": true,
+    "removedStitchViewSwitch": true,
+    "oneClickExactRatio": true,
+    "oneClickOneEncode": true,
+    "oneClickIdempotent": true,
+    "percentageEditorPreservesState": true,
+    "empty4K": true,
+    "defaultPngExport": true,
+    "hoverAndFocusLabels": true,
+    "hiddenControlsInert": true,
+    "sidebarRetainsOutput": true,
+    "sidebarDoesNotReencode": true,
+    "workingStitching": true,
+    "stitchOriginalCopy": true,
+    "stitchAutosave": true,
+    "canvasCards": true,
+    "canvasSwitchAndBatchExport": true,
+    "selectionFitsImage": true,
+    "rightSelectionEdgeVisible": true,
+    "doubleClickEditor": true,
+    "exclusiveCropDirections": true,
+    "cropNumbersAndReset": true,
+    "noEncodingDuringCropSlider": true,
+    "threeAutomaticReorderLayouts": true,
+    "fourLayouts": true,
+    "freeInvalidCanvasEditable": true,
+    "freeSnap": true,
+    "freeProportionalResize": true,
+    "noEncodingDuringDrag": true,
+    "noEncodingDuringResize": true,
+    "reducedMotion": true
+  },
+  "recovery": {
+    "passed": true,
+    "closeBeforeReady": true,
+    "normalCloseFlush": true,
+    "closeDuringGesture": true,
+    "untouchedPrefillNotAppliedOnQuit": true,
+    "importOrderRestored": true,
+    "closeDuringCropSlider": true,
+    "reopenedAfterSourceMoved": true,
+    "restoredDimensions": [
+      2400,
+      2000
+    ],
+    "format": "png",
+    "bytes": 22085,
+    "originalCopy": true
+  },
+  "browser": {
+    "legacyOrderSuppliedByUser": [
+      "01-alpine.jpg",
+      "02-cabin.jpg",
+      "03-coast.jpg",
+      "04-alpine.jpg"
+    ],
+    "resetAndReloadVerified": true,
+    "editor": {
+      "doubleClick": {
+        "x": 241,
+        "y": 294
+      },
+      "popup": {
+        "x": 241,
+        "y": 294,
+        "width": 240,
+        "height": 259
+      },
+      "untouchedPerSidePx": 50
+    },
+    "export": {
+      "path": "artifacts/browser-exports/拼图 1-qingtu-7.png",
+      "width": 5995,
+      "height": 2398,
+      "format": "png",
+      "bytes": 19451130,
+      "limitBytes": 40000000,
+      "sha256": "5c96562e02bb434fb566d9fe93107fc79c3a76016fef89b9454e3a0c05e25793",
+      "encoding": "full-colour lossless PNG",
+      "differenceFromComposite": {
+        "rgbMaxError": 0,
+        "rmse": 0,
+        "alphaMaxError": 0
+      }
+    }
+  },
+  "notVerified": [
+    "Mac native runtime",
+    "packaged installation",
+    "release signing/publication"
+  ]
+}

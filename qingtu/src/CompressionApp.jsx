@@ -8,6 +8,7 @@ import {TooltipButton} from './TooltipButton.jsx';
 import {AppUpdates} from './AppUpdates.jsx';
 import {StitchWorkspace} from './stitch/StitchWorkspace.jsx';
 import {addFlushHandler,flushWork} from './lifecycle.js';
+import {outputFormats,explicitFormat,megabytes} from './export-format.js';
 
 const bytesText=b=>b<1000?`${b} B`:b<1000000?`${Math.ceil(b/1000)} KB`:`${Math.ceil(b/1000000)} MB`;
 const defaults={type:'scale',percent:100,locked:true,anchor:'width',width:3840,height:2160};
@@ -30,7 +31,7 @@ export function CompressionApp(){
   if(resize.locked)return resize.anchor==='height'?{width:Math.round(Number(resize.height)*selected.width/selected.height),height:resize.height}:{width:resize.width,height:Math.round(Number(resize.width)*selected.height/selected.width)};
   return {width:resize.width,height:resize.height};
  },[selected?.id,resize]);
- const settings=useMemo(()=>({mode:'smart',targetBytes:Math.floor(Number(target)*(unit==='MB'?1000000:1000)),format,resize}),[target,unit,format,resize]);
+ const settings=useMemo(()=>({mode:'smart',targetBytes:Math.floor(Number(target)*(unit==='MB'?1000000:1000)),format:explicitFormat(format),resize}),[target,unit,format,resize]);
  const key=JSON.stringify(settings);
  const scale=resize.type==='scale'?resize.percent:selected?Math.round(Number(size.width)/selected.width*1000)/10:100;
  useEffect(()=>{
@@ -99,7 +100,7 @@ export function CompressionApp(){
        <div className="preview-info" aria-live="polite">
         <span>{bytesText(selected.bytes)}<span className="info-arrow">→</span>{output?bytesText(output.bytes):processing?'计算中…':'—'}</span>
         <span>{selected.width} × {selected.height}{output&&(output.width!==selected.width||output.height!==selected.height)&&<> → {output.width} × {output.height}</>}</span>
-        <span className="preview-status" title={output?`${output.encoding||(output.lossless?'无损编码':`编码质量 ${output.quality}`)} · ${output.bytes.toLocaleString()} 字节`:undefined}>{output?`${output.format==='jpeg'?'JPG':output.format.toUpperCase()} · ${output.bytes.toLocaleString()} 字节`:loading?'正在导入…':'就绪'}</span>
+        <span className="preview-status" title={output?`${output.encoding||(output.lossless?'无损编码':`编码质量 ${output.quality}`)} · ${output.bytes.toLocaleString()} 字节`:undefined}>{output?`${output.format==='jpeg'?'JPG':output.format.toUpperCase()} · ${megabytes(output.bytes)}`:loading?'正在导入…':'就绪'}</span>
        </div>
       </div>:<div className="empty-state">
        <img className="empty-illustration" src="./assets/blue-file-empty.png" alt="" draggable={false}/>
@@ -146,7 +147,7 @@ export function CompressionApp(){
        </div>
       </div>
       <div className="control-section"><label htmlFor="scale">缩放</label><div className="number-with-unit"><input id="scale" type="number" min="0.1" max="400" step="0.1" value={scale||''} disabled={!!batch} onChange={e=>setResize(old=>({...old,type:'scale',percent:e.target.value}))}/><span>%</span></div></div>
-      <div className="control-section format-section"><label htmlFor="format">格式</label><Dropdown id="format" label="输出格式" value={format} onChange={setFormat} disabled={!!batch||!inspectorOpen} options={[{value:'auto',label:'自动'},{value:'jpeg',label:'JPG'},{value:'png',label:'PNG'}]}/></div>
+      <div className="control-section format-section"><label htmlFor="format">格式</label><Dropdown id="format" label="输出格式" value={explicitFormat(format)} onChange={setFormat} disabled={!!batch||!inspectorOpen} options={outputFormats}/></div>
      </div>
      <div className="export-section">
       {error&&<div className="inline-message error" role="alert"><WarningCircle size={18}/><span>{error}</span></div>}

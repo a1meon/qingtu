@@ -6,6 +6,7 @@ import path from 'node:path';
 import sharp from 'sharp';
 import {ProjectStore} from '../engine/project-store.mjs';
 import {optimizeHorizontal} from '../engine/stitch-optimize.mjs';
+import {recordImportOrder,resetProject} from '../engine/stitch-reset.mjs';
 const fixture=()=>sharp({create:{width:80,height:60,channels:4,background:'#7799aa80'}}).png().toBuffer();
 async function setup(t){const root=await fs.mkdtemp(path.join(os.tmpdir(),'qingtu-project-'));t.after(()=>fs.rm(root,{recursive:true,force:true}));return {root,store:new ProjectStore(root)};}
 const project=image=>({id:'test-project',name:'测试',images:[image],layout:'horizontal',positions:{},grid:{rows:1,columns:1},export:{longEdge:5999,format:'png',targetBytes:10000000}});
@@ -44,4 +45,11 @@ test('atomic project backups restore the complete percentage-crop generation aft
  const optimized=optimizeHorizontal(p);await store.save(optimized);await store.save({...optimized,name:'新名称'});
  await fs.writeFile(store.file(p.id),'interrupted');await fs.writeFile(store.file(p.id,'.partial.tmp'),'{');
  const restored=await new ProjectStore(root).load(p.id);assert.equal(restored.recovered,true);assert.deepEqual(restored.edits,optimized.edits);assert.deepEqual(restored.export,optimized.export);assert.deepEqual(restored.images,p.images);assert.ok((await store.readAsset(image.assetId)).equals(await fixture()));
+});
+test('true import order survives reorder and crash recovery; invalid orders cannot replace a manifest',async t=>{
+ const {root,store}=await setup(t),image=await store.import(await fixture(),'first.png');delete image.preview;
+ const second={...image,id:'second'},p=recordImportOrder({...project(image),images:[second,image]},[image.id,second.id]);
+ await store.save(p);assert.throws(()=>store.save({...p,initialOrder:[second.id,second.id]}),/顺序/);
+ await store.save({...p,name:'新版'});await fs.writeFile(store.file(p.id),'interrupted');
+ const restored=await new ProjectStore(root).load(p.id);assert.deepEqual(restored.initialOrder,p.initialOrder);assert.deepEqual(resetProject(restored).images,[image,second]);
 });

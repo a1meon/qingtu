@@ -1,9 +1,10 @@
-import {ImageSquare,Images} from '@phosphor-icons/react';
+import {Images} from '@phosphor-icons/react';
+import {CompressionIcon} from './CompressionIcon.jsx';
 import {TooltipButton} from './TooltipButton.jsx';
 
 // Future tools join this registry; they do not change the image workspace.
 const tools=[
- {id:'compress',label:'压缩调整',icon:ImageSquare,enabled:true},
+ {id:'compress',label:'压缩调整',icon:CompressionIcon,enabled:true},
  {id:'stitch',label:'图像拼接',icon:Images,enabled:true}
 ];
 export function ToolNavigation({selected='compress',onSelect}){

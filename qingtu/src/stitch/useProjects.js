@@ -3,6 +3,8 @@ import {repository,newProject} from './repository.js';
 import {api} from '../api.js';
 import {calculateLayout} from '../../engine/stitch-layout.mjs';
 import {addFlushHandler} from '../lifecycle.js';
+import {explicitFormat} from '../export-format.js';
+import {knownImportOrder} from '../../engine/stitch-reset.mjs';
 
 export function useProjects(){
  const [projects,setProjects]=useState([]),[project,setProject]=useState(null),[saving,setSaving]=useState(false),[saveError,setSaveError]=useState(''),[loading,setLoading]=useState(true);
@@ -27,13 +29,15 @@ export function useProjects(){
  const open=async id=>{
   const revision=++loadRevision.current;setLoading(true);
   try{
-   await flush();const value=await repository.load(id),ready=await repository.prepare(value);
+   await flush();const value=await repository.load(id),format=explicitFormat(value.export?.format),formatChanged=value.export?.format!==format;
+   const initialOrder=knownImportOrder(value),orderChanged=value.initialOrder===undefined&&initialOrder!==undefined;
+   const ready=await repository.prepare({...value,...(initialOrder?{initialOrder}:{}),export:{...value.export,format}});
    if(revision!==loadRevision.current)return;
    if(current.current&&current.current.id!==id)await api.stitchRelease(current.current.id);
    current.current=ready;setProject(ready);
    setSaveError('');
    if(value.recovered)setSaveError('已恢复上次完整保存；请检查编辑状态后重试保存');
-   else if(!value.thumbnail&&value.images.length)persist(ready);
+   else if(formatChanged||orderChanged||!value.thumbnail&&value.images.length)persist(ready);
   }catch(error){setSaveError(error.message);throw error;}finally{if(revision===loadRevision.current)setLoading(false);}
  };
  const create=async()=>{

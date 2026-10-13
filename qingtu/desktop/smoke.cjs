@@ -48,8 +48,8 @@ async function waitFor(win,expr){for(let n=0;n<100;n++){if(await win.webContents
   })`);
   assert.ok(Math.abs(drag-.75)<.002);
   await win.webContents.executeJavaScript("document.querySelector('#format').click()");
-  assert.deepEqual(await win.webContents.executeJavaScript("Array.from(document.querySelectorAll('[role=option]'),el=>el.textContent)"),['自动','JPG','PNG']);
-  await win.webContents.executeJavaScript("document.querySelectorAll('[role=option]')[1].click()");
+  assert.deepEqual(await win.webContents.executeJavaScript("Array.from(document.querySelectorAll('[role=option]'),el=>el.textContent)"),['JPG','PNG']);
+  await win.webContents.executeJavaScript("document.querySelectorAll('[role=option]')[0].click()");
   await win.webContents.executeJavaScript("document.querySelector('[aria-label=\"解锁宽高比例\"]').click()");
   for(const [selector,value] of [['#width','5000'],['#height','2140']])await win.webContents.executeJavaScript(`(()=>{const input=document.querySelector(${JSON.stringify(selector)});Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(input,${JSON.stringify(value)});input.dispatchEvent(new Event('input',{bubbles:true}));})()`);
   await waitFor(win,"document.querySelector('.preview-info')?.textContent.includes('5000 × 2140') && document.querySelector('.processed-label')?.textContent.startsWith('处理后')");

@@ -4,6 +4,7 @@ import {createHash,randomUUID} from 'node:crypto';
 import sharp from 'sharp';
 import {INPUT_OPTIONS,SUPPORTED} from './image.mjs';
 import {imageGeometry} from './stitch-edits.mjs';
+import {validateImportOrder} from './stitch-reset.mjs';
 
 const validId=id=>typeof id==='string'&&/^[a-zA-Z0-9-]{1,80}$/.test(id);
 export async function atomicWrite(destination,bytes){
@@ -41,6 +42,7 @@ export class ProjectStore{
  }
  validate(project){
   if(!project||!validId(project.id)||!Array.isArray(project.images)||project.images.length>100)throw new Error('项目数据无效');
+  validateImportOrder(project);
   if(Buffer.byteLength(JSON.stringify(project))>2*1024*1024)throw new Error('项目数据过大');
   if(project.thumbnail!=null&&(typeof project.thumbnail!=='string'||!project.thumbnail.startsWith('data:image/png;base64,')||project.thumbnail.length>200000))throw new Error('画布缩略图无效');
   let bytes=0;

@@ -10,6 +10,7 @@ export function StitchCanvas({project,layout,onChange,onEdit,onRemove,onReorder,
  const scale=layout?Math.min((bounds.width-50)/layout.width,(bounds.height-35)/layout.height):1;
  const selectedRect=layout?.rects.find(rect=>rect.id===selected);
  const selectedImage=project.images.find(image=>image.id===selected);
+ function editAt(event,id){const r=event.currentTarget.getBoundingClientRect();onEdit(id,event.type==='dblclick'&&(event.clientX||event.clientY)?{x:event.clientX,y:event.clientY}:{x:r.x+r.width/2,y:r.y+r.height/2});}
  function showRect(element,rect){if(element)Object.assign(element.style,{left:rect.x*scale+'px',top:rect.y*scale+'px',width:rect.width*scale+'px',height:rect.height*scale+'px'});}
  function start(event,rect,resize=false){
   if(disabled||event.button!==0||resize&&project.layout!=='free')return;
@@ -60,9 +61,9 @@ export function StitchCanvas({project,layout,onChange,onEdit,onRemove,onReorder,
   {layout?<div ref={canvas} className="stitch-canvas" style={{width:layout.width*scale,height:layout.height*scale}}>
    {layout.rects.map(rect=>{
     const image=project.images.find(i=>i.id===rect.id);
-    return <div data-image-id={rect.id} className={`stitch-layer ${selected===rect.id?'selected':''} ${project.layout==='free'?'movable':'reorderable'}`} key={rect.id} style={{left:rect.x*scale,top:rect.y*scale,width:rect.width*scale,height:rect.height*scale}} tabIndex={0} role="button" aria-label={`编辑 ${image.name}`} onFocus={()=>onSelect(rect.id)} onPointerDown={e=>start(e,rect)} onPointerMove={move} onPointerUp={end} onPointerCancel={e=>end(e,true)} onClick={()=>onSelect(rect.id)} onDoubleClick={()=>{if(!disabled)onEdit(rect.id);}} onKeyDown={event=>{
+    return <div data-image-id={rect.id} className={`stitch-layer ${selected===rect.id?'selected':''} ${project.layout==='free'?'movable':'reorderable'}`} key={rect.id} style={{left:rect.x*scale,top:rect.y*scale,width:rect.width*scale,height:rect.height*scale}} tabIndex={0} role="button" aria-label={`编辑 ${image.name}`} onFocus={()=>onSelect(rect.id)} onPointerDown={e=>start(e,rect)} onPointerMove={move} onPointerUp={end} onPointerCancel={e=>end(e,true)} onClick={()=>onSelect(rect.id)} onDoubleClick={event=>{if(!disabled)editAt(event,rect.id);}} onKeyDown={event=>{
      if(disabled)return;
-     if(event.key==='Enter'){event.preventDefault();onEdit(rect.id);return;}
+     if(event.key==='Enter'){event.preventDefault();editAt(event,rect.id);return;}
      if(event.key==='Delete'||event.key==='Backspace'){event.preventDefault();onRemove(rect.id);return;}
      if(!['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(event.key))return;
      if(project.layout!=='free'){if(event.altKey){event.preventDefault();const index=project.images.findIndex(image=>image.id===rect.id),target=project.images[index+(['ArrowLeft','ArrowUp'].includes(event.key)?-1:1)];if(target)onReorder(rect.id,target.id);}return;}
