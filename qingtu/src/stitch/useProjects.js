@@ -50,6 +50,18 @@ export function useProjects(){
   const rest=projects.filter(p=>p.id!==id);setProjects(rest);
   if(current.current?.id===id){current.current=null;setProject(null);if(rest.length)await open(rest[0].id);else await create();}
  };
+ const clear=async()=>{
+  await flush();++loadRevision.current;setLoading(true);
+  try{
+   const list=await repository.list();
+   for(const value of list){await repository.remove(value.id);await api.stitchRelease(value.id);}
+   const fresh=newProject();fresh.name='图像 1';current.current=fresh;setProject(fresh);setProjects([]);await persist(fresh);
+  }catch(error){
+   const rest=await repository.list();setProjects(rest);
+   if(rest.length)await open(rest.find(p=>p.id===current.current?.id)?.id||rest[0].id);
+   throw error;
+  }finally{setLoading(false);}
+ };
  useEffect(()=>{
   let live=true;
   repository.list().then(async list=>{if(!live)return;setProjects(list);if(list.length)await open(list[0].id);else await create();}).catch(e=>setSaveError(e.message)).finally(()=>setLoading(false));
@@ -59,5 +71,5 @@ export function useProjects(){
   const beforeUnload=e=>{if(saving||failure.current){e.preventDefault();e.returnValue='';}};
   window.addEventListener('beforeunload',beforeUnload);return()=>window.removeEventListener('beforeunload',beforeUnload);
  },[saving]);
- return {projects,project,update,open,create,remove,loading,saving,saveError,flush,getCurrent:()=>current.current,retry:()=>{if(current.current)persist(current.current);}};
+ return {projects,project,update,open,create,remove,clear,loading,saving,saveError,flush,getCurrent:()=>current.current,retry:()=>{if(current.current)persist(current.current);}};
 }

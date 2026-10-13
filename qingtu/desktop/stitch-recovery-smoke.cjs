@@ -60,7 +60,7 @@ async function waitFor(win,expression){for(let n=0;n<300;n++){if(await win.webCo
   assert.equal(project.layout,'free');assert.ok(project.positions[project.images[0].id].x>0);assert.ok(project.positions[project.images[0].id].y>0);
   assert.deepEqual(project.edits[project.images[0].id],{axis:'horizontal',amount:20});
   await js("document.querySelector('.module-content:not([hidden]) .export-button').click()");
-  await waitFor(win,"document.querySelector('.notice')?.textContent.includes('已导出 1 个项目')");
+  await waitFor(win,"document.querySelector('.notice')?.textContent.includes('已导出 1 张图像')");
   const filename=(await fs.readdir(exports))[0],sharp=(await import('sharp')).default,meta=await sharp(path.join(exports,filename)).metadata(),bytes=(await fs.stat(path.join(exports,filename))).size;
   assert.deepEqual([meta.width,meta.height],[2400,2000]);assert.ok(bytes<=10000000);
   await fs.writeFile(path.join(root,'result.json'),JSON.stringify({passed:true,closeBeforeReady:true,normalCloseFlush:true,closeDuringGesture:true,untouchedPrefillNotAppliedOnQuit:true,importOrderRestored:true,closeDuringCropSlider:true,reopenedAfterSourceMoved:true,restoredDimensions:[meta.width,meta.height],format:meta.format,bytes,originalCopy:true},null,2));

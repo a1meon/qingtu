@@ -2,7 +2,7 @@ import {useEffect,useRef,useState} from 'react';
 import {snapPosition} from '../../engine/stitch-layout.mjs';
 import {addFlushHandler} from '../lifecycle.js';
 
-export function StitchCanvas({project,layout,onChange,onEdit,onRemove,onReorder,selected,onSelect,disabled}){
+export function StitchCanvas({project,layout,onChange,onEdit,onContext,onRemove,onReorder,selected,onSelect,disabled}){
  const area=useRef(),canvas=useRef(),gesture=useRef(),frame=useRef(),flushRef=useRef(),[bounds,setBounds]=useState({width:600,height:360});
  flushRef.current=()=>finish(false);
  useEffect(()=>addFlushHandler(()=>flushRef.current()),[]);
@@ -61,7 +61,7 @@ export function StitchCanvas({project,layout,onChange,onEdit,onRemove,onReorder,
   {layout?<div ref={canvas} className="stitch-canvas" style={{width:layout.width*scale,height:layout.height*scale}}>
    {layout.rects.map(rect=>{
     const image=project.images.find(i=>i.id===rect.id);
-    return <div data-image-id={rect.id} className={`stitch-layer ${selected===rect.id?'selected':''} ${project.layout==='free'?'movable':'reorderable'}`} key={rect.id} style={{left:rect.x*scale,top:rect.y*scale,width:rect.width*scale,height:rect.height*scale}} tabIndex={0} role="button" aria-label={`编辑 ${image.name}`} onFocus={()=>onSelect(rect.id)} onPointerDown={e=>start(e,rect)} onPointerMove={move} onPointerUp={end} onPointerCancel={e=>end(e,true)} onClick={()=>onSelect(rect.id)} onDoubleClick={event=>{if(!disabled)editAt(event,rect.id);}} onKeyDown={event=>{
+    return <div data-image-id={rect.id} className={`stitch-layer ${selected===rect.id?'selected':''} ${project.layout==='free'?'movable':'reorderable'}`} key={rect.id} style={{left:rect.x*scale,top:rect.y*scale,width:rect.width*scale,height:rect.height*scale}} tabIndex={0} role="button" aria-label={`编辑 ${image.name}`} onFocus={()=>onSelect(rect.id)} onPointerDown={e=>start(e,rect)} onPointerMove={move} onPointerUp={end} onPointerCancel={e=>end(e,true)} onClick={()=>onSelect(rect.id)} onContextMenu={event=>{event.preventDefault();if(!disabled)onContext(rect.id,{x:event.clientX,y:event.clientY});}} onDoubleClick={event=>{if(!disabled)editAt(event,rect.id);}} onKeyDown={event=>{
      if(disabled)return;
      if(event.key==='Enter'){event.preventDefault();editAt(event,rect.id);return;}
      if(event.key==='Delete'||event.key==='Backspace'){event.preventDefault();onRemove(rect.id);return;}

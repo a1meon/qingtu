@@ -3,8 +3,8 @@
   "platform": "Windows x64",
   "node": "v24.14.0",
   "tests": {
-    "passed": 142,
-    "total": 142
+    "passed": 147,
+    "total": 147
   },
   "build": true,
   "desktop": {
@@ -29,6 +29,19 @@
   },
   "ui": {
     "passed": true,
+    "twoIndependentToolButtons": true,
+    "optimizeRightmost": true,
+    "realOptimizationProgress": true,
+    "resetConfirmationAndCancel": true,
+    "noCardCheckboxes": true,
+    "defaultAllNonemptyExport": true,
+    "rightClickImageEditDelete": true,
+    "rightClickCanvasExportDelete": true,
+    "canvasDeleteConfirmation": true,
+    "clearAllConfirmationAndReload": true,
+    "internalThumbnailFileDropRejected": true,
+    "nativeCardDragKeepsProjectsSeparate": true,
+    "originalDimensionsAndAssetIdsRetained": true,
     "toolbarToolsAtTopRight": true,
     "formatMenusJpgPngOnly": true,
     "gridSecond": true,
@@ -128,30 +141,63 @@
       }
     },
     "canvasTools": {
-      "background": "transparent",
-      "border": "transparent",
-      "shadow": "none",
-      "hoverChangesForegroundOnly": true,
-      "labels": [
-        "一键优化",
-        "编辑选中图片",
-        "重置裁剪与顺序"
+      "groupBackground": "transparent",
+      "buttons": [
+        "重置裁剪与顺序",
+        "一键优化"
       ],
-      "nativeDefaultAndHoverChecks": true
+      "individualBackgrounds": true,
+      "customOptimizationGlyph": true,
+      "optimizeRightmostWithInspectorExpandedOrCollapsed": true,
+      "resetRequiresConfirmation": true
     },
     "compressionIcon": {
-      "library": "Phosphor Icons",
-      "name": "ArrowsInSimple",
+      "library": "custom SVG",
+      "name": "folded-picture",
       "size": 30,
       "weight": "bold",
       "visualChecked": true,
       "tooltipAndModuleSwitchChecked": true,
       "screenshot": "docs/stitch-validation/compression-icon-rail.png"
-    }
+    },
+    "confirmationsCancelledWithoutMutation": true,
+    "runtimeErrorsAfterReload": [],
+    "defaultAllExport": true,
+    "exports": [
+      {
+        "path": "artifacts/browser-exports/拼图 1-qingtu-8.png",
+        "width": 5995,
+        "height": 2398,
+        "format": "png",
+        "bytes": 19451130,
+        "limitBytes": 40000000,
+        "sha256": "5c96562e02bb434fb566d9fe93107fc79c3a76016fef89b9454e3a0c05e25793"
+      },
+      {
+        "path": "artifacts/browser-exports/拼图 2-qingtu-3.png",
+        "width": 1600,
+        "height": 1067,
+        "format": "png",
+        "bytes": 3083785,
+        "limitBytes": 10000000,
+        "sha256": "7b2ba40d038d3754900cb5f982e59d795a3fec36e0f12534f0e93fc6d5cf60c8"
+      }
+    ]
   },
   "notVerified": [
     "Mac native runtime",
     "packaged installation",
     "release signing/publication"
-  ]
+  ],
+  "optimizationClose": {
+    "passed": true,
+    "width": 1200,
+    "height": 480,
+    "bytes": 3070,
+    "closeWaitedForActualPreview": true,
+    "cropAndOriginalOrderReopened": true,
+    "sourceRetained": true,
+    "busyExportRetryAndCloseKeepsSavedFile": true,
+    "busyImportRetryAndCloseKeepsOriginal": true
+  }
 }

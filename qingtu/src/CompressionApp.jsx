@@ -9,6 +9,7 @@ import {AppUpdates} from './AppUpdates.jsx';
 import {StitchWorkspace} from './stitch/StitchWorkspace.jsx';
 import {addFlushHandler,flushWork} from './lifecycle.js';
 import {outputFormats,explicitFormat,megabytes} from './export-format.js';
+import {blockPreviewDrag,isExternalFileTransfer} from './file-drop.js';
 
 const bytesText=b=>b<1000?`${b} B`:b<1000000?`${Math.ceil(b/1000)} KB`:`${Math.ceil(b/1000000)} MB`;
 const defaults={type:'scale',percent:100,locked:true,anchor:'width',width:3840,height:2160};
@@ -75,7 +76,7 @@ export function CompressionApp(){
 
  function reset(){setTarget(10);setUnit('MB');setFormat('png');setResize(defaults);setPreviewReset(v=>v+1);setError('');}
  const windowButtons=<div className="window-controls"><button aria-label="最小化" onClick={()=>api.windowAction('minimize')}><Minus size={16}/></button><button aria-label="最大化或还原" onClick={()=>api.windowAction('maximize')}><Square size={13}/></button><button className="window-close" aria-label="关闭窗口" onClick={()=>api.windowAction('close')}><X size={17}/></button></div>;
- return <div className={`app ${inspectorOpen?'':'inspector-collapsed'}`} onDragOver={e=>e.preventDefault()} onDragEnter={e=>{if(e.dataTransfer.types.includes('Files')){depth.current++;setDragging(true);}}} onDragLeave={()=>{if(--depth.current<=0){setDragging(false);depth.current=0;}}} onDrop={e=>{e.preventDefault();depth.current=0;setDragging(false);if(module==='compress')importFiles(e.dataTransfer.files);else stitch.current?.importFiles(e.dataTransfer.files);}}>
+ return <div className={`app ${inspectorOpen?'':'inspector-collapsed'}`} onDragStartCapture={e=>{if(e.target.tagName==='IMG'||e.target.closest('.canvas-card'))blockPreviewDrag(e);}} onDragOver={e=>e.preventDefault()} onDragEnter={e=>{if(isExternalFileTransfer(e.dataTransfer)){depth.current++;setDragging(true);}}} onDragLeave={()=>{if(--depth.current<=0){setDragging(false);depth.current=0;}}} onDrop={e=>{e.preventDefault();depth.current=0;setDragging(false);if(!isExternalFileTransfer(e.dataTransfer)||!e.dataTransfer.files.length)return;if(module==='compress')importFiles(e.dataTransfer.files);else stitch.current?.importFiles(e.dataTransfer.files);}}>
   <header className={`titlebar ${isMac?'mac-titlebar':''}`}>
    <div className="brand"><img src="./assets/app-icon.png" alt="" draggable={false}/><strong>轻图</strong></div><AppUpdates busy={processing||loading||!!batch||stitchBusy} hasImages={items.length>0}/>{desktop&&!isMac&&windowButtons}
   </header>
@@ -112,7 +113,7 @@ export function CompressionApp(){
      <div className="queue-toolbar"><span>图片<span className="queue-count">{items.length}</span></span><button className="icon-button queue-clear" aria-label="清空图片" disabled={loading||!!batch||!items.length} onClick={()=>Promise.all(items.map(i=>remove(i.id)))}><Trash size={22} weight="bold"/></button></div>
      <div className="filmstrip" aria-label="图片队列">
       {items.map(file=><div className={`film-item ${file.id===selected?.id?'selected':''}`} key={file.id}>
-       <button className="film-select" disabled={!!batch} aria-label={`预览 ${file.name}`} aria-pressed={file.id===selected?.id} onClick={()=>setSelectedId(file.id)}><img src={file.preview} alt={file.name}/></button>
+       <button className="film-select" disabled={!!batch} aria-label={`预览 ${file.name}`} aria-pressed={file.id===selected?.id} onClick={()=>setSelectedId(file.id)}><img src={file.preview} alt={file.name} draggable={false}/></button>
        <button className="film-remove" disabled={!!batch} aria-label={`移除 ${file.name}`} onClick={()=>remove(file.id)}><X size={14} weight="bold"/></button>
        <span className="filename" title={file.name}>{file.name}</span>
        {statuses[file.id]&&<span className={`file-status ${statuses[file.id].type}`} title={statuses[file.id].text}>{statuses[file.id].type==='busy'?'处理中':statuses[file.id].text}</span>}

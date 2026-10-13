@@ -1,11 +1,10 @@
 import {forwardRef,useEffect,useImperativeHandle,useMemo,useRef,useState} from 'react';
-import {Plus,X,PencilSimple,Sparkle,ArrowCounterClockwise,SidebarSimple,FolderSimple,SpinnerGap,CheckCircle,WarningCircle} from '@phosphor-icons/react';
+import {Plus,X,PencilSimple,Trash,Export,SidebarSimple,FolderSimple,SpinnerGap,CheckCircle,WarningCircle} from '@phosphor-icons/react';
 import {api,desktop} from '../api.js';
 import {Dropdown} from '../Dropdown.jsx';
 import {TooltipButton} from '../TooltipButton.jsx';
 import {calculateLayout,moveImage,initializeFree} from '../../engine/stitch-layout.mjs';
 import {setImageEdit,cropLimit} from '../../engine/stitch-edits.mjs';
-import {optimizeHorizontal} from '../../engine/stitch-optimize.mjs';
 import {appendProjectImages,removeProjectImage,resetProject} from '../../engine/stitch-reset.mjs';
 import {repository} from './repository.js';
 import {useProjects} from './useProjects.js';
@@ -15,24 +14,32 @@ import {ImageEditor} from './ImageEditor.jsx';
 import {canvasName} from './names.js';
 import {addFlushHandler} from '../lifecycle.js';
 import {outputFormats,explicitFormat,megabytes} from '../export-format.js';
+import {CanvasTools} from './CanvasTools.jsx';
+import {ContextMenu} from './ContextMenu.jsx';
+import {ConfirmDialog,OptimizeDialog} from './ActionDialogs.jsx';
+import {performOptimization} from './optimization.js';
+import {exportProjectIds} from './project-export.js';
 
 export const StitchWorkspace=forwardRef(function StitchWorkspace({active,inspectorOpen,setInspectorOpen,onBusy,onCount},ref){
- const {projects,project,update,open,create,remove,loading,saving,saveError,flush,retry,getCurrent}=useProjects();
+ const {projects,project,update,open,create,remove,clear,loading,saving,saveError,flush,retry,getCurrent}=useProjects();
  const [editing,setEditing]=useState(null),[editorAnchor,setEditorAnchor]=useState(null),[cropDraft,setCropDraft]=useState(null),editor=useRef();
- const [selected,setSelected]=useState(null),[checked,setChecked]=useState([]),[error,setError]=useState(''),[notice,setNotice]=useState(''),[importing,setImporting]=useState(false),[batch,setBatch]=useState(null),[output,setOutput]=useState(null),[processing,setProcessing]=useState(false),[folder,setFolder]=useState(null);
+ const [selected,setSelected]=useState(null),[error,setError]=useState(''),[notice,setNotice]=useState(''),[importing,setImporting]=useState(false),[batch,setBatch]=useState(null),[output,setOutput]=useState(null),[processing,setProcessing]=useState(false),[folder,setFolder]=useState(null);
+ const [context,setContext]=useState(null),[confirmation,setConfirmation]=useState(null),[optimization,setOptimization]=useState(null),[optimizing,setOptimizing]=useState(false);
  const unit=project?.export.unit||'MB',setUnit=unit=>setExport({unit});
  useEffect(()=>{setSelected(project?.images[0]?.id||null);setEditing(null);setCropDraft(null);},[project?.id]);
- const input=useRef(),cancel=useRef(false),exportTask=useRef(Promise.resolve()),importTask=useRef(Promise.resolve()),lastPreview=useRef();
+ const input=useRef(),cancel=useRef(false),exportTask=useRef(Promise.resolve()),importTask=useRef(Promise.resolve()),actionTask=useRef(Promise.resolve()),optimizeTask=useRef(Promise.resolve()),importLock=useRef(false),exportLock=useRef(false),lastPreview=useRef();
  const displayProject=useMemo(()=>cropDraft?setImageEdit(project,cropDraft.id,{...cropDraft.edit,amount:Number(cropDraft.edit.amount)||0}):project,[project,cropDraft]);
  const calculation=useMemo(()=>{try{return {layout:calculateLayout(displayProject||{})};}catch(e){try{return {layout:calculateLayout(displayProject||{},{draft:true}),error:e.message};}catch{return {error:e.message};}}},[displayProject]);
  const {layout}=calculation;
- const busy=loading||importing||!!batch;
+ const busy=loading||importing||!!batch||optimizing||!!confirmation||!!optimization;
+ const exportIds=exportProjectIds(projects,project);
+ useEffect(()=>setContext(null),[active,project?.id,busy]);
  useEffect(()=>{onBusy(busy||saving||processing||!!saveError||!!cropDraft);onCount(project?.images.length||0);},[busy,saving,processing,saveError,cropDraft,project?.images.length]);
  const flushEditor=()=>editor.current?.flush()||Promise.resolve();
- useEffect(()=>addFlushHandler(async()=>{await flushEditor();await importTask.current;await exportTask.current;await flush();}),[]);
+ useEffect(()=>addFlushHandler(async()=>{await flushEditor();await importTask.current;await exportTask.current;await optimizeTask.current;await actionTask.current;await flush();}),[]);
  useEffect(()=>{
   if(!active){setProcessing(false);return;}
-  if(!busy&&!cropDraft&&lastPreview.current?.project===project){setOutput(lastPreview.current.result);setProcessing(false);return;}
+  if(!busy&&!cropDraft&&lastPreview.current?.project===project){setOutput(lastPreview.current.result||null);setError(lastPreview.current.error||'');setProcessing(false);return;}
   let live=true;setOutput(null);setError('');
   if(!active||!layout||calculation.error||busy||cropDraft){setProcessing(false);return;}
   setProcessing(true);const timer=setTimeout(()=>api.stitchRender(project,{latest:true}).then(result=>{if(live){lastPreview.current={project,result};setOutput(result);}}).catch(e=>{if(live&&!e.message.includes('预览参数已更新'))setError(e.message);}).finally(()=>{if(live)setProcessing(false);}),500);
@@ -42,37 +49,58 @@ export const StitchWorkspace=forwardRef(function StitchWorkspace({active,inspect
  function selectImage(id){if(editing&&editing!==id){flushEditor().catch(()=>{});setEditing(null);setCropDraft(null);}setSelected(id);}
  async function editImage(id,anchor){try{if(editing!==id)await settleEditor();setSelected(id);setEditorAnchor(anchor||null);setEditing(id);}catch(e){setNotice(e.message);}}
  function commitCrop(id,edit){setCropDraft(null);return update(p=>setImageEdit(p,id,edit));}
- async function optimize(){try{await settleEditor();const current=getCurrent(),next=optimizeHorizontal(current);if(next!==current)await update(next);setNotice(next===current?'已是 2.5:1':`已优化为 2.5:1 · ${next.export.longEdge} × ${next.export.longEdge*2/5}`);}catch(e){setNotice(e.message);}}
- async function reset(){try{await settleEditor();await update(resetProject(getCurrent()));setNotice('已重置裁剪和顺序');}catch(e){setNotice(e.message);}}
- async function accept(items){
-  if(items.length){await update(p=>{if(p.images.length+items.length>100||p.images.reduce((s,i)=>s+i.bytes,0)+items.reduce((s,i)=>s+i.bytes,0)>500*1024*1024)throw new Error('每个项目最多 100 张、500 MB');return appendProjectImages(p,items);});setSelected(items[0].id);}
+ async function runOptimize(){
+  let phase='calculate';
+  try{await settleEditor();const current=getCurrent(),cache=lastPreview.current;
+   const value=await performOptimization({project:current,save:update,render:value=>api.stitchRender(value,{latest:true}),reuse:cache?.project===current?cache.result:null,onPhase:next=>{phase=next;setOptimization({phase:next});}});
+   lastPreview.current={project:getCurrent(),result:value.result};setOutput(value.result);setError('');setProcessing(false);setOptimization({phase:'done',message:`${value.result.width} × ${value.result.height} · 2.5:1`});
+  }catch(e){if(phase==='render'){lastPreview.current={project:getCurrent(),error:e.message};setError(e.message);}setOptimization({phase:'error',failedAt:phase,message:e.message});}
+  finally{setOptimizing(false);}
+ }
+ function optimize(){if(busy)return;setOptimizing(true);setOptimization({phase:'prepare'});const task=runOptimize();optimizeTask.current=task;return task;}
+ function requestReset(){setConfirmation({kind:'reset',id:project.id,title:'重置当前画布？',description:'恢复裁剪和导入顺序，保留布局与导出设置。',label:'重置'});}
+ function requestRemoveCanvas(id){const value=projects.find(p=>p.id===id);if(value)setConfirmation({kind:'remove',id,title:'删除这个画布？',description:canvasName(value.name),danger:true,label:'删除'});}
+ function requestClear(){setConfirmation({kind:'clear',title:'删除全部画布？',description:`删除 ${projects.length} 个画布项目，原始文件保留。`,danger:true,label:'全部删除'});}
+ async function runConfirmed(){
+  const request=confirmation;await settleEditor();
+  if(request.kind==='reset'){if(getCurrent().id!==request.id)throw new Error('当前画布已切换，请重新确认');await update(resetProject(getCurrent()));setNotice('已重置裁剪和顺序');}
+  else if(request.kind==='remove')await remove(request.id);
+  else await clear();
+  setConfirmation(null);
+ }
+ function confirm(){const task=runConfirmed();actionTask.current=task.catch(()=>{});return task;}
+ async function contextImage(id,anchor){if(busy)return;try{await settleEditor();setSelected(id);setContext({type:'image',id,anchor});}catch(e){setNotice(e.message);}}
+ function contextCanvas(id,anchor){if(!busy)setContext({type:'canvas',id,anchor});}
+ async function accept(items,owner){
+  if(items.length){await update(p=>{if(p.id!==owner)throw new Error('当前画布已切换，请重新导入');if(p.images.length+items.length>100||p.images.reduce((s,i)=>s+i.bytes,0)+items.reduce((s,i)=>s+i.bytes,0)>500*1024*1024)throw new Error('每个项目最多 100 张、500 MB');return appendProjectImages(p,items);});setSelected(items[0].id);}
  }
  async function runImportFiles(files){
-  if(busy||!project)return;const list=Array.from(files);if(!list.length)return;await settleEditor();setImporting(true);setNotice('');
-  try{for(const file of list){const item=await repository.import(file);await accept([item]);}}
-  catch(e){setNotice(e.message);}finally{setImporting(false);if(input.current)input.current.value='';}
+  if(busy||importLock.current||!project)return;const list=Array.from(files);if(!list.length)return;const owner=project.id;importLock.current=true;setImporting(true);setNotice('');
+  try{await settleEditor();for(const file of list){const item=await repository.import(file);await accept([item],owner);}}
+  catch(e){setNotice(e.message);}finally{importLock.current=false;setImporting(false);if(input.current)input.current.value='';}
  }
- function importFiles(files){const task=runImportFiles(files);importTask.current=task;return task;}
+ function importFiles(files){if(busy||importLock.current||!project||!files.length)return importTask.current;const task=runImportFiles(files);importTask.current=task;return task;}
  async function runAdd(){
-  if(busy||!project)return;await settleEditor();if(!desktop){input.current.click();return;}
-  setImporting(true);try{const result=await api.stitchChooseFiles();await accept(result.items);if(result.errors.length)setNotice(result.errors.join('；'));}catch(e){setNotice(e.message);}finally{setImporting(false);}
+  if(busy||importLock.current||!project)return;const owner=project.id;importLock.current=true;setImporting(true);
+  try{await settleEditor();if(!desktop){input.current.click();return;}const result=await api.stitchChooseFiles();await accept(result.items,owner);if(result.errors.length)setNotice(result.errors.join('；'));}catch(e){setNotice(e.message);}finally{importLock.current=false;setImporting(false);}
  }
- function add(){const task=runAdd();importTask.current=task;return task;}
+ function add(){if(busy||importLock.current||!project)return importTask.current;const task=runAdd();importTask.current=task;return task;}
  async function chooseFolder(){const value=await api.chooseFolder();if(value)setFolder(value);return value;}
  async function runExport(ids){
-  if(busy||!ids.length)return;await flushEditor();await flush();const current=getCurrent();if(!folder&&!await chooseFolder())return;
-  cancel.current=false;setBatch({current:0,total:ids.length});setNotice('');let success=0;const failures=[];
+  if(busy||!ids.length)return;
+  cancel.current=false;setBatch({current:0,total:ids.length});let success=0;const failures=[];
   try{
+   await flushEditor();await flush();const current=getCurrent();if(!folder&&!await chooseFolder())return;setNotice('');
    for(let n=0;n<ids.length;n++){
     if(cancel.current)break;setBatch({current:n+1,total:ids.length});
     try{const snapshot=ids[n]===current.id?structuredClone(current):await repository.load(ids[n]);snapshot.export={...snapshot.export,format:explicitFormat(snapshot.export?.format)};await repository.prepare(snapshot,{previews:false});const result=await api.stitchRender(snapshot);await api.save(result.token);success++;}
-    catch(e){failures.push(`${projects.find(p=>p.id===ids[n])?.name||'拼图'}：${e.message}`);}
+    catch(e){failures.push(`${canvasName(projects.find(p=>p.id===ids[n])?.name)}：${e.message}`);}
    }
-   setNotice(`已导出 ${success} 个项目${failures.length?'；'+failures.join('；'):cancel.current?'，已取消':''}`);
+   setNotice(`已导出 ${success} 张图像${failures.length?'；'+failures.join('；'):cancel.current?'，已取消':''}`);
   }finally{setBatch(null);}
  }
- function exportProjects(ids){const task=runExport(ids).catch(e=>setNotice(e.message));exportTask.current=task;return task;}
- useImperativeHandle(ref,()=>({add,importFiles,export:()=>exportProjects(project?[project.id]:[])}));
+ function exportProjects(ids){if(busy||exportLock.current||!ids.length)return exportTask.current;exportLock.current=true;const task=runExport(ids).catch(e=>setNotice(e.message)).finally(()=>{exportLock.current=false;});exportTask.current=task;return task;}
+ useImperativeHandle(ref,()=>({add,importFiles,export:()=>exportProjects(exportIds)}));
  async function setLayout(type){
   try{await settleEditor();const current=getCurrent();if(type===current.layout)return;
   if(type==='free'){
@@ -85,9 +113,8 @@ export const StitchWorkspace=forwardRef(function StitchWorkspace({active,inspect
  const setExport=changes=>update(p=>({...p,export:{...p.export,...changes}}));
  async function removeImage(id){try{await settleEditor();await update(p=>removeProjectImage(p,id));if(selected===id)setSelected(null);}catch(e){setNotice(e.message);}}
  async function reorder(from,to){try{await settleEditor();update(p=>({...p,images:moveImage(p.images,from,to)}));}catch(e){setNotice(e.message);}}
- async function openCanvas(id){try{await settleEditor();await open(id);}catch(e){setNotice(e.message);}}
- async function createCanvas(){try{await settleEditor();await create();}catch(e){setNotice(e.message);}}
- async function removeCanvas(id){try{await settleEditor();await remove(id);setChecked(old=>old.filter(item=>item!==id));}catch(e){setNotice(e.message);}}
+ async function openCanvas(id){if(busy||importLock.current)return;try{await settleEditor();await open(id);}catch(e){setNotice(e.message);}}
+ async function createCanvas(){if(busy||importLock.current)return;try{await settleEditor();await create();}catch(e){setNotice(e.message);}}
  const editingImage=project?.images.find(image=>image.id===editing);
  const editingRect=layout?.rects.find(rect=>rect.id===editing);
  const savedEdit=project?.edits?.[editing];
@@ -100,21 +127,19 @@ export const StitchWorkspace=forwardRef(function StitchWorkspace({active,inspect
      <input className="project-name" aria-label="项目名称" maxLength="80" value={project?canvasName(project.name):''} disabled={busy||!project} onChange={e=>update({name:e.target.value})}/>
      <div className="preview-actions">
       <span className={`save-status ${saveError?'error':''}`} role="status">{saveError?'未保存':saving?'保存中…':'已自动保存'}</span>
-      <div className="view-switch canvas-actions" role="group" aria-label="画布工具"><button className="canvas-optimize" aria-label="一键优化" title={project?.layout==='horizontal'?'从原图统一左右裁剪为 2.5:1':'仅横排可用'} disabled={busy||!project?.images.length||project.layout!=='horizontal'} onClick={optimize}><Sparkle size={17} weight="fill"/>一键优化</button><TooltipButton label="编辑选中图片" className="icon-button" disabled={busy||!selected} onClick={event=>{const r=event.currentTarget.getBoundingClientRect();editImage(selected,{x:r.left,y:r.bottom+8});}}><PencilSimple size={19}/></TooltipButton><TooltipButton label="重置裁剪与顺序" className="icon-button" disabled={busy||!project?.images.length} onClick={reset}><ArrowCounterClockwise size={19}/></TooltipButton></div>
       {!inspectorOpen&&<TooltipButton label="展开导出设置" placement="left" className="icon-button panel-toggle" onClick={()=>setInspectorOpen(true)}><SidebarSimple size={23}/></TooltipButton>}
+      <CanvasTools project={project} busy={busy} onReset={requestReset} onOptimize={optimize}/>
      </div>
     </div>
     {project?.images.length?<>
      <div className="canvas-area"><div className="canvas-content"><div className="stitch-editing-surface">
-      <StitchCanvas project={displayProject} layout={layout} selected={selected} onSelect={selectImage} onEdit={editImage} onRemove={removeImage} onReorder={reorder} onChange={positions=>update({positions})} disabled={busy||!!cropDraft}/>
+      <StitchCanvas project={displayProject} layout={layout} selected={selected} onSelect={selectImage} onEdit={editImage} onContext={contextImage} onRemove={removeImage} onReorder={reorder} onChange={positions=>update({positions})} disabled={busy||!!cropDraft}/>
       {editingImage&&<ImageEditor key={editingImage.id} ref={editor} image={editingImage} value={editingValue} anchor={editorAnchor} hidden={!active} disabled={busy} onPreview={edit=>setCropDraft(edit?{id:editingImage.id,edit}:null)} onCommit={edit=>commitCrop(editingImage.id,edit)} onClose={()=>{setEditing(null);setCropDraft(null);}}/>}
      </div>
      <div className="preview-info stitch-info" aria-live="polite"><span>{layout?`${layout.width} × ${layout.height}`:calculation.error}</span>{layout?.rects.some(r=>r.autoCrop)&&<span>9:16 居中裁切</span>}<span className="preview-status" title={output?`${output.bytes.toLocaleString()} 字节${output.difference?`；RGB 最大误差 ${output.difference.maxError}/255，RMSE ${output.difference.rmse.toFixed(4)}；透明度误差 ${output.difference.alphaMaxError}`:''}`:undefined}>{cropDraft?'编辑中…':processing?'计算中…':output?`${output.encoding||output.format.toUpperCase()} · ${megabytes(output.bytes)}`:error}</span></div></div></div>
     </>:<div className="canvas-area"><div className="empty-state"><img className="empty-illustration" src="./assets/blue-file-empty.png" alt=""/><button className="primary import-button" aria-label="添加拼接图片" disabled={busy||!project} onClick={add}><Plus size={28} weight="bold"/>{loading?'恢复中…':'添加图片'}</button></div></div>}
    </div>
-   <CanvasCards projects={projects} currentId={project?.id} checked={checked} disabled={busy}
-    onCheck={(id,value)=>setChecked(old=>value?[...old,id]:old.filter(item=>item!==id))}
-    onOpen={openCanvas} onCreate={createCanvas} onRemove={removeCanvas}/>
+   <CanvasCards projects={projects} currentId={project?.id} disabled={busy} onOpen={openCanvas} onCreate={createCanvas} onClear={requestClear} onContext={contextCanvas}/>
   </section>
   <div className="inspector-shell"><aside className="inspector" aria-label="拼接导出设置" aria-hidden={!inspectorOpen} inert={!inspectorOpen}>
    <div className="inspector-heading"><h1>拼接</h1><TooltipButton label="收起导出设置" placement="left" className="icon-button panel-toggle" onClick={()=>setInspectorOpen(false)}><SidebarSimple size={23}/></TooltipButton></div>
@@ -128,10 +153,19 @@ export const StitchWorkspace=forwardRef(function StitchWorkspace({active,inspect
    <div className="export-section">
     {(saveError||calculation.error&&project?.images.length>0||error)&&<div className="inline-message error" role="alert"><WarningCircle size={18}/><span>{saveError||calculation.error||error}</span>{saveError&&<button onClick={retry}>重试</button>}</div>}
     <label>输出文件夹</label><button className="folder-control" disabled={busy} onClick={()=>chooseFolder().catch(e=>setNotice(e.message))}><FolderSimple size={23}/><span>{folder?.name||'选择文件夹'}</span></button>
-    <button className="primary export-button" disabled={busy||!!cropDraft||!layout||!!calculation.error||!!saveError||!!error} onClick={()=>exportProjects([project.id])}>{batch?<><SpinnerGap className="spin" size={23}/>导出 {batch.current} / {batch.total}</>:'导出当前拼图'}</button>
-    <div className="export-secondary"><button className="batch-project-export" disabled={busy||!!cropDraft||!checked.length||!!saveError} onClick={()=>exportProjects(checked)}>批量导出 {checked.length} 个项目</button>{batch&&<button className="cancel-button" onClick={()=>{cancel.current=true;}}>取消后续</button>}</div>
+    <button className="primary export-button" disabled={busy||!!cropDraft||!exportIds.length||!!saveError||!!project?.images.length&&(!layout||!!calculation.error||!!error)} onClick={()=>exportProjects(exportIds)}>{batch?<><SpinnerGap className="spin" size={23}/>导出 {batch.current} / {batch.total}</>:`导出 ${exportIds.length} 张图像`}</button>
+    <div className="export-secondary">{batch&&<button className="cancel-button" onClick={()=>{cancel.current=true;}}>取消后续</button>}</div>
    </div>
   </aside></div>
+  {context&&active&&<ContextMenu anchor={context.anchor} onClose={()=>setContext(null)} items={context.type==='image'?[
+   {label:'编辑图片',icon:PencilSimple,action:()=>editImage(context.id,context.anchor)},
+   {label:'删除图片',icon:Trash,danger:true,action:()=>removeImage(context.id)}
+  ]:[
+   {label:'导出此图像',icon:Export,action:()=>exportProjects([context.id])},
+   {label:'删除画布',icon:Trash,danger:true,action:()=>requestRemoveCanvas(context.id)}
+  ]}/>}
+  {confirmation&&<ConfirmDialog request={confirmation} onCancel={()=>setConfirmation(null)} onConfirm={confirm}/>}
+  {optimization&&<OptimizeDialog state={optimization} onClose={()=>setOptimization(null)}/>}
   {notice&&active&&<div className="notice" role="status"><CheckCircle size={23}/><span>{notice}</span><button className="icon-button" aria-label="关闭拼接提示" onClick={()=>setNotice('')}><X size={18}/></button></div>}
  </>;
 });
