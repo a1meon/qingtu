@@ -1,4 +1,13 @@
 // Work from immutable original dimensions, never from already cropped previews.
+export function optimizationAvailability(project){
+ if(!project?.images?.length)return {enabled:false,hint:'请先添加图片'};
+ if(project.layout!=='horizontal')return {enabled:false,hint:'仅横排可用'};
+ const ratio=project.images.reduce((sum,image)=>sum+image.width/image.height,0);
+ if(ratio<=2.5+1e-12)return {enabled:false,hint:'原图横排比例无需优化'};
+ let edits;try{edits=proportionalHorizontalEdits(project.images);}catch(error){return {enabled:false,hint:error.message};}
+ if(Object.keys(project.edits||{}).length===project.images.length&&project.images.every(image=>{const edit=project.edits?.[image.id];return edit?.axis==='horizontal'&&Math.abs(edit.fraction-edits[image.id].fraction)<=1e-12&&edit.amount==null;}))return {enabled:false,hint:'当前裁剪已优化'};
+ return {enabled:true,hint:'按原图统一左右裁剪为 2.5:1'};
+}
 export function proportionalHorizontalEdits(images){
  if(!images?.length)throw new Error('请添加图片');
  if(images.length>100||images.some(image=>![image.width,image.height].every(value=>Number.isInteger(value)&&value>0)))throw new Error('图片尺寸无效');
