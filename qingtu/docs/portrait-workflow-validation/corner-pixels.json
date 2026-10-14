@@ -1,0 +1,12 @@
+{
+  "passed": true,
+  "width": 330,
+  "height": 240,
+  "bytes": 190722,
+  "limit": 10000000,
+  "maxError": 0,
+  "alphaMaxError": 0,
+  "rmse": 0,
+  "differentChannels": 0,
+  "baseline": "Independent Sharp source extraction, Lanczos3 resize and rectangular composite of repository photo fixtures; zero UI pixels or export margins."
+}

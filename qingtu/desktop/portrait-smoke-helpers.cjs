@@ -9,9 +9,9 @@ async function createSmoke(prefix,artifactName){
  const root=await fs.mkdtemp(path.join(os.tmpdir(),prefix)),artifact=path.resolve('artifacts',artifactName);await fs.mkdir(artifact,{recursive:true});
  const selection=[],context=await start({hidden:true,projectRoot:path.join(root,'projects'),testFiles:selection,testFolder:artifact}),{win,store,stitching,service}=context;
  win.webContents.setBackgroundThrottling(false);win.show();win.focus();
- const js=expression=>win.webContents.executeJavaScript(expression);
+ const js=async expression=>{try{return await win.webContents.executeJavaScript(expression);}catch(error){console.error('Renderer expression failed:',expression);throw error;}};
  const wait=async expression=>{for(let n=0;n<600;n++){if(await js(expression))return;await pause(50);}throw new Error('Timed out: '+expression);};
- const ready=()=>wait("!!document.querySelector('.stitch-output-preview')&&document.querySelector('.save-status').textContent==='已自动保存'&&!document.querySelector('.project-name').disabled");
+ const ready=async()=>{await js('new Promise(resolve=>{setTimeout(resolve,50);requestAnimationFrame(()=>requestAnimationFrame(resolve));})');await wait("!!document.querySelector('.stitch-output-preview')&&document.querySelector('.save-status').textContent==='已自动保存'&&!document.querySelector('.project-name').disabled");};
  const click=selector=>js(`document.querySelector(${JSON.stringify(selector)}).click()`);
  const edit=(selector,value)=>js(`(()=>{const e=document.querySelector(${JSON.stringify(selector)});Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(e,${JSON.stringify(String(value))});e.dispatchEvent(new Event('input',{bubbles:true}));})()`);
  const load=async()=>{const name=await js("document.querySelector('.project-name').value");return store.load((await store.list()).find(p=>p.name===name).id);};
@@ -23,7 +23,7 @@ async function createSmoke(prefix,artifactName){
    for(let n=1;n<=16;n++)await win.webContents.debugger.sendCommand('Input.dispatchMouseEvent',{type:'mouseMoved',x:p.x+dx*n/16,y:p.y+dy*n/16,buttons:1,modifiers:shift?8:0});
    await wait("document.querySelector('.stitch-canvas').dataset.interacting==='true'");assert.equal(calls,before,'gesture never encodes high-resolution images');
    await win.webContents.debugger.sendCommand('Input.dispatchMouseEvent',{type:'mouseReleased',x:p.x+dx,y:p.y+dy,button:'left',buttons:0,clickCount:1,modifiers:shift?8:0});
-  }finally{win.webContents.debugger.detach();}await ready();
+  }finally{win.webContents.debugger.detach();}await js('new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)))');await ready();
  }
  async function importFiles(files){selection.splice(0,selection.length,...files);const count=Number(await js("document.querySelectorAll('.stitch-layer').length"));if(!count)await click('[aria-label="添加拼接图片"]');else await js("window.dispatchEvent(new KeyboardEvent('keydown',{key:'o',ctrlKey:true,bubbles:true}))");await wait(`document.querySelectorAll('.stitch-layer').length===${count+files.length}`);await ready();}
  async function capture(name){await js('new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)))');await fs.writeFile(path.join(artifact,name),(await win.webContents.capturePage()).toPNG());}

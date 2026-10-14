@@ -1,0 +1,18 @@
+{
+  "passed": true,
+  "closeBeforeReady": true,
+  "normalCloseFlush": true,
+  "closeDuringGesture": true,
+  "closeDuringResize": true,
+  "untouchedPrefillNotAppliedOnQuit": true,
+  "importOrderRestored": true,
+  "closeDuringCropEdge": true,
+  "reopenedAfterSourceMoved": true,
+  "restoredDimensions": [
+    2400,
+    2000
+  ],
+  "format": "png",
+  "bytes": 22153,
+  "originalCopy": true
+}

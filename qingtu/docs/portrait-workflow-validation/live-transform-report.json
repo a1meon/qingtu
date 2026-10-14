@@ -1,0 +1,124 @@
+{
+  "passed": true,
+  "fourActualCorners": true,
+  "realtimeCanvasAndFields": true,
+  "retainsDisplayHeight": true,
+  "independentLinks": true,
+  "noEncodingOrSavingDuringDrag": true,
+  "escapeRestoresCanvas": true,
+  "manualCanvasFixed": true,
+  "canvasEdgeSnap": true,
+  "selectionAligned": true,
+  "immutableOriginal": true,
+  "results": [
+    {
+      "handle": "nw",
+      "cancel": false,
+      "snap": false,
+      "before": {
+        "width": 360,
+        "height": 240
+      },
+      "held": {
+        "width": 300,
+        "height": 240
+      },
+      "after": {
+        "width": 300,
+        "height": 240
+      }
+    },
+    {
+      "handle": "ne",
+      "cancel": false,
+      "snap": false,
+      "before": {
+        "width": 360,
+        "height": 240
+      },
+      "held": {
+        "width": 300,
+        "height": 240
+      },
+      "after": {
+        "width": 300,
+        "height": 240
+      }
+    },
+    {
+      "handle": "se",
+      "cancel": false,
+      "snap": false,
+      "before": {
+        "width": 360,
+        "height": 240
+      },
+      "held": {
+        "width": 300,
+        "height": 240
+      },
+      "after": {
+        "width": 300,
+        "height": 240
+      }
+    },
+    {
+      "handle": "sw",
+      "cancel": false,
+      "snap": false,
+      "before": {
+        "width": 360,
+        "height": 240
+      },
+      "held": {
+        "width": 300,
+        "height": 240
+      },
+      "after": {
+        "width": 300,
+        "height": 240
+      }
+    },
+    {
+      "handle": "se",
+      "cancel": true,
+      "snap": false,
+      "before": {
+        "width": 360,
+        "height": 240
+      },
+      "held": {
+        "width": 300,
+        "height": 240
+      },
+      "after": {
+        "width": 360,
+        "height": 240
+      }
+    },
+    {
+      "handle": "right",
+      "cancel": false,
+      "snap": true,
+      "before": {
+        "width": 330,
+        "height": 240
+      },
+      "held": {
+        "width": 330,
+        "height": 240
+      },
+      "after": {
+        "width": 330,
+        "height": 240
+      }
+    }
+  ],
+  "output": {
+    "file": "corner-snap-export.png",
+    "width": 330,
+    "height": 240,
+    "bytes": 190722,
+    "limit": 10000000
+  }
+}

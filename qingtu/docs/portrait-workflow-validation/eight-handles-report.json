@@ -1,0 +1,85 @@
+{
+  "passed": true,
+  "eightActualResizeHandles": [
+    {
+      "handle": "nw",
+      "proportional": true,
+      "aligned": true,
+      "noEncodeWhileHeld": true,
+      "canvas": [
+        "1100",
+        "600"
+      ]
+    },
+    {
+      "handle": "n",
+      "proportional": true,
+      "aligned": true,
+      "noEncodeWhileHeld": true,
+      "canvas": [
+        "1100",
+        "600"
+      ]
+    },
+    {
+      "handle": "ne",
+      "proportional": true,
+      "aligned": true,
+      "noEncodeWhileHeld": true,
+      "canvas": [
+        "1100",
+        "600"
+      ]
+    },
+    {
+      "handle": "e",
+      "proportional": true,
+      "aligned": true,
+      "noEncodeWhileHeld": true,
+      "canvas": [
+        "1100",
+        "600"
+      ]
+    },
+    {
+      "handle": "se",
+      "proportional": true,
+      "aligned": true,
+      "noEncodeWhileHeld": true,
+      "canvas": [
+        "1100",
+        "600"
+      ]
+    },
+    {
+      "handle": "s",
+      "proportional": true,
+      "aligned": true,
+      "noEncodeWhileHeld": true,
+      "canvas": [
+        "1100",
+        "600"
+      ]
+    },
+    {
+      "handle": "sw",
+      "proportional": true,
+      "aligned": true,
+      "noEncodeWhileHeld": true,
+      "canvas": [
+        "1100",
+        "600"
+      ]
+    },
+    {
+      "handle": "w",
+      "proportional": true,
+      "aligned": true,
+      "noEncodeWhileHeld": true,
+      "canvas": [
+        "1100",
+        "600"
+      ]
+    }
+  ]
+}

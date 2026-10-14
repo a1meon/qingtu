@@ -4,6 +4,7 @@ import {cropEdges,changeCropEdge} from '../../engine/stitch-edits.mjs';
 import {addFlushHandler} from '../lifecycle.js';
 import {ImageSplitControls} from './ImageSplitControls.jsx';
 import {CanvasCropOverlay} from './CanvasCropOverlay.jsx';
+import {CROP_HANDLES} from '../../engine/crop-transform.mjs';
 
 const empty={left:0,right:0,top:0,bottom:0};
 const names={left:'左',right:'右',top:'上',bottom:'下'};
@@ -51,10 +52,10 @@ export const ImageEditor=forwardRef(function ImageEditor({image,value,open,place
  function finish(){pointer.current=false;commit().catch(e=>setError(e.message));}
  function startCrop(edge){
   clearTimeout(timer.current);cancelAnimationFrame(frame.current);frame.current=null;
-  dragBefore.current={draft:latest.current,touched:touched.current,prefill:prefill.current,side};pointer.current=true;setSide(edge);
-  callbacks.current.onPreview(prefill.current?original():latest.current,{position:placement.rect});
+  dragBefore.current={draft:latest.current,touched:touched.current,prefill:prefill.current,side};pointer.current=true;setSide(CROP_HANDLES[edge].find(candidate=>['left','right'].includes(candidate)===(axis==='horizontal'))||CROP_HANDLES[edge][0]);
+  callbacks.current.onPreview(prefill.current?original():latest.current,{gesture:true});
  }
- function previewCrop(edit,position){touched.current=true;prefill.current=false;latest.current=edit;setDraft(edit);callbacks.current.onPreview(edit,{position});}
+ function previewCrop(edit,position,guides=[]){touched.current=true;prefill.current=false;latest.current=edit;setDraft(edit);callbacks.current.onPreview(edit,{gesture:true,guides});}
  function endCrop(cancelled,pointerId){
   pointer.current=false;cropClick.current=pointerId;
   if(cancelled){const before=dragBefore.current;latest.current=before.draft;touched.current=before.touched;prefill.current=before.prefill;setDraft(before.draft);setSide(before.side);callbacks.current.onPreview(before.touched?before.draft:null);if(before.touched)timer.current=setTimeout(()=>commit().catch(e=>setError(e.message)),450);return Promise.resolve();}
@@ -69,7 +70,7 @@ export const ImageEditor=forwardRef(function ImageEditor({image,value,open,place
   return <button aria-label={`裁剪${names[edge]}边`} aria-pressed={active} className={active?'active':''} disabled={disabled} onClick={()=>chooseSide(edge)}>{names[edge]}</button>;
  }
  return <div ref={root} className="inline-image-controls" hidden={hidden} onKeyDown={event=>{if(event.key==='Escape'){event.stopPropagation();close();}}}>
-  {open&&mode==='crop'&&<CanvasCropOverlay image={image} rect={placement.rect} scale={placement.scale} value={prefill.current?original():draft} disabled={disabled} onStart={startCrop} onPreview={previewCrop} onEnd={endCrop}/>}
+  {open&&mode==='crop'&&<CanvasCropOverlay image={image} project={placement.project} targets={placement.targets} rect={placement.rect} scale={placement.scale} value={prefill.current?original():draft} disabled={disabled} onStart={startCrop} onPreview={previewCrop} onEnd={endCrop}/>}
   <div className="inline-image-tools editor-mode" role="group" aria-label="图片操作" style={placementRef.current.tools}>
    <button className={open&&mode==='crop'?'active':''} aria-pressed={open&&mode==='crop'} disabled={disabled} onClick={()=>activate('crop')}><Crop size={17}/>裁剪</button>
    <button className={open&&mode==='split'?'active':''} aria-pressed={open&&mode==='split'} disabled={disabled||image.width<2&&image.height<2} onClick={()=>activate('split')}><Scissors size={17}/>分割</button>

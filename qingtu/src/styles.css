@@ -175,6 +175,14 @@ label,h2 { display:block; font-size:16px; font-weight:700; margin-bottom:14px; l
 .crop-edge-handle span { display:block; border:2px solid #fff; border-radius:4px; background:#08a6ed; box-shadow:0 1px 3px #155f8526; }
 .crop-edge-left span,.crop-edge-right span { width:7px; height:24px; }
 .crop-edge-top span,.crop-edge-bottom span { width:24px; height:7px; }
+.crop-corner-handle { width:22px; height:22px; transform:translate(-50%,-50%); z-index:2; }
+.crop-edge-nw,.crop-edge-sw { left:0; }
+.crop-edge-ne,.crop-edge-se { left:100%; }
+.crop-edge-nw,.crop-edge-ne { top:0; }
+.crop-edge-sw,.crop-edge-se { top:100%; }
+.crop-edge-nw,.crop-edge-se { cursor:nwse-resize; }
+.crop-edge-ne,.crop-edge-sw { cursor:nesw-resize; }
+.crop-corner-handle span { width:11px; height:11px; border-radius:3px; }
 .inline-image-editor .crop-direction { gap:5px; margin:0 0 8px; }
 .inline-image-editor .crop-direction button { padding:4px 10px; font-size:12px; box-shadow:none; }
 .inline-split-actions { display:flex; justify-content:flex-end; gap:8px; margin-top:9px; }
@@ -360,6 +368,7 @@ label,h2 { display:block; font-size:16px; font-weight:700; margin-bottom:14px; l
  .control-section { padding:8px 0 12px; }
  .control-section:first-child { padding-top:8px; }
  label,h2 { margin-bottom:8px; }
+ .canvas-settings-heading { margin-bottom:8px; }
  .number-with-unit,.dropdown-trigger { height:46px; }
  .layout-options button { height:46px; }
  .target-control,.unit-dropdown { height:50px; }

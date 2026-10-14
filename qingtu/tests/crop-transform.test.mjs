@@ -26,3 +26,19 @@ test('split source windows crop in piece pixels and missing linkage defaults to 
  const piece={...image,source:{left:100,top:0,width:100,height:200,fullWidth:400,fullHeight:200}};
  const next=cropFromDrag(piece,undefined,rect,'top',0,15);assert.deepEqual(next.edit.edges,{left:0,right:0,top:30,bottom:0});assert.deepEqual(next.edit.links,{horizontal:true,vertical:false});assert.equal(next.position.height,85);assert.equal(next.position.y,35);assert.equal(piece.source.left,100);
 });
+test('all four corners crop their two source edges independently without changing the opposite edges',()=>{
+ for(const [handle,dx,dy,left,right,top,bottom] of [['nw',5,10,10,0,20,0],['ne',-5,10,0,10,20,0],['se',-5,-10,0,10,0,20],['sw',5,-10,10,0,0,20]]){
+  const next=cropFromDrag(image,edit,rect,handle,dx,dy);
+  assert.deepEqual(next.edit.edges,{left,right,top,bottom});
+  assert.deepEqual(next.position,{x:10+left/2,y:20+top/2,width:45,height:90});
+ }
+});
+test('corner crops respect each axis linkage separately and restore available content without crossing',()=>{
+ const linked={edges:{left:20,right:20,top:30,bottom:40},links:{horizontal:true,vertical:false}},pose={x:10,y:20,width:60,height:65};
+ const inward=cropFromDrag(image,linked,pose,'ne',-5,5);
+ assert.deepEqual(inward.edit.edges,{left:25,right:25,top:40,bottom:40});
+ const outward=cropFromDrag(image,linked,pose,'nw',-1000,-1000);
+ assert.deepEqual(outward.edit.edges,{left:0,right:0,top:0,bottom:40});
+ assert.deepEqual(outward.position,{x:-10,y:5,width:100,height:80});
+ assert.throws(()=>cropFromDrag(image,linked,pose,'invalid',0,0),/裁剪位置/);
+});
