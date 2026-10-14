@@ -1,0 +1,87 @@
+{
+  "passed": true,
+  "foregroundMs": 62.71849999999995,
+  "foregroundNoEncoding": true,
+  "backgroundDoesNotBlockEditing": true,
+  "emptyStartup": true,
+  "splitFromFullOriginal": true,
+  "restoresSourceScaleAndCenter": true,
+  "horizontalIsTopBottom": true,
+  "verticalIsLeftRight": true,
+  "draggableDivider": true,
+  "noEncodeDuringDividerDrag": true,
+  "confirmationRequired": true,
+  "nestedSplit": true,
+  "oneAssetPerOriginal": true,
+  "restoreAfterReload": true,
+  "output": {
+    "file": "图像 1-qingtu-2.png",
+    "width": 5995,
+    "height": 2398,
+    "bytes": 20983625,
+    "limit": 40000000
+  },
+  "desktopExport": {
+    "file": "图像 1-qingtu-2.png",
+    "width": 5995,
+    "height": 2398,
+    "bytes": 20983625,
+    "sha256": "f0c2e6f2053037c4e7a8163e9ed92473355be442e3db4101b82f45386913455b",
+    "fullColour": true
+  },
+  "browserExport": {
+    "file": "browser-split.png",
+    "width": 600,
+    "height": 400,
+    "bytes": 503907,
+    "sha256": "1bba065b7cd4e106acc027edea22f83547a63dc338d980b84314bf5d189e613e",
+    "fullColour": true
+  },
+  "browser": {
+    "passed": true,
+    "originalBlobCount": 1,
+    "splitFromFullOriginal": true,
+    "ignoredManualCrop": true,
+    "draggableDivider": true,
+    "splitAt": 614,
+    "restoredAfterReload": true,
+    "noCanvasInitiallyOrAfterClear": true,
+    "sourceAssetId": "6745a6772cd2c6ef914bec389a5aaa19e96701ee18ed1aa615a59b8d386695bb"
+  },
+  "benchmark": {
+    "composeMs": 301.99530000000004,
+    "results": [
+      {
+        "level": 9,
+        "elapsedMs": 7729.867700000001,
+        "bytes": 19454004,
+        "pixelsEqual": true
+      },
+      {
+        "level": 6,
+        "elapsedMs": 1524.8325999999997,
+        "bytes": 20021126,
+        "pixelsEqual": true
+      },
+      {
+        "level": 3,
+        "elapsedMs": 724.8122999999996,
+        "bytes": 20987693,
+        "pixelsEqual": true
+      },
+      {
+        "level": 1,
+        "elapsedMs": 559.5541000000012,
+        "bytes": 31855599,
+        "pixelsEqual": true
+      }
+    ],
+    "current": {
+      "renderMs": 1359.5573000000004,
+      "reuseMs": 0.31040000000029977,
+      "bytes": 20987693,
+      "pixelsEqual": true,
+      "independentExportToken": true
+    }
+  }
+}

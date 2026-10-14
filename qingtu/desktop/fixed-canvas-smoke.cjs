@@ -30,7 +30,7 @@ async function waitFor(win,expr){for(let n=0;n<600;n++){if(await win.webContents
    }finally{win.webContents.debugger.detach();}
    await ready();
   }
-  await waitFor(win,"!!document.querySelector('[aria-label=\"图像拼接\"]')");await js("document.querySelector('[aria-label=\"图像拼接\"]').click()");await waitFor(win,"!!document.querySelector('[aria-label=\"添加拼接图片\"]')&&!document.querySelector('.project-name').disabled");
+  await waitFor(win,"!!document.querySelector('[aria-label=\"图像拼接\"]')");await js("document.querySelector('[aria-label=\"图像拼接\"]').click()");await waitFor(win,"!!document.querySelector('[aria-label=\"新建画布\"]')&&!document.querySelector('[aria-label=\"新建画布\"]').disabled");assert.equal((await store.list()).length,0);await js("document.querySelector('[aria-label=\"新建画布\"]').click()");await waitFor(win,"!!document.querySelector('[aria-label=\"添加拼接图片\"]')&&!document.querySelector('.project-name').disabled");
   assert.deepEqual(await js("[document.querySelector('#stitch-width').value,document.querySelector('#stitch-height').value]"),['5995','2398']);assert.equal(await js("document.querySelector('.stitch-canvas').dataset.canvasWidth"),'5995');
   await edit('#stitch-target',40);await js("document.querySelector('[aria-label=\"添加拼接图片\"]').click()");await ready();let p=await load();assert.equal(p.images.length,4);assert.equal(p.canvasMode,'fixed');assert.ok(p.positions[p.images[3].id].x+p.positions[p.images[3].id].width>5995);
   const reports=[],sharp=(await import('sharp')).default;

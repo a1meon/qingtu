@@ -1,6 +1,8 @@
+import {sourceWindow} from './image-source.mjs';
 export const cropLimit=(image,axis)=>Math.floor(((axis==='horizontal'?image.width:image.height)-1)/2);
 
 export function imageGeometry(image,edit){
+ sourceWindow(image);
  const axis=edit?.axis??'horizontal',amount=edit?.amount??0;
  if(edit?.fraction!=null){
   const fraction=edit.fraction;
@@ -12,8 +14,11 @@ export function imageGeometry(image,edit){
  return {left,top,width:image.width-left*2,height:image.height-top*2};
 }
 export function cropFractions(image,source){
- if(!source.left&&!source.top)return null;
- return {left:source.left/image.width,right:source.left/image.width,top:source.top/image.height,bottom:source.top/image.height};
+ const window=sourceWindow(image),left=window.left+source.left,top=window.top+source.top;
+ let right=window.fullWidth-left-source.width,bottom=window.fullHeight-top-source.height;
+ if(Math.abs(right-left)<1e-9)right=left;if(Math.abs(bottom-top)<1e-9)bottom=top;
+ if(!left&&!top&&!right&&!bottom)return null;
+ return {left:left/window.fullWidth,right:right/window.fullWidth,top:top/window.fullHeight,bottom:bottom/window.fullHeight};
 }
 export function setImageEdit(project,id,edit){
  const image=project.images.find(image=>image.id===id);if(!image)throw new Error('图片已移除');

@@ -48,14 +48,14 @@ export function useProjects(){
  const remove=async id=>{
   await flush();await repository.remove(id);await api.stitchRelease(id);
   const rest=projects.filter(p=>p.id!==id);setProjects(rest);
-  if(current.current?.id===id){current.current=null;setProject(null);if(rest.length)await open(rest[0].id);else await create();}
+  if(current.current?.id===id){current.current=null;setProject(null);if(rest.length)await open(rest[0].id);}
  };
  const clear=async()=>{
   await flush();++loadRevision.current;setLoading(true);
   try{
    const list=await repository.list();
    for(const value of list){await repository.remove(value.id);await api.stitchRelease(value.id);}
-   const fresh=newProject();fresh.name='图像 1';current.current=fresh;setProject(fresh);setProjects([]);await persist(fresh);
+   current.current=null;setProject(null);setProjects([]);setSaveError('');
   }catch(error){
    const rest=await repository.list();setProjects(rest);
    if(rest.length)await open(rest.find(p=>p.id===current.current?.id)?.id||rest[0].id);
@@ -64,7 +64,7 @@ export function useProjects(){
  };
  useEffect(()=>{
   let live=true;
-  repository.list().then(async list=>{if(!live)return;setProjects(list);if(list.length)await open(list[0].id);else await create();}).catch(e=>setSaveError(e.message)).finally(()=>setLoading(false));
+  repository.list().then(async list=>{if(!live)return;setProjects(list);if(list.length)await open(list[0].id);}).catch(e=>setSaveError(e.message)).finally(()=>setLoading(false));
   return()=>{live=false;};
  },[]);
  useEffect(()=>{

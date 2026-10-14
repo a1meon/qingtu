@@ -27,6 +27,7 @@ const pause=ms=>new Promise(resolve=>setTimeout(resolve,ms));
   win.once('closed',()=>{if(!finished||calls!==1){console.error('Busy retry lost the original '+mode+' operation');app.exit(1);}});
   await js("window.qingtu.windowAction('close')");return;
  }
+ await waitFor("!!document.querySelector('[aria-label=\"新建画布\"]')&&!document.querySelector('[aria-label=\"新建画布\"]').disabled");await js("document.querySelector('[aria-label=\"新建画布\"]').click()");
  await waitFor("!document.querySelector('[aria-label=\"添加拼接图片\"]').disabled");
  await js("(()=>{const el=document.querySelector('#stitch-width');Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(el,'1200');el.dispatchEvent(new Event('input',{bubbles:true}));})()");
  await js("(()=>{const el=document.querySelector('#stitch-height');Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(el,'480');el.dispatchEvent(new Event('input',{bubbles:true}));})()");
@@ -34,7 +35,7 @@ const pause=ms=>new Promise(resolve=>setTimeout(resolve,ms));
  await js("window.dispatchEvent(new KeyboardEvent('keydown',{key:'o',ctrlKey:true,bubbles:true}))");await waitFor("document.querySelectorAll('.stitch-layer').length===2 && document.querySelector('.save-status').textContent==='已自动保存'");
  let started=false,finished=false;
  const render=stitching.render.bind(stitching);stitching.render=async(...args)=>{started=true;await pause(1000);const result=await render(...args);finished=true;await fs.writeFile(path.join(root,'result.json'),JSON.stringify({width:result.width,height:result.height,bytes:result.bytes,closeWaitedForActualPreview:true}));return result;};
- await js("document.querySelector('[aria-label=\"一键优化\"]').click()");await waitFor("document.querySelector('.stitch-dialog h2')?.textContent==='生成预览'");
+ await js("document.querySelector('[aria-label=\"一键优化\"]').click()");await waitFor("document.querySelector('.stitch-dialog h2')?.textContent==='优化完成'");assert.equal(started,false,'foreground completes before full encoding');await js("document.querySelector('.dialog-confirm').click()");for(let n=0;n<100&&!started;n++)await pause(10);
  assert.ok(started);assert.equal(finished,false);const project=await store.load((await store.list())[0].id);assert.ok(project.images.every(image=>project.edits[image.id].fraction>0));
  win.once('closed',()=>{if(!finished){console.error('Window closed before optimization finished');app.exit(1);}});
  await js("window.qingtu.windowAction('close')");

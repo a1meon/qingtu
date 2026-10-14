@@ -23,3 +23,9 @@ test('all-project export skips empty canvases and counts the active unsaved stat
  assert.deepEqual(exportProjectIds(projects,{id:'one',images:[]}),['three']);
  assert.deepEqual(exportProjectIds([{id:'empty',count:0}],null),[]);
 });
+test('foreground optimization waits for durable save and actual layout preview, leaving full encoding to the background',async()=>{
+ const events=[],saved=deferred(),previewed=deferred();
+ const work=performOptimization({project:project(),onPhase:phase=>events.push(phase),save:async()=>{await saved.promise;events.push('saved');},preparePreview:async()=>{events.push('layout');await previewed.promise;return {width:5995,height:2398};},render:()=>assert.fail('foreground must not encode')});
+ assert.deepEqual(events,['calculate','save']);saved.resolve();await new Promise(resolve=>setImmediate(resolve));assert.deepEqual(events,['calculate','save','saved','render','layout']);
+ let finished=false;work.then(()=>finished=true);await new Promise(resolve=>setImmediate(resolve));assert.equal(finished,false);previewed.resolve();const result=await work;assert.equal(result.layoutOnly,true);assert.equal(result.result.width,5995);
+});

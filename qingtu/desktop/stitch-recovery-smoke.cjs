@@ -18,6 +18,7 @@ async function waitFor(win,expression){for(let n=0;n<300;n++){if(await win.webCo
  const js=expression=>win.webContents.executeJavaScript(expression);
  await waitFor(win,"!!document.querySelector('[aria-label=\"图像拼接\"]')");
  await js("document.querySelector('[aria-label=\"图像拼接\"]').click()");
+ if(phase==='write'){await waitFor(win,"!!document.querySelector('[aria-label=\"新建画布\"]')&&!document.querySelector('[aria-label=\"新建画布\"]').disabled");await js("document.querySelector('[aria-label=\"新建画布\"]').click()");}
  await waitFor(win,"!!document.querySelector('.project-name') && !document.querySelector('.project-name').disabled");
  if(phase==='write'){
   console.log('Importing source');

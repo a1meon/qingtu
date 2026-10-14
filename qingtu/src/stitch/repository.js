@@ -56,8 +56,8 @@ export const repository={
    }
   }
   if(!previews)return project;
-  const urls=await api.stitchPreviews(project.images.map(i=>i.assetId));
-  return {...project,images:project.images.map((i,n)=>({...i,preview:urls[n]}))};
+  const ids=[...new Set(project.images.map(i=>i.assetId))],urls=await api.stitchPreviews(ids),byId=new Map(ids.map((id,n)=>[id,urls[n]]));
+  return {...project,images:project.images.map(i=>({...i,preview:byId.get(i.assetId)}))};
  },
  async remove(id){
   if(desktop)return api.stitchDelete(id);
