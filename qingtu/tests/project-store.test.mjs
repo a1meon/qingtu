@@ -7,6 +7,7 @@ import sharp from 'sharp';
 import {ProjectStore} from '../engine/project-store.mjs';
 import {optimizeHorizontal} from '../engine/stitch-optimize.mjs';
 import {recordImportOrder,resetProject} from '../engine/stitch-reset.mjs';
+import {rememberCanvasLayout,switchCanvasLayout} from '../engine/canvas-layout-state.mjs';
 const fixture=()=>sharp({create:{width:80,height:60,channels:4,background:'#7799aa80'}}).png().toBuffer();
 async function setup(t){const root=await fs.mkdtemp(path.join(os.tmpdir(),'qingtu-project-'));t.after(()=>fs.rm(root,{recursive:true,force:true}));return {root,store:new ProjectStore(root)};}
 const project=image=>({id:'test-project',name:'测试',images:[image],layout:'horizontal',positions:{},grid:{rows:1,columns:1},export:{longEdge:5999,format:'png',targetBytes:10000000}});
@@ -60,4 +61,12 @@ test('atomic recovery retains fixed canvas, off-canvas transforms and independen
  assert.equal(restored.recovered,true);assert.deepEqual(restored.canvas,p.canvas);assert.deepEqual(restored.positions,p.positions);assert.ok((await store.readAsset(image.assetId)).equals(await fixture()));
  assert.throws(()=>store.save({...p,positions:{[image.id]:{x:0,y:0,width:800,height:NaN}}}),/位置或尺寸/);
  await store.save({...p,canvas:{width:6000,height:2000}});assert.deepEqual((await store.load(p.id)).canvas,{width:6000,height:2000},'invalid user settings remain recoverable while layout validation blocks export');
+});
+test('layout memories survive a normal reload and atomic recovery without dropping manual transforms',async t=>{
+ const {store}=await setup(t),image=await store.import(await fixture(),'memory.png');delete image.preview;
+ let p={...project(image),canvasMode:'fixed',canvas:{width:600,height:240},positions:{[image.id]:{x:-20,y:30,width:320,height:200}}};
+ p=switchCanvasLayout(p,'free');p.positions={[image.id]:{x:400,y:-80,width:120,height:300}};p=rememberCanvasLayout(p);await store.save(p);
+ const reopened=await new ProjectStore(store.root).load(p.id);assert.deepEqual(reopened.layoutStates,p.layoutStates);assert.deepEqual(switchCanvasLayout(reopened,'horizontal').positions,{[image.id]:{x:-20,y:30,width:320,height:200}});
+ await store.save({...p,name:'later'});await fs.writeFile(store.file(p.id),'interrupted');const recovered=await store.load(p.id);assert.equal(recovered.recovered,true);assert.deepEqual(recovered.layoutStates,p.layoutStates);
+ assert.throws(()=>store.save({...p,layoutStates:{free:{[image.id]:{x:NaN,y:0,width:1,height:1}}}}),/布局记忆/);assert.deepEqual((await store.load(p.id)).layoutStates,p.layoutStates);
 });

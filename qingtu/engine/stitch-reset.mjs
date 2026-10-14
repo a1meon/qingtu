@@ -1,6 +1,7 @@
 import {setImageEdit} from './stitch-edits.mjs';
 import {appendFreeImages} from './stitch-layout.mjs';
 import {appendFixedImages} from './canvas-fixed.mjs';
+import {removeLayoutImageStates} from './canvas-layout-state.mjs';
 
 export function validateImportOrder(project){
  if(project.initialOrder===undefined)return;
@@ -22,7 +23,7 @@ export function appendProjectImages(project,images){
 }
 export function removeProjectImage(project,id){
  const order=knownImportOrder(project),edits={...project.edits},positions={...project.positions};delete edits[id];delete positions[id];
- const next={...project,images:project.images.filter(image=>image.id!==id),edits,positions};
+ const next={...project,images:project.images.filter(image=>image.id!==id),edits,positions,...(project.layoutStates?{layoutStates:removeLayoutImageStates(project.layoutStates,id)}:{})};
  return order?{...next,initialOrder:order.filter(item=>item!==id)}:next;
 }
 export function resetProject(project){

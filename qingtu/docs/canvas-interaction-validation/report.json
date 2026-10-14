@@ -1,0 +1,97 @@
+{
+  "passed": true,
+  "date": "2026-10-14",
+  "platform": "Windows native Electron + Chrome browser preview",
+  "tests": 198,
+  "layoutMemories": true,
+  "outsideFadedAndSelectable": true,
+  "insideNormalLayer": true,
+  "canvasPresets": [
+    [
+      "2.5:1",
+      5995,
+      2398
+    ],
+    [
+      "21:9",
+      5999,
+      2571
+    ],
+    [
+      "16:9",
+      5984,
+      3366
+    ],
+    [
+      "4:3",
+      5996,
+      4497
+    ],
+    [
+      "1:1",
+      5999,
+      5999
+    ]
+  ],
+  "directCanvasSplit": true,
+  "unconfirmedSplitPreserved": true,
+  "splitNoEncodingDuringDrag": true,
+  "optimizationAutoDismisses": true,
+  "optimizationForegroundMs": 62.36290000000008,
+  "optimizationForegroundNoEncoding": true,
+  "layoutStateReloadAndAtomicBackup": true,
+  "originalBlobsUnchanged": true,
+  "browserPixelDifference": {
+    "reference": "Original-source composition at the requested 600x240 canvas, excluding all UI overlays",
+    "maxError": 0,
+    "rmse": 0,
+    "alphaMaxError": 0
+  },
+  "browserExport": {
+    "file": "output/playwright/browser-canvas-review.png",
+    "width": 600,
+    "height": 240,
+    "bytes": 310386,
+    "limitBytes": 10000000,
+    "sha256": "628ac97b04810b29c5a303d152001635abea086277cb254a0d5bc31bd94b95ed"
+  },
+  "nativeSplitExport": {
+    "file": "artifacts\\split-speed\\图像 1-qingtu-3.png",
+    "width": 5995,
+    "height": 2398,
+    "bytes": 20983625,
+    "limitBytes": 40000000,
+    "sha256": "f0c2e6f2053037c4e7a8163e9ed92473355be442e3db4101b82f45386913455b"
+  },
+  "nativeFixedExports": [
+    {
+      "name": "fixed-right-append-qingtu-4.png",
+      "width": 5995,
+      "height": 2398,
+      "bytes": 21106597,
+      "limit": 40000000,
+      "sha256": "1fec64685a31349ef1aab957f8af8a7e8550db54c4988c5acd543ee8ea420c17"
+    },
+    {
+      "name": "fixed-shift-clipped-qingtu-4.png",
+      "width": 5995,
+      "height": 2398,
+      "bytes": 21089019,
+      "limit": 40000000,
+      "sha256": "7801ad72aa47315dbc44d236e8f3fca54134d882e2c44d228e708ed029e5c235"
+    },
+    {
+      "name": "fixed-2-to-1-optimized-qingtu-4.png",
+      "width": 600,
+      "height": 300,
+      "bytes": 405869,
+      "limit": 40000000,
+      "sha256": "d80b33cfa1f71cc028a7af904f3127484ae087b9122ddf2e73745aa47f71fa89"
+    }
+  ],
+  "notVerified": [
+    "Mac native runtime",
+    "Packaged installer installation",
+    "User 28 MB source revalidation in this UI iteration"
+  ]
+}

@@ -85,10 +85,13 @@ label,h2 { display:block; font-size:16px; font-weight:700; margin-bottom:14px; l
 .stitch-canvas-area { flex:1; min-height:0; width:100%; display:flex; align-items:center; justify-content:center; overflow:hidden; }
 .stitch-canvas { position:relative; flex-shrink:0; background:#fff; box-shadow:0 4px 18px #2a43551a; }
 .stitch-content { position:absolute; inset:0; overflow:hidden; }
+.stitch-ghosts { position:absolute; inset:0; opacity:.22; pointer-events:none; clip-path:polygon(evenodd,-100000px -100000px,100000px -100000px,100000px 100000px,-100000px 100000px,-100000px -100000px,0 0,0 100%,100% 100%,100% 0,0 0); }
+.stitch-ghost { position:absolute; overflow:hidden; user-select:none; touch-action:none; pointer-events:auto; cursor:grab; }
+.stitch-canvas-edge { position:absolute; inset:0; pointer-events:none; border:1px solid #b6cbdc; z-index:1; }
 .fixed-empty { position:absolute; inset:0; justify-content:center; gap:12px; transform:none; }
 .fixed-empty .empty-illustration { width:190px; height:145px; margin:-20px 0; }
 .stitch-layer { position:absolute; overflow:hidden; user-select:none; touch-action:none; outline:none; }
-.stitch-layer img { width:100%; height:100%; object-fit:fill; pointer-events:none; }
+.stitch-layer img,.stitch-ghost img { width:100%; height:100%; object-fit:fill; pointer-events:none; }
 .stitch-output-preview { position:absolute; inset:0; width:100%; height:100%; object-fit:fill; pointer-events:none; }
 .stitch-canvas.has-output-preview:not([data-interacting="true"]) .stitch-layer img { visibility:hidden; }
 .stitch-canvas[data-interacting="true"] .stitch-output-preview { visibility:hidden; }
@@ -133,11 +136,12 @@ label,h2 { display:block; font-size:16px; font-weight:700; margin-bottom:14px; l
 .stitch-invalid { color:#a76373; font-size:14px; }
 .layout-options { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:8px; }
 .dimension-inputs.stitch-pair { grid-template-columns:minmax(0,1fr) minmax(0,1fr); }
+.canvas-settings-heading { display:flex; align-items:center; justify-content:space-between; height:20.8px; margin-bottom:14px; }
+.canvas-settings-heading h2 { margin:0; }
+.canvas-settings-heading .canvas-preset { width:118px; height:30px; padding:0 10px; border-radius:10px; font-size:12px; }
 .editor-mode { margin-bottom:12px; }
-.split-preview-frame { display:flex; justify-content:center; padding:8px; background:#f5faff; border-radius:12px; margin:12px 0 6px; }
-.split-image-preview { position:relative; overflow:hidden; background:white; max-width:100%; flex-shrink:0; }
-.split-image-preview img { position:absolute; width:100%; height:100%; max-width:none; object-fit:fill; pointer-events:none; user-select:none; }
-.split-divider { position:absolute; padding:0; border:0; background:transparent; border-radius:0; touch-action:none; z-index:1; }
+.canvas-split-target { position:absolute; z-index:4; pointer-events:none; outline:1px solid #0aa8f2; }
+.split-divider { position:absolute; padding:0; border:0; background:transparent; border-radius:0; touch-action:none; pointer-events:auto; z-index:1; }
 .split-divider.split-x { top:0; bottom:0; width:16px; transform:translateX(-50%); cursor:ew-resize; }
 .split-divider.split-y { left:0; right:0; height:16px; transform:translateY(-50%); cursor:ns-resize; }
 .split-divider::before { content:''; position:absolute; background:#0aa8f2; box-shadow:0 0 0 1px #fffe; }
@@ -145,7 +149,8 @@ label,h2 { display:block; font-size:16px; font-weight:700; margin-bottom:14px; l
 .split-y::before { top:7px; height:2px; left:0; right:0; }
 .split-grip { position:absolute; left:50%; top:50%; width:10px; height:24px; border:2px solid white; border-radius:5px; background:#0aa8f2; transform:translate(-50%,-50%); box-shadow:0 1px 4px #064d7433; }
 .split-y .split-grip { width:24px; height:10px; }
-.split-source-size { font-size:11px; color:#7790a4; text-align:center; margin:0 0 10px; }
+.split-source-size { font-size:11px; color:#7790a4; text-align:center; margin:10px 0 0; }
+.split-instruction { font-size:12px; color:#66839a; margin:0 0 14px; }
 .split-confirm { width:100%; margin-top:14px; min-height:34px; }
 .split-error { color:#cb4747; font-size:12px; margin:8px 0; }
 .layout-options button { height:51px; padding:8px 0; border:2px solid #dbe9f2; border-radius:13px; background:#f7fcff; box-shadow:0 3px 0 #dbe9f2; font-size:14px; font-weight:750; }
@@ -201,11 +206,11 @@ label,h2 { display:block; font-size:16px; font-weight:700; margin-bottom:14px; l
 .optimization-steps .failed i>span { background:#cf6a82; }
 .stitch-dialog-actions { display:flex; gap:12px; margin-top:22px; }
 .stitch-dialog-actions button { flex:1; min-height:43px; border:2px solid #dce9f2; border-radius:12px; font-size:14px; font-weight:750; background:#f6fbfe; color:#678398; box-shadow:0 3px 0 #dce9f2; }
-.stitch-dialog-actions .dialog-confirm { border-color:#097bbc; background:#097bbc; color:white; box-shadow:0 3px 0 #08659c; }
+.stitch-dialog-actions .dialog-confirm { border-color:var(--blue); background:var(--blue); color:white; box-shadow:0 3px 0 var(--blue-edge); }
 .stitch-dialog-actions .dialog-confirm.danger { border-color:#c74665; background:#c74665; box-shadow:0 3px 0 #a93451; }
-.stitch-dialog-actions .optimization-dismiss { color:#48677e; background:#f4f8fc; border-color:#dce7f0; box-shadow:0 3px 0 #dae4ed; }
+.stitch-dialog-actions .dialog-cancel { color:#68849a; background:white; border-color:#dce7f0; box-shadow:0 3px 0 #dae4ed; }
 .stitch-dialog-actions button:active:not(:disabled) { transform:translateY(2px); box-shadow:none; }
-.stitch-dialog-actions button:disabled { opacity:.6; }
+.stitch-dialog-actions button:disabled { opacity:1; color:#a0b4c3; background:#f1f5f8; border-color:#e2ebf1; box-shadow:0 3px 0 #e2ebf1; }
 @keyframes optimization-progress { 0%,100% { transform:translateX(0); } 50% { transform:translateX(160%); } }
 @media (prefers-reduced-motion:reduce) { .optimization-progress-fill { animation:none; transform:translateX(80%); } }
 .canvas-area { flex:1; min-height:0; min-width:0; display:flex; align-items:center; justify-content:center; padding:14px 20px 26px; overflow:hidden; }

@@ -5,6 +5,7 @@ import {calculateLayout} from '../../engine/stitch-layout.mjs';
 import {addFlushHandler} from '../lifecycle.js';
 import {explicitFormat} from '../export-format.js';
 import {knownImportOrder} from '../../engine/stitch-reset.mjs';
+import {rememberCanvasLayout} from '../../engine/canvas-layout-state.mjs';
 
 export function useProjects(){
  const [projects,setProjects]=useState([]),[project,setProject]=useState(null),[saving,setSaving]=useState(false),[saveError,setSaveError]=useState(''),[loading,setLoading]=useState(true);
@@ -22,7 +23,8 @@ export function useProjects(){
  };
  const update=change=>{
   const previous=current.current;if(!previous)return;
-  const next=typeof change==='function'?change(previous):{...previous,...change};
+  const changed=typeof change==='function'?change(previous):{...previous,...change};
+  const next=rememberCanvasLayout(changed);
   try{const layout=calculateLayout(next);if(next.canvasMode!=='fixed')next.canvas={width:layout.width,height:layout.height};next.crops=Object.fromEntries(layout.rects.map(r=>[r.id,r.crop]));}catch{if(next.canvasMode!=='fixed')next.canvas=null;next.crops={};}
   current.current=next;setProject(next);return persist(next);
  };
