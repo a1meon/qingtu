@@ -1,0 +1,41 @@
+{
+  "passed": true,
+  "date": "2026-10-14",
+  "platform": "Windows",
+  "commandsPassed": [
+    "npm run build",
+    "npm run smoke:ui"
+  ],
+  "topBottomDoNotSelectHorizontal": true,
+  "onlyActiveAxisHighlighted": true,
+  "linkedActivePairBothSelected": true,
+  "linkagePreferencesRetained": true,
+  "noEncodingOnDirectionChange": true,
+  "portrait": {
+    "pictureCenter": 583.8750152587891,
+    "panelCenter": 583.8875122070312,
+    "below": true,
+    "difference": 0.0124969482421875,
+    "placementError": 0.0124969482421875,
+    "viewportGuarded": false
+  },
+  "freeImage": {
+    "pictureCenter": 296.21876525878906,
+    "panelCenter": 296.6000061035156,
+    "below": true,
+    "difference": 0.3812408447265625,
+    "placementError": 0,
+    "viewportGuarded": true
+  },
+  "prefillRegression": {
+    "passed": true,
+    "topEditAfterReopenDoesNotApplyHorizontalPrefill": true,
+    "edges": {
+      "left": 0,
+      "right": 0,
+      "top": 40,
+      "bottom": 0
+    }
+  },
+  "source": "Isolated browser projects with reproducible test diagrams and native UI smoke photographs"
+}

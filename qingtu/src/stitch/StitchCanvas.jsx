@@ -93,7 +93,7 @@ export function StitchCanvas({project,layout,onChange,onEdit,onContext,onRemove,
    </div>}
    {split&&selectedRect&&<CanvasSplitOverlay image={selectedImage} rect={selectedRect} scale={scale} value={split} onChange={onSplitChange} disabled={splitDisabled}/>}
    <div className="reorder-indicator" hidden/>
-   {selectedRect&&renderControls&&renderControls((()=>{const left=(bounds.width-layout.width*scale)/2,top=(bounds.height-layout.height*scale)/2-38,clamp=(value,min,max)=>Math.max(min,Math.min(max,value)),x=selectedRect.x*scale,y=selectedRect.y*scale,width=selectedRect.width*scale,height=selectedRect.height*scale;return {rect:selectedRect,scale,tools:{left:clamp(x+(width-154)/2,8-left,bounds.width-left-162),top:clamp(y-43,8-top,bounds.height-top-43)},panel:{left:clamp(x+width-300,8-left,bounds.width-left-308),top:clamp(y+height+10,48-top,bounds.height-top-(split?129:80))}};})())}
+   {selectedRect&&renderControls&&renderControls((()=>{const left=(bounds.width-layout.width*scale)/2,top=(bounds.height-layout.height*scale)/2-38,clamp=(value,min,max)=>Math.max(min,Math.min(max,value)),x=selectedRect.x*scale,y=selectedRect.y*scale,width=selectedRect.width*scale,height=selectedRect.height*scale;return {rect:selectedRect,scale,tools:{left:clamp(x+(width-154)/2,8-left,bounds.width-left-162),top:clamp(y-43,8-top,bounds.height-top-43)},panel:{left:clamp(x+(split?width-300:(width-300)/2),8-left,bounds.width-left-308),top:clamp(y+height+10,48-top,bounds.height-top-(split?129:80))}};})())}
   </div>:<div className="stitch-invalid">请调整画布</div>}
  </div>;
 }

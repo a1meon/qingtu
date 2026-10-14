@@ -47,7 +47,7 @@ export const ImageEditor=forwardRef(function ImageEditor({image,value,open,place
   if(prefill.current&&axis!==(['left','right'].includes(next)?'horizontal':'vertical')){const clean={edges:{...empty},links:{...latest.current.links}};latest.current=clean;setDraft(clean);prefill.current=false;}
   setSide(next);
  }
- function change(raw){preview({...latest.current,edges:changeCropEdge(image,latest.current.edges,side,raw,latest.current.links[axis])});clearTimeout(timer.current);if(!pointer.current)timer.current=setTimeout(()=>commit().catch(e=>setError(e.message)),450);}
+ function change(raw){const current=prefill.current&&axis==='vertical'?{...latest.current,edges:{...empty}}:latest.current;preview({...current,edges:changeCropEdge(image,current.edges,side,raw,current.links[axis])});clearTimeout(timer.current);if(!pointer.current)timer.current=setTimeout(()=>commit().catch(e=>setError(e.message)),450);}
  function finish(){pointer.current=false;commit().catch(e=>setError(e.message));}
  function startCrop(edge){
   clearTimeout(timer.current);cancelAnimationFrame(frame.current);frame.current=null;
@@ -65,7 +65,7 @@ export const ImageEditor=forwardRef(function ImageEditor({image,value,open,place
   setSide(edge);preview({...current,links:{...current.links,[pairAxis]:enabled},edges:enabled?changeCropEdge(image,current.edges,edge,current.edges[edge],true):current.edges});commit().catch(e=>setError(e.message));
  }
  function edgeButton(edge,pairAxis){
-  const active=draft.links[pairAxis]||side===edge;
+  const active=pairAxis===axis&&(draft.links[pairAxis]||side===edge);
   return <button aria-label={`裁剪${names[edge]}边`} aria-pressed={active} className={active?'active':''} disabled={disabled} onClick={()=>chooseSide(edge)}>{names[edge]}</button>;
  }
  return <div ref={root} className="inline-image-controls" hidden={hidden} onKeyDown={event=>{if(event.key==='Escape'){event.stopPropagation();close();}}}>
@@ -78,7 +78,7 @@ export const ImageEditor=forwardRef(function ImageEditor({image,value,open,place
    {mode==='split'&&splitDraft?<ImageSplitControls image={image} value={splitDraft} onChange={onSplitDraft} disabled={disabled} onConfirm={onSplit} onCancel={close}/>:<>
     <div className="crop-edge-options" role="group" aria-label="裁剪边">{pairs.map(pair=><div key={pair.axis} className="crop-edge-pair" role="group" aria-label={`${pair.name}裁剪`}>
      {edgeButton(pair.sides[0],pair.axis)}
-     <button className={`crop-link ${draft.links[pair.axis]?'active':''}`} aria-label={`关联${pair.name}裁剪`} aria-pressed={draft.links[pair.axis]} title={`${draft.links[pair.axis]?'取消':'开启'}${pair.name}联动`} disabled={disabled} onClick={()=>link(pair.axis)}>{draft.links[pair.axis]?<LinkSimple size={16}/>:<LinkSimpleBreak size={16}/>}</button>
+     <button className={`crop-link ${axis===pair.axis&&draft.links[pair.axis]?'active':''}`} aria-label={`关联${pair.name}裁剪`} aria-pressed={draft.links[pair.axis]} title={`${draft.links[pair.axis]?'取消':'开启'}${pair.name}联动`} disabled={disabled} onClick={()=>link(pair.axis)}>{draft.links[pair.axis]?<LinkSimple size={16}/>:<LinkSimpleBreak size={16}/>}</button>
      {edgeButton(pair.sides[1],pair.axis)}
     </div>)}
      <button className="crop-reset" aria-label="重置此图裁剪" title="重置此图裁剪" disabled={disabled} onClick={()=>{preview({...latest.current,edges:{...empty}});commit().catch(e=>setError(e.message));}}><ArrowCounterClockwise size={17}/></button>
