@@ -57,8 +57,11 @@ export function StitchCanvas({project,layout,onChange,onEdit,onContext,onRemove,
   delete canvas.current.dataset.interacting;canvas.current.querySelector('.snap-guides').replaceChildren();
   canvas.current.querySelector('.reorder-indicator').hidden=true;
   const rect=nextRect(g);
-  if(cancelled||Math.hypot((g.dx||0)*scale,(g.dy||0)*scale)<3){showRect(g.element,g.rect);showRect(g.ghost,g.rect);showRect(canvas.current.querySelector('.stitch-selection'),g.rect);return;}
-  if(g.reorder){showRect(g.element,g.rect);showRect(g.ghost,g.rect);const target=dropTarget(g);if(target&&target.id!==g.id)return onReorder(g.id,target.id);showRect(canvas.current.querySelector('.stitch-selection'),g.rect);return;}
+  // React skips unchanged style properties. Restore every temporary gesture
+  // value before committing, including axes the final layout keeps unchanged.
+  showRect(g.element,g.rect);showRect(g.ghost,g.rect);showRect(canvas.current.querySelector('.stitch-selection'),g.rect);
+  if(cancelled||Math.hypot((g.dx||0)*scale,(g.dy||0)*scale)<3)return;
+  if(g.reorder){const target=dropTarget(g);if(target&&target.id!==g.id)return onReorder(g.id,target.id);return;}
   const {x,y,width,height}=rect;return onChange({...project.positions,[g.id]:{x,y,width,height}},g.handle?'resize':'move');
  }
  function renderLayer(rect,ghost=false){

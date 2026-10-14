@@ -1,0 +1,35 @@
+{
+  "passed": true,
+  "date": "2026-10-14",
+  "platform": "Windows",
+  "beforeFixVerticalOffsetCssPixels": 30.987503051757812,
+  "afterFixMaxBoundsDifferenceCssPixels": 0,
+  "browserChecks": [
+    "宫格 diagonal reorder",
+    "竖排 diagonal reorder",
+    "横排 diagonal reorder",
+    "same-slot reorder",
+    "free move",
+    "cancelled free move",
+    "free resize"
+  ],
+  "browserSamples": 14,
+  "cropFrameAfterMoveAndResize": [
+    0,
+    0,
+    0,
+    0
+  ],
+  "noEncodeDuringGestures": true,
+  "commandsPassed": [
+    "npm run build",
+    "npm run smoke:ui",
+    "npm run smoke:recovery"
+  ],
+  "nativeChecks": [
+    "diagonal reorder in horizontal, vertical and grid layouts",
+    "selection matches image after free snapping and proportional resize",
+    "normal close flushes an unreleased gesture"
+  ],
+  "source": "Reproducible 4K test diagrams and bundled native smoke photographs; isolated test projects"
+}

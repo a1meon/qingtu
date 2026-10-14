@@ -51,3 +51,11 @@ Windows Electron 和浏览器已实测；本轮未重新验证用户约 28 MB �
 Chrome 独立测试项目逐项完成上边单独裁剪、左右联动拖动、右边数值、下边拖动、向外恢复、上下联动高亮、Escape 取消、刷新恢复和实际 PNG 导出。测试原图为可复现的 2160×3840 人物示意图，不是用户照片。最终裁剪上边 850 px、下边 50 px，输出 **353×480、20,687 字节**，低于 10,000,000 字节；以原始示意图独立裁剪缩放后的实际输出尺寸比较，RGB/alpha 最大误差与 RMSE 均为 0。详细记录见 [crop-edges-report.json](portrait-workflow-validation/crop-edges-report.json)。
 
 ![四边直接裁剪与两组联动](portrait-workflow-validation/crop-edges.png)
+
+## 拖动后的选中框对齐修复（2026-10-14）
+
+修复斜向换序后的边框偏移：拖动时直接写入的临时位置没有全部还原，React 又不会重写数值未变的样式，导致图片已归位而边框仍残留拖动偏移。现在线框、图片及画布外淡显层都先清除临时坐标，再提交移动、缩放或换序；无效拖动和取消也走同一套还原。
+
+Chrome 实测从纵向偏移约 30.99 CSS px 修复为 0。横排、竖排、宫格斜向换序、原位放下、自由移动、取消移动和缩放，以及随后打开裁剪框，实际图片与边框四项坐标差均为 0。Windows `smoke:ui` 添加对应斜向拖动、吸附和缩放断言；构建、该检查与未松手关闭恢复检查全部通过，拖动期间仍不编码。记录见 [selection-frame-report.json](portrait-workflow-validation/selection-frame-report.json)。
+
+![移动缩放后紧贴图片的选中框](portrait-workflow-validation/selection-frame.png)

@@ -15,6 +15,7 @@ async function waitFor(win,expr){for(let n=0;n<160;n++){if(await win.webContents
   win.webContents.setBackgroundThrottling(false);
   win.show();win.focus();
   const js=async expr=>{try{return await win.webContents.executeJavaScript(expr);}catch(error){console.error('Renderer expression failed:',expr);throw error;}};
+  async function selectionFits(label){const bounds=await js("(()=>{const image=document.querySelector('.stitch-layer.selected').getBoundingClientRect(),frame=document.querySelector('.stitch-selection').getBoundingClientRect();return {image:[image.x,image.y,image.width,image.height],frame:[frame.x,frame.y,frame.width,frame.height]};})()");assert.deepEqual(bounds.frame,bounds.image,label);}
   const editCanvas=async(width,height)=>{const set=(id,value)=>js(`(()=>{const input=document.querySelector(${JSON.stringify(id)});Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(input,${JSON.stringify(String(value))});input.dispatchEvent(new Event('input',{bubbles:true}));})()`);if(Number(await js("document.querySelector('#stitch-width').value"))===width)await set('#stitch-width',width>1?width-1:2);await set('#stitch-width',width);await set('#stitch-height',height);};
   async function rightClick(selector){
    await waitFor(win,"!document.querySelector('.project-name').disabled");await js("new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)))");
@@ -163,6 +164,7 @@ async function waitFor(win,expr){for(let n=0;n<160;n++){if(await win.webContents
   win.webContents.debugger.detach();
   await waitFor(win,"document.querySelector('.stitch-info').textContent.includes(' MB') && document.querySelector('.save-status').textContent==='已自动保存'");
   const freeProject=await store.load(savedProject.id);assert.equal(freeProject.layout,'free');assert.ok(freeProject.images.every(i=>freeProject.crops[i.id]===null));assert.equal(freeProject.positions[freeProject.images[1].id].x,freeProject.positions[freeProject.images[0].id].x,'snap aligns image edges');
+  await selectionFits('free move and snapping keep the selection on the actual image');
   const resizePoints=await js("(()=>{const r=document.querySelector('.resize-handle[data-handle=se]').getBoundingClientRect(),layer=document.querySelector('.stitch-layer.selected').getBoundingClientRect();return {start:{x:r.x+r.width/2,y:r.y+r.height/2},end:{x:r.x+r.width/2-layer.width*.2,y:r.y+r.height/2-layer.height*.2}};})()");
   const beforeResize=stitchCalls;
   win.webContents.debugger.attach('1.3');await win.webContents.debugger.sendCommand('Input.dispatchMouseEvent',{type:'mousePressed',...resizePoints.start,button:'left',clickCount:1});
@@ -171,6 +173,7 @@ async function waitFor(win,expr){for(let n=0;n<160;n++){if(await win.webContents
   await waitFor(win,"document.querySelector('.stitch-info').textContent.includes(' MB') && document.querySelector('.save-status').textContent==='已自动保存'");
   const resized=await store.load(savedProject.id),selectedImage=resized.images[1];assert.ok(Math.abs(resized.positions[selectedImage.id].width-freeProject.positions[selectedImage.id].width*.8)<2);
   const ratio=await js("(()=>{const r=document.querySelector('.stitch-layer.selected').getBoundingClientRect();return r.width/r.height;})()");assert.ok(Math.abs(ratio-selectedImage.width/selectedImage.height)<.002);
+  await selectionFits('free proportional resize keeps the selection on the actual image');
   await fs.writeFile(path.join(__dirname,'../artifacts/native-stitch-free.png'),(await win.webContents.capturePage()).toPNG());
   for(const mode of ['horizontal','vertical','grid']){
    await js(`document.querySelector('[data-layout=${mode}]').click()`);
@@ -180,12 +183,14 @@ async function waitFor(win,expr){for(let n=0;n<160;n++){if(await win.webContents
    await waitFor(win,"document.querySelector('.stitch-info').textContent.includes(' MB') && document.querySelector('.save-status').textContent==='已自动保存'");
    const orderBefore=(await store.load(savedProject.id)).images.map(image=>image.id),callsBefore=stitchCalls;
    const points=await js("Array.from(document.querySelectorAll('.stitch-layer'),element=>{const r=element.getBoundingClientRect(),a=document.querySelector('.stitch-canvas-area').getBoundingClientRect();return {x:(Math.max(a.left,r.left)+Math.min(a.right,r.right))/2,y:(Math.max(a.top,r.top)+Math.min(a.bottom,r.bottom))/2};})");
+   points[1].x+=13;points[1].y+=17;
    win.webContents.debugger.attach('1.3');await win.webContents.debugger.sendCommand('Input.dispatchMouseEvent',{type:'mousePressed',...points[0],button:'left',clickCount:1});
    for(let n=1;n<=16;n++)await win.webContents.debugger.sendCommand('Input.dispatchMouseEvent',{type:'mouseMoved',x:points[0].x+(points[1].x-points[0].x)*n/16,y:points[0].y+(points[1].y-points[0].y)*n/16,button:'left',buttons:1});
    await waitFor(win,"document.querySelector('.stitch-canvas').dataset.interacting==='true'");assert.equal(stitchCalls,callsBefore,'preset-layout movement feedback does not encode');
    await win.webContents.debugger.sendCommand('Input.dispatchMouseEvent',{type:'mouseReleased',...points[1],button:'left',clickCount:1});win.webContents.debugger.detach();
    await fs.writeFile(path.join(__dirname,`../artifacts/native-reorder-${mode}.png`),(await win.webContents.capturePage()).toPNG());
    await waitFor(win,`document.querySelector('.stitch-layer').dataset.imageId===${JSON.stringify(orderBefore[1])} && document.querySelector('.save-status').textContent==='已自动保存'`);
+   await selectionFits(mode+' diagonal reorder restores all selection coordinates, including unchanged layout axes');
    const after=await store.load(savedProject.id);assert.equal(after.layout,mode,'movement retains the chosen preset');assert.deepEqual(after.images.map(image=>image.id),[...orderBefore].reverse(),mode+' dragging directly changes image order');assert.deepEqual(after.canvas,{width:1200,height:480});
    await js("document.querySelector('.stitch-layer').dispatchEvent(new KeyboardEvent('keydown',{key:'ArrowRight',altKey:true,bubbles:true}))");await waitFor(win,"document.querySelector('.save-status').textContent==='已自动保存'");assert.deepEqual((await store.load(savedProject.id)).images.map(image=>image.id),orderBefore,'explicit keyboard order adjustment still works');
   }
