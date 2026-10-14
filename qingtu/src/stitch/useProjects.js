@@ -39,7 +39,7 @@ export function useProjects(){
    current.current=ready;setProject(ready);
    setSaveError('');
    if(value.recovered)setSaveError('已恢复上次完整保存；请检查编辑状态后重试保存');
-   else if(value.canvasMode!=='fixed'||formatChanged||orderChanged||!value.thumbnail&&value.images.length)persist(ready);
+   else if(value.canvasMode!=='fixed'||value.heightLocked!==ready.heightLocked||formatChanged||orderChanged||!value.thumbnail&&value.images.length)persist(ready);
   }catch(error){setSaveError(error.message);throw error;}finally{if(revision===loadRevision.current)setLoading(false);}
  };
  const create=async()=>{

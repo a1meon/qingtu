@@ -60,7 +60,7 @@ async function waitFor(win,expression){for(let n=0;n<300;n++){if(await win.webCo
   const project=await store.load((await store.list())[0].id);assert.equal(project.images.length,1);assert.equal(project.export.longEdge,2400);
   assert.deepEqual(project.initialOrder,project.images.map(image=>image.id));
   assert.equal(project.layout,'free');assert.ok(project.positions[project.images[0].id].x>0);assert.ok(project.positions[project.images[0].id].y>0);
-  assert.deepEqual(project.edits[project.images[0].id],{axis:'horizontal',amount:20});
+  assert.deepEqual(project.edits[project.images[0].id].edges,{left:20,top:0,right:20,bottom:0});
   await js("document.querySelector('.module-content:not([hidden]) .export-button').click()");
   await waitFor(win,"document.querySelector('.notice')?.textContent.includes('已导出 1 张图像')");
   const filename=(await fs.readdir(exports))[0],sharp=(await import('sharp')).default,meta=await sharp(path.join(exports,filename)).metadata(),bytes=(await fs.stat(path.join(exports,filename))).size;

@@ -1,75 +1,65 @@
-import {forwardRef,useEffect,useImperativeHandle,useLayoutEffect,useRef,useState} from 'react';
-import {createPortal} from 'react-dom';
-import {ArrowCounterClockwise} from '@phosphor-icons/react';
-import {cropLimit} from '../../engine/stitch-edits.mjs';
+import {forwardRef,useEffect,useImperativeHandle,useRef,useState} from 'react';
+import {Crop,Scissors,LinkSimple,LinkSimpleBreak,ArrowCounterClockwise} from '@phosphor-icons/react';
+import {cropEdges,changeCropEdge} from '../../engine/stitch-edits.mjs';
 import {addFlushHandler} from '../lifecycle.js';
-import {editorPosition} from './editor-position.js';
 import {ImageSplitControls} from './ImageSplitControls.jsx';
 
-export const ImageEditor=forwardRef(function ImageEditor({image,value,anchor,hidden,onPreview,onCommit,onSplit,splitDraft,onSplitDraft,onClose,disabled},ref){
- const [mode,setMode]=useState('crop');
- const original={axis:value?.axis||'horizontal',amount:value?.amount||0},initial=value==null?{axis:'horizontal',amount:Math.min(50,cropLimit(image,'horizontal'))}:original;
- const [draft,setDraft]=useState(initial),latest=useRef(initial),committed=useRef(original),touched=useRef(false),pointer=useRef(false),timer=useRef(),frame=useRef(),callbacks=useRef(),flushRef=useRef(),panel=useRef();
- const [position,setPosition]=useState({left:anchor?.x||8,top:anchor?.y||8});
- const positionRef=useRef(position),drag=useRef(),dragFrame=useRef(),mounted=useRef(true),closing=useRef(false),skipDragClick=useRef(false);
- useLayoutEffect(()=>{
-  if(hidden)return;const size=panel.current.getBoundingClientRect();
-  const next=editorPosition(anchor||{x:(innerWidth-size.width)/2,y:(innerHeight-size.height)/2},size,{width:innerWidth,height:innerHeight});positionRef.current=next;setPosition(next);
-  const place=()=>{const size=panel.current.getBoundingClientRect(),next=editorPosition({x:positionRef.current.left,y:positionRef.current.top},size,{width:innerWidth,height:innerHeight});positionRef.current=next;setPosition(next);};
-  window.addEventListener('resize',place);return()=>window.removeEventListener('resize',place);
- },[anchor?.x,anchor?.y,hidden]);
- useLayoutEffect(()=>{if(hidden)return;const size=panel.current.getBoundingClientRect(),next=editorPosition({x:positionRef.current.left,y:positionRef.current.top},size,{width:innerWidth,height:innerHeight});positionRef.current=next;setPosition(next);},[mode]);
+const empty={left:0,right:0,top:0,bottom:0};
+const names={left:'左',right:'右',top:'上',bottom:'下'};
+export const ImageEditor=forwardRef(function ImageEditor({image,value,open,placement,hidden,onActivate,onPreview,onCommit,onSplit,splitDraft,onSplitDraft,onClose,disabled},ref){
+ const original=()=>({edges:cropEdges(image,value),links:{horizontal:value?.links?.horizontal??true,vertical:value?.links?.vertical??true}});
+ const initial=()=>value==null?{edges:{...empty,left:Math.min(50,Math.floor((image.width-1)/2)),right:Math.min(50,Math.floor((image.width-1)/2))},links:{horizontal:true,vertical:true}}:original();
+ const [mode,setMode]=useState('crop'),[side,setSide]=useState('left'),[draft,setDraft]=useState(initial),[error,setError]=useState('');
+ const root=useRef(),latest=useRef(draft),touched=useRef(false),prefill=useRef(value==null),pointer=useRef(false),timer=useRef(),frame=useRef(),callbacks=useRef(),flushRef=useRef(),closing=useRef(false),placementRef=useRef(placement);
+ if(!pointer.current)placementRef.current=placement;
  callbacks.current={onPreview,onCommit,onClose};
- function preview(next){touched.current=true;latest.current=next;setDraft(next);if(frame.current)return;frame.current=requestAnimationFrame(()=>{frame.current=null;callbacks.current.onPreview(latest.current);});}
- function commit(force=false){
+ const axis=['left','right'].includes(side)?'horizontal':'vertical',linked=draft.links[axis],amount=draft.edges[side],opposite={left:'right',right:'left',top:'bottom',bottom:'top'}[side];
+ const size=axis==='horizontal'?image.width:image.height,max=linked?Math.floor((size-1)/2):size-1-draft.edges[opposite];
+ function preview(next){touched.current=true;prefill.current=false;latest.current=next;setDraft(next);if(!frame.current)frame.current=requestAnimationFrame(()=>{frame.current=null;callbacks.current.onPreview(latest.current);});}
+ function commit(){
   clearTimeout(timer.current);cancelAnimationFrame(frame.current);frame.current=null;
-  if(!force&&!touched.current){callbacks.current.onPreview(null);return Promise.resolve();}
-  const next={axis:latest.current.axis,amount:Number(latest.current.amount)||0};
-  latest.current=next;setDraft(next);
-  if(next.axis===committed.current.axis&&next.amount===committed.current.amount){callbacks.current.onPreview(null);return Promise.resolve();}
-  committed.current=next;touched.current=false;return Promise.resolve(callbacks.current.onCommit(next));
+  if(!touched.current){callbacks.current.onPreview(null);return Promise.resolve();}
+  touched.current=false;return Promise.resolve(callbacks.current.onCommit(latest.current));
  }
- flushRef.current=commit;
- useImperativeHandle(ref,()=>({flush:()=>flushRef.current()}),[]);
+ flushRef.current=commit;useImperativeHandle(ref,()=>({flush:()=>flushRef.current()}),[]);
  useEffect(()=>addFlushHandler(()=>flushRef.current()),[]);
- useEffect(()=>{mounted.current=true;return()=>{mounted.current=false;clearTimeout(timer.current);cancelAnimationFrame(frame.current);cancelAnimationFrame(dragFrame.current);};},[]);
+ useEffect(()=>()=>{clearTimeout(timer.current);cancelAnimationFrame(frame.current);},[]);
+ useEffect(()=>{closing.current=false;if(!open){const next=initial();latest.current=next;setDraft(next);touched.current=false;prefill.current=value==null;setMode('crop');}},[open,value]);
+ function close(){if(closing.current)return;closing.current=true;commit().then(()=>callbacks.current.onClose()).catch(e=>{closing.current=false;setError(e.message);});}
  useEffect(()=>{
-  if(hidden||disabled)return;
-  const dismiss=event=>{if(event.type==='pointerdown'&&!drag.current)skipDragClick.current=false;if(event.type==='click'&&skipDragClick.current){skipDragClick.current=false;if(event.detail>0){event.preventDefault();event.stopPropagation();return;}}if(!panel.current.contains(event.target)&&!event.target.closest('[data-canvas-split]')&&!drag.current&&!pointer.current)close();};
-  document.addEventListener('pointerdown',dismiss,true);document.addEventListener('click',dismiss,true);
-  document.addEventListener('pointermove',moveDrag,true);document.addEventListener('pointerup',endDrag,true);document.addEventListener('pointercancel',endDrag,true);
-  return()=>{document.removeEventListener('pointerdown',dismiss,true);document.removeEventListener('click',dismiss,true);document.removeEventListener('pointermove',moveDrag,true);document.removeEventListener('pointerup',endDrag,true);document.removeEventListener('pointercancel',endDrag,true);};
- },[hidden,disabled]);
- function amount(raw){
-  const number=raw===''?'':Math.max(0,Math.min(cropLimit(image,latest.current.axis),Math.round(Number(raw)||0)));
-  preview({...latest.current,amount:number});clearTimeout(timer.current);if(!pointer.current)timer.current=setTimeout(()=>commit().catch(()=>{}),450);
+  if(!open||hidden||disabled)return;
+  const dismiss=e=>{if(!root.current?.contains(e.target)&&!e.target.closest('[data-canvas-split]')&&!pointer.current)close();};
+  document.addEventListener('pointerdown',dismiss,true);document.addEventListener('click',dismiss,true);return()=>{document.removeEventListener('pointerdown',dismiss,true);document.removeEventListener('click',dismiss,true);};
+ },[open,hidden,disabled]);
+ async function activate(next){
+  try{await commit();if(open&&mode===next){onClose();return;}setMode(next);onActivate();onSplitDraft(next==='split'?{axis:image.width>=2?'x':'y',at:Math.floor((image.width>=2?image.width:image.height)/2)}:null);}
+  catch(e){setError(e.message);}
  }
- function direction(axis){if(axis===latest.current.axis)return;preview({axis,amount:0});commit().catch(()=>{});}
- function finish(){pointer.current=false;commit().catch(()=>{});}
- function close(force=false){if(closing.current)return;closing.current=true;commit(force&&mode==='crop').then(()=>{if(mounted.current)callbacks.current.onClose();}).catch(()=>{closing.current=false;});}
- async function changeMode(next){if(next===mode)return;try{await commit();onSplitDraft(next==='split'?{axis:image.width>=2?'x':'y',at:Math.floor((image.width>=2?image.width:image.height)/2)}:null);setMode(next);}catch{}}
- function startDrag(event){
-  if(disabled||event.button!==0||event.target.closest('button'))return;
-  event.preventDefault();event.currentTarget.setPointerCapture(event.pointerId);
-  drag.current={id:event.pointerId,x:event.clientX,y:event.clientY,...positionRef.current,size:panel.current.getBoundingClientRect()};
-  panel.current.dataset.dragging='true';
+ function chooseSide(next){
+  if(prefill.current&&axis!==(['left','right'].includes(next)?'horizontal':'vertical')){const clean={edges:{...empty},links:{...latest.current.links}};latest.current=clean;setDraft(clean);prefill.current=false;}
+  setSide(next);
  }
- function moveDrag(event){
-  const current=drag.current;if(!current||event.pointerId!==current.id)return;
-  if(Math.hypot(event.clientX-current.x,event.clientY-current.y)>3)current.moved=true;
-  positionRef.current=editorPosition({x:current.left+event.clientX-current.x,y:current.top+event.clientY-current.y},current.size,{width:innerWidth,height:innerHeight});
-  if(dragFrame.current)return;dragFrame.current=requestAnimationFrame(()=>{dragFrame.current=null;if(panel.current)Object.assign(panel.current.style,{left:positionRef.current.left+'px',top:positionRef.current.top+'px'});});
+ function change(raw){preview({...latest.current,edges:changeCropEdge(image,latest.current.edges,side,raw,latest.current.links[axis])});clearTimeout(timer.current);if(!pointer.current)timer.current=setTimeout(()=>commit().catch(e=>setError(e.message)),450);}
+ function finish(){pointer.current=false;commit().catch(e=>setError(e.message));}
+ function link(){
+  const current=prefill.current?{...latest.current,edges:{...empty}}:latest.current,enabled=!current.links[axis];
+  preview({...current,links:{...current.links,[axis]:enabled},edges:enabled?changeCropEdge(image,current.edges,side,current.edges[side],true):current.edges});commit().catch(e=>setError(e.message));
  }
- function endDrag(event){if(!drag.current||event.pointerId!==drag.current.id)return;if(event.type!=='pointercancel')moveDrag(event);skipDragClick.current=!!drag.current.moved;cancelAnimationFrame(dragFrame.current);dragFrame.current=null;drag.current=null;delete panel.current.dataset.dragging;setPosition({...positionRef.current});}
- return createPortal(<section ref={panel} hidden={hidden} style={position} className="image-editor" role="dialog" aria-label="单图编辑" onKeyDown={event=>{if(event.key==='Escape'){event.stopPropagation();close();}}}>
-  <div className="image-editor-heading" onPointerDown={startDrag} onPointerMove={moveDrag} onPointerUp={endDrag} onPointerCancel={endDrag}><span title={image.name}>{image.name}</span><button className="image-editor-close" aria-label="关闭单图编辑" onClick={()=>close()}><svg width="16" height="16" viewBox="0 0 20 20" fill="none" aria-hidden><path d="m5 5 10 10M15 5 5 15" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg></button></div>
-  <div className="editor-mode crop-direction" role="group" aria-label="单图编辑功能">{[['crop','裁剪'],['split','拆分']].map(([value,label])=><button key={value} disabled={disabled||value==='split'&&image.width<2&&image.height<2} className={mode===value?'active':''} aria-pressed={mode===value} onClick={()=>changeMode(value)}>{label}</button>)}</div>
-  {mode==='split'&&splitDraft?<ImageSplitControls image={image} value={splitDraft} onChange={onSplitDraft} disabled={disabled} onConfirm={onSplit}/>:<>
-  <div className="crop-direction" role="group" aria-label="裁剪方向">{[['horizontal','左右'],['vertical','上下']].map(([axis,label])=><button key={axis} disabled={disabled} aria-pressed={draft.axis===axis} className={draft.axis===axis?'active':''} onClick={()=>direction(axis)}>{label}</button>)}</div>
-  <label htmlFor="crop-amount">每侧裁剪</label>
-  <input className="crop-slider" aria-label="每侧裁剪滑块" style={{'--crop-progress':`${100*(Number(draft.amount)||0)/Math.max(1,cropLimit(image,draft.axis))}%`}} type="range" min="0" max={cropLimit(image,draft.axis)} step="1" value={draft.amount||0} disabled={disabled} onPointerDown={event=>{pointer.current=true;clearTimeout(timer.current);try{event.currentTarget.setPointerCapture(event.pointerId);}catch{}}} onChange={event=>amount(event.target.value)} onPointerUp={finish} onPointerCancel={finish} onKeyUp={finish} onBlur={finish}/>
-  <div className="number-with-unit"><input id="crop-amount" aria-label="每侧裁剪像素" autoFocus type="number" min="0" max={cropLimit(image,draft.axis)} step="1" value={draft.amount} disabled={disabled} onFocus={event=>event.target.select()} onChange={event=>amount(event.target.value)} onBlur={()=>{if(!pointer.current)finish();}} onKeyDown={event=>{if(event.key==='Enter')finish();}}/><span>px</span></div>
-  <div className="image-editor-actions"><button className="crop-reset" disabled={disabled} onClick={()=>{preview({...latest.current,amount:0});commit().catch(()=>{});}}><ArrowCounterClockwise size={16}/>重置</button><button className="crop-done" disabled={disabled} onClick={()=>close(true)}>完成</button></div>
-  </>}
- </section>,document.body);
+ return <div ref={root} className="inline-image-controls" hidden={hidden} onKeyDown={event=>{if(event.key==='Escape'){event.stopPropagation();close();}}}>
+  <div className="inline-image-tools editor-mode" role="group" aria-label="图片操作" style={placementRef.current.tools}>
+   <button className={open&&mode==='crop'?'active':''} aria-pressed={open&&mode==='crop'} disabled={disabled} onClick={()=>activate('crop')}><Crop size={17}/>裁剪</button>
+   <button className={open&&mode==='split'?'active':''} aria-pressed={open&&mode==='split'} disabled={disabled||image.width<2&&image.height<2} onClick={()=>activate('split')}><Scissors size={17}/>分割</button>
+  </div>
+  {open&&<section className="image-editor inline-image-editor" aria-label={mode==='split'?'分割设置':'裁剪设置'} style={placementRef.current.panel}>
+   {mode==='split'&&splitDraft?<ImageSplitControls image={image} value={splitDraft} onChange={onSplitDraft} disabled={disabled} onConfirm={onSplit} onCancel={close}/>:<>
+    <div className="crop-edge-options" role="group" aria-label="裁剪边">{Object.entries(names).map(([edge,label])=><button key={edge} aria-label={`裁剪${label}边`} aria-pressed={side===edge} className={side===edge?'active':''} disabled={disabled} onClick={()=>chooseSide(edge)}>{label}</button>)}
+     <button className={`crop-link ${linked?'active':''}`} aria-label={`关联${axis==='horizontal'?'左右':'上下'}裁剪`} aria-pressed={linked} title={linked?'已关联，点击单独调整':'点击关联两侧'} disabled={disabled} onClick={link}>{linked?<LinkSimple size={17}/>:<LinkSimpleBreak size={17}/>}</button>
+     <button className="crop-reset" aria-label="重置此图裁剪" title="重置此图裁剪" disabled={disabled} onClick={()=>{preview({...latest.current,edges:{...empty}});commit().catch(e=>setError(e.message));}}><ArrowCounterClockwise size={17}/></button>
+    </div>
+    <div className="inline-crop-value"><label htmlFor="crop-amount">{linked?(axis==='horizontal'?'左右各裁':'上下各裁'):`${names[side]}方裁剪`}</label><div className="number-with-unit"><input id="crop-amount" aria-label="裁剪像素" type="number" min="0" max={max} step="1" value={amount} disabled={disabled} onFocus={event=>event.target.select()} onChange={event=>change(event.target.value)} onBlur={()=>{if(!pointer.current)finish();}} onKeyDown={event=>{if(event.key==='Enter')finish();}}/><span>px</span></div></div>
+    <input className="crop-slider" aria-label="裁剪滑块" style={{'--crop-progress':`${100*amount/Math.max(1,max)}%`}} type="range" min="0" max={max} step="1" value={amount} disabled={disabled} onPointerDown={event=>{pointer.current=true;clearTimeout(timer.current);try{event.currentTarget.setPointerCapture(event.pointerId);}catch{}}} onChange={event=>change(event.target.value)} onPointerUp={finish} onPointerCancel={finish} onKeyUp={finish}/>
+   </>}
+   {error&&<p className="split-error" role="alert">{error}</p>}
+  </section>}
+ </div>;
 });

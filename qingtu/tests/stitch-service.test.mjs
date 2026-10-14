@@ -156,6 +156,12 @@ test('images wholly outside fixed canvas are neither decoded nor included in exp
  const p={id:'fixed-outside',canvasMode:'fixed',canvas:{width:100,height:100},images:[a,b],layout:'free',positions:{[a.id]:{x:10,y:10,width:20,height:20},[b.id]:{x:100,y:0,width:5000,height:5000}},export:settings};
  const r=await service.render(p),data=await sharp(images.result(r.token).output.buffer).ensureAlpha().raw().toBuffer();assert.equal(reads,1);assert.deepEqual([r.width,r.height],[100,100]);assert.equal(data[(10*100+10)*4],255);assert.equal(data[3],0);assert.equal(p.images.length,2);
 });
+
+test('changing crop association preferences reuses exact encoded pixels without decoding sources again',async t=>{
+ const {store,service}=await setup(t),image=await solid(store,'link',100,100,'#3377aa');let reads=0;const read=store.readAsset.bind(store);store.readAsset=async id=>{reads++;return read(id);};
+ const p={id:'links',canvasMode:'fixed',canvas:{width:100,height:100},images:[image],layout:'horizontal',positions:{[image.id]:{x:0,y:0,width:100,height:100}},edits:{[image.id]:{edges:{left:0,top:0,right:0,bottom:0},links:{horizontal:true,vertical:true}}},export:settings};
+ const first=await service.render(p,{latest:true});p.edits[image.id]={edges:{right:0,bottom:0,left:0,top:0},links:{horizontal:false,vertical:true}};const second=await service.render(p,{latest:true});assert.equal(reads,1);assert.equal(second.token,first.token);assert.equal(second.bytes,first.bytes);
+});
 test('fixed 4K right append clips the last image while presets retain full images and exact default canvas',async t=>{
  const {store,images,service}=await setup(t),files=[];
  for(const [name,w,h,color] of [['a',3072,4096,'#ff0000'],['b',3072,4096,'#00ff00'],['c',2160,3840,'#0000ff'],['d',2160,3840,'#ffff0080']])files.push(await solid(store,name,w,h,color));

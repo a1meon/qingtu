@@ -71,6 +71,7 @@
       "!desktop/fixed-canvas-smoke.cjs",
       "!desktop/content-canvas-smoke.cjs",
       "!desktop/resize-canvas-smoke.cjs",
+      "!desktop/portrait-smoke-helpers.cjs",
       "!desktop/split-smoke.cjs",
       "!desktop/update-smoke.cjs",
       "!desktop/chunk-smoke.cjs",

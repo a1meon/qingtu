@@ -32,7 +32,7 @@ export async function composeProject(project,store,{isObsolete}={}){
    if(geometry.left||geometry.top)pipeline=pipeline.extract(geometry);
    const resized=await pipeline.resize({height:rect.height}).ensureAlpha().raw().toBuffer({resolveWithObject:true});
    pipeline=sharp(resized.data,{raw:resized.info}).extract({left:Math.floor((resized.info.width-rect.width)/2),top:0,width:rect.width,height:rect.height});
-  }else {if(image.source||geometry.left||geometry.top)pipeline=pipeline.extract({left:window.left+geometry.left,top:window.top+geometry.top,width:geometry.width,height:geometry.height});pipeline=pipeline.resize(rect.width,rect.height,{fit:'fill'});if(layout.fixed)pipeline=pipeline.extract({left:clipped.sourceLeft,top:clipped.sourceTop,width:clipped.width,height:clipped.height});}
+  }else {if(image.source||geometry.width!==image.width||geometry.height!==image.height)pipeline=pipeline.extract({left:window.left+geometry.left,top:window.top+geometry.top,width:geometry.width,height:geometry.height});pipeline=pipeline.resize(rect.width,rect.height,{fit:'fill'});if(layout.fixed)pipeline=pipeline.extract({left:clipped.sourceLeft,top:clipped.sourceTop,width:clipped.width,height:clipped.height});}
   const part=await pipeline.ensureAlpha().raw().toBuffer();
   canvas=await sharp(canvas,{raw:{width:layout.width,height:layout.height,channels:4}}).composite([{input:part,raw:{width:clipped.width,height:clipped.height,channels:4},left:clipped.left,top:clipped.top}]).raw().toBuffer();
  }
@@ -59,7 +59,8 @@ export class StitchService{
  constructor(store,images){this.store=store;this.images=images;this.pending=Promise.resolve();this.revisions=new Map();this.previews=new Map();this.ready=new Map();}
  render(project,options={}){
   const copy=structuredClone(project);this.store.validate(copy);
-  const key=JSON.stringify({id:copy.id,canvasMode:copy.canvasMode,canvas:copy.canvas,layout:copy.layout,grid:copy.grid,images:copy.images.map(({id,assetId,width,height,bytes,source})=>({id,assetId,width,height,bytes,source})),positions:copy.positions,edits:copy.edits,export:copy.export});
+  const encodingEdits=Object.fromEntries(Object.entries(copy.edits||{}).map(([id,edit])=>[id,edit?.edges?{edges:{left:edit.edges.left,top:edit.edges.top,right:edit.edges.right,bottom:edit.edges.bottom}}:edit]));
+  const key=JSON.stringify({id:copy.id,canvasMode:copy.canvasMode,canvas:copy.canvas,layout:copy.layout,grid:copy.grid,images:copy.images.map(({id,assetId,width,height,bytes,source})=>({id,assetId,width,height,bytes,source})),positions:copy.positions,edits:encodingEdits,export:copy.export});
   const revision=options?.latest===true?(this.revisions.get(copy.id)||0)+1:null;
   if(revision!==null)this.revisions.set(copy.id,revision);
   const task=this.pending.catch(()=>{}).then(async()=>{

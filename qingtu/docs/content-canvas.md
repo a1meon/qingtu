@@ -1,5 +1,7 @@
 # 每次导入贴合画布
 
+最新固定高度人物工作流见 [portrait-workflow.md](portrait-workflow.md)，覆盖本文早期按完整外接矩形等比归一化的导入规则。
+
 后续缩放规则见 [resize-canvas.md](resize-canvas.md)：自动贴合画布随图片缩放而更新，手动预设/输入尺寸保持不变，纯移动仍允许越界。本文保留导入贴合的验证记录。
 
 2026-10-14，Windows，Node 24.14.0，Electron 44.7.0，Chrome，分支 `codex/stitch-and-quality`。用户最终确认：保留 2.5 比例上限，画布不锁定为 2.5:1，**每次导入图片都重新贴合画布**。本记录覆盖早期固定画布文档中的导入尺寸规则。

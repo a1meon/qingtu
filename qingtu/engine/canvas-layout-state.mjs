@@ -1,6 +1,7 @@
 import {arrangeImages,arrangeContentImages,appendFixedImages} from './canvas-fixed.mjs';
 import {imageGeometry} from './stitch-edits.mjs';
 import {fitCanvasToContent} from './canvas-fit.mjs';
+import {fitHeightCanvas} from './canvas-height.mjs';
 
 const modes=['horizontal','grid','vertical','free'];
 const validPose=p=>p&&['x','y','width','height'].every(key=>Number.isFinite(p[key])&&Math.abs(p[key])<=Number.MAX_SAFE_INTEGER/4)&&p.width>0&&p.height>0;
@@ -20,7 +21,9 @@ function visiblePose(project,image,p){
 function restore(project,state){
  const present=project.images.filter(image=>state[image.id]),missing=project.images.filter(image=>!state[image.id]);
  const positions=Object.fromEntries(present.map(image=>[image.id,visiblePose(project,image,state[image.id])]));
- return appendFixedImages({...project,images:present,positions},missing).positions;
+ const next=appendFixedImages({...project,images:present,positions},missing).positions;
+ if(project.heightLocked){let right=present.length?Math.max(...present.map(image=>positions[image.id].x+positions[image.id].width)):0;for(const image of missing){const source=imageGeometry(image,project.edits?.[image.id]),height=project.canvas.height,width=height*source.width/source.height;next[image.id]={x:right,y:0,width,height};right+=width;}}
+ return next;
 }
 export function rememberCanvasLayout(project){
  if(project.canvasMode!=='fixed')return project;
@@ -50,11 +53,12 @@ export function fitImportedCanvas(project){
  const remembered=rememberCanvasLayout(project),layoutStates={},layoutCanvases={};
  for(const mode of Object.keys(remembered.layoutStates||{})){
   const edge=remembered.layoutCanvases?.[mode]?.longEdge??remembered.export?.longEdge;
-  const next=fitCanvasToContent({...remembered,layout:mode,export:{...remembered.export,longEdge:edge},positions:restore(remembered,remembered.layoutStates[mode])});
+  const saved=remembered.layoutCanvases?.[mode],base={...remembered,layout:mode,...(saved?{canvas:{width:saved.width,height:saved.height}}:{}),canvasSizing:'content',export:{...remembered.export,longEdge:edge}};
+  const source={...base,positions:restore(base,remembered.layoutStates[mode])},next=project.heightLocked?fitHeightCanvas(source):fitCanvasToContent(source);
   layoutStates[mode]=Object.fromEntries(next.images.map(image=>[image.id,fullPose(next,image)]));
   layoutCanvases[mode]={...next.canvas,sizing:'content',longEdge:edge};
  }
- return {...fitCanvasToContent(remembered),layoutStates,layoutCanvases};
+ return {...(project.heightLocked?fitHeightCanvas(remembered):fitCanvasToContent(remembered)),layoutStates,layoutCanvases};
 }
 export function splitLayoutStates(states,id,ids,axis,fraction){
  if(!states)return states;
@@ -68,6 +72,7 @@ export function splitLayoutStates(states,id,ids,axis,fraction){
 }
 export function removeLayoutImageStates(states,id){return states&&Object.fromEntries(Object.entries(states).map(([mode,state])=>[mode,Object.fromEntries(Object.entries(state).filter(([key])=>key!==id))]));}
 export function validateLayoutStates(project){
+ if(project.heightLocked!==undefined&&typeof project.heightLocked!=='boolean')throw new Error('画布高度设置无效');
  if(project.canvasSizing!==undefined&&!['content','manual'].includes(project.canvasSizing))throw new Error('画布尺寸模式无效');
  if(project.layoutCanvases!==undefined){
   if(!project.layoutCanvases||typeof project.layoutCanvases!=='object'||Array.isArray(project.layoutCanvases))throw new Error('布局画布数据无效');

@@ -8,9 +8,19 @@ import {ProjectStore} from '../engine/project-store.mjs';
 import {optimizeHorizontal} from '../engine/stitch-optimize.mjs';
 import {recordImportOrder,resetProject} from '../engine/stitch-reset.mjs';
 import {rememberCanvasLayout,switchCanvasLayout} from '../engine/canvas-layout-state.mjs';
+import {setImageEdit} from '../engine/stitch-edits.mjs';
 const fixture=()=>sharp({create:{width:80,height:60,channels:4,background:'#7799aa80'}}).png().toBuffer();
 async function setup(t){const root=await fs.mkdtemp(path.join(os.tmpdir(),'qingtu-project-'));t.after(()=>fs.rm(root,{recursive:true,force:true}));return {root,store:new ProjectStore(root)};}
 const project=image=>({id:'test-project',name:'测试',images:[image],layout:'horizontal',positions:{},grid:{rows:1,columns:1},export:{longEdge:5999,format:'png',targetBytes:10000000}});
+
+test('height policy, all four crop edges and association choices survive normal and interrupted saves',async t=>{
+ const {store}=await setup(t),buffer=await fixture(),image=await store.import(buffer,'portrait.png');delete image.preview;
+ let p={...project(image),canvasMode:'fixed',heightLocked:true,canvasSizing:'content',canvas:{width:80,height:60},positions:{[image.id]:{x:0,y:0,width:80,height:60}},edits:{}};
+ p=rememberCanvasLayout(setImageEdit(p,image.id,{edges:{left:3,top:8,right:5,bottom:2},links:{horizontal:false,vertical:true}}));await store.save(p);
+ const reopened=await new ProjectStore(store.root).load(p.id);assert.equal(reopened.heightLocked,true);assert.deepEqual(reopened.edits,p.edits);assert.deepEqual(reopened.positions,p.positions);assert.deepEqual(reopened.canvas,p.canvas);
+ await store.save({...p,name:'later'});await fs.writeFile(store.file(p.id),'interrupted');const recovered=await store.load(p.id);assert.equal(recovered.recovered,true);assert.deepEqual(recovered.edits,p.edits);assert.deepEqual(recovered.layoutCanvases,p.layoutCanvases);assert.ok((await store.readAsset(image.assetId)).equals(buffer));
+ assert.throws(()=>store.save({...p,heightLocked:'yes'}),/高度设置/);
+});
 test('original copies and complete edit states survive moved sources and a fresh store',async t=>{
  const {root,store}=await setup(t),source=path.join(root,'original.png'),buffer=await fixture();await fs.writeFile(source,buffer);
  const image=await store.import(await fs.readFile(source),'original.png');delete image.preview;const p=project(image);p.positions[image.id]={x:10,y:-2,width:800};p.crops={[image.id]:null};p.canvas={width:5999,height:4499};p.edits={[image.id]:{axis:'vertical',amount:5}};

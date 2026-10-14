@@ -3,9 +3,9 @@ import {Plus,X,PencilSimple,Trash,Export,SidebarSimple,FolderSimple,SpinnerGap,C
 import {api,desktop} from '../api.js';
 import {Dropdown} from '../Dropdown.jsx';
 import {TooltipButton} from '../TooltipButton.jsx';
-import {calculateLayout,moveImage} from '../../engine/stitch-layout.mjs';
+import {calculateLayout} from '../../engine/stitch-layout.mjs';
 import {arrangeImages,arrangeContentImages} from '../../engine/canvas-fixed.mjs';
-import {setImageEdit,cropLimit} from '../../engine/stitch-edits.mjs';
+import {setImageEdit} from '../../engine/stitch-edits.mjs';
 import {removeProjectImage,resetProject} from '../../engine/stitch-reset.mjs';
 import {importCanvasImages} from '../../engine/canvas-import.mjs';
 import {repository} from './repository.js';
@@ -27,10 +27,11 @@ import {switchCanvasLayout} from '../../engine/canvas-layout-state.mjs';
 import {CANVAS_PRESETS,canvasPresetValue,presetCanvas} from '../../engine/canvas-presets.mjs';
 import {prepareLayoutPreview} from './layout-preview.js';
 import {applyCanvasTransform} from '../../engine/canvas-transform.mjs';
+import {reorderCanvas} from '../../engine/canvas-order.mjs';
 
 export const StitchWorkspace=forwardRef(function StitchWorkspace({active,inspectorOpen,setInspectorOpen,onBusy,onCount},ref){
  const {projects,project,update,open,create,remove,clear,loading,saving,saveError,flush,retry,getCurrent}=useProjects();
- const [editing,setEditing]=useState(null),[editorAnchor,setEditorAnchor]=useState(null),[cropDraft,setCropDraft]=useState(null),[splitDraft,setSplitDraft]=useState(null),editor=useRef();
+ const [editing,setEditing]=useState(null),[cropDraft,setCropDraft]=useState(null),[splitDraft,setSplitDraft]=useState(null),editor=useRef();
  const [selected,setSelected]=useState(null),[error,setError]=useState(''),[notice,setNotice]=useState(''),[importing,setImporting]=useState(false),[batch,setBatch]=useState(null),[output,setOutput]=useState(null),[processing,setProcessing]=useState(false),[folder,setFolder]=useState(null);
  const [context,setContext]=useState(null),[confirmation,setConfirmation]=useState(null),[optimization,setOptimization]=useState(null),[optimizing,setOptimizing]=useState(false),[splitting,setSplitting]=useState(false);
  const unit=project?.export.unit||'MB',setUnit=unit=>setExport({unit});
@@ -40,7 +41,7 @@ export const StitchWorkspace=forwardRef(function StitchWorkspace({active,inspect
  const splitLock=useRef(false);
  const displayProject=useMemo(()=>{
   if(splitDraft&&project?.images.some(image=>image.id===splitDraft.id)){const edits={...project.edits};delete edits[splitDraft.id];return {...project,edits,positions:{...project.positions,[splitDraft.id]:fullSourcePosition(project,splitDraft.id)}};}
-  return cropDraft?setImageEdit(project,cropDraft.id,{...cropDraft.edit,amount:Number(cropDraft.edit.amount)||0}):project;
+  return cropDraft?{...setImageEdit(project,cropDraft.id,cropDraft.edit),canvas:project.canvas}:project;
  },[project,cropDraft,splitDraft?.id]);
  const calculation=useMemo(()=>{try{return {layout:calculateLayout(displayProject||{})};}catch(e){try{return {layout:calculateLayout(displayProject||{},{draft:true}),error:e.message};}catch{return {error:e.message};}}},[displayProject]);
  const {layout}=calculation;
@@ -49,6 +50,7 @@ export const StitchWorkspace=forwardRef(function StitchWorkspace({active,inspect
  useEffect(()=>setContext(null),[active,project?.id,busy]);
  useEffect(()=>{onBusy(busy||saving||processing||!!saveError||!!cropDraft||!!splitDraft);onCount(project?.images.length||0);},[busy,saving,processing,saveError,cropDraft,splitDraft,project?.images.length]);
  const flushEditor=()=>editor.current?.flush()||Promise.resolve();
+ useEffect(()=>{if(!active)flushEditor().then(()=>{setEditing(null);setCropDraft(null);setSplitDraft(null);}).catch(()=>{});},[active]);
  useEffect(()=>addFlushHandler(async()=>{flushing.current=true;clearTimeout(previewTimer.current);try{await flushEditor();await importTask.current;await exportTask.current;await optimizeTask.current;await splitTask.current;await actionTask.current;await Promise.allSettled([...previewTasks.current]);await flush();}finally{flushing.current=false;}}),[]);
  useEffect(()=>{
   if(!active){setProcessing(false);return;}
@@ -60,7 +62,7 @@ export const StitchWorkspace=forwardRef(function StitchWorkspace({active,inspect
  },[active,project,busy,!!cropDraft,!!splitDraft]);
  async function settleEditor(){await flushEditor();setEditing(null);setCropDraft(null);setSplitDraft(null);}
  function selectImage(id){if(editing&&editing!==id){flushEditor().catch(()=>{});setEditing(null);setCropDraft(null);setSplitDraft(null);}setSelected(id);}
- async function editImage(id,anchor){try{if(editing!==id)await settleEditor();setSelected(id);setEditorAnchor(anchor||null);setEditing(id);}catch(e){setNotice(e.message);}}
+ async function editImage(id){try{if(editing!==id)await settleEditor();setSelected(id);setEditing(id);}catch(e){setNotice(e.message);}}
  function commitCrop(id,edit){setCropDraft(null);return update(p=>setImageEdit(p,id,edit));}
  async function runOptimize(){
   let phase='calculate';
@@ -128,13 +130,12 @@ export const StitchWorkspace=forwardRef(function StitchWorkspace({active,inspect
  async function setPreset(value){if(value==='custom')return;try{await settleEditor();await setCanvas(presetCanvas(value));}catch(e){setNotice(e.message);}}
  const setExport=changes=>update(p=>({...p,export:{...p.export,...changes}}));
  async function removeImage(id){try{await settleEditor();await update(p=>removeProjectImage(p,id));if(selected===id)setSelected(null);}catch(e){setNotice(e.message);}}
- async function reorder(from,to){try{await settleEditor();await update(p=>{const next={...p,images:moveImage(p.images,from,to)};return next.layout==='free'?next:next.canvasSizing==='content'?arrangeContentImages(next):arrangeImages(next);});}catch(e){setNotice(e.message);}}
+ async function reorder(from,to){try{await settleEditor();await update(p=>reorderCanvas(p,from,to));}catch(e){setNotice(e.message);}}
  async function openCanvas(id){if(busy||importLock.current)return;try{await settleEditor();await open(id);}catch(e){setNotice(e.message);}}
  async function createCanvas(){if(busy||importLock.current)return;try{await settleEditor();await create();}catch(e){setNotice(e.message);}}
- const editingImage=project?.images.find(image=>image.id===editing);
- const editingRect=layout?.rects.find(rect=>rect.id===editing);
- const savedEdit=project?.edits?.[editing];
- const editingValue=savedEdit?.fraction!=null?{axis:'horizontal',amount:Math.min(cropLimit(editingImage,'horizontal'),Math.round(savedEdit.fraction*editingImage.width))}:savedEdit||(editingImage&&editingRect?.autoCrop?{axis:'horizontal',amount:Math.min(cropLimit(editingImage,'horizontal'),Math.round(editingRect.crop.left*editingImage.width))}:undefined);
+ const editingImage=project?.images.find(image=>image.id===selected);
+ const editingValue=project?.edits?.[selected];
+ const imageControls=placement=>editingImage&&<ImageEditor key={editingImage.id} ref={editor} image={editingImage} value={editingValue} placement={placement} open={editing===selected} hidden={!active} disabled={busy} onActivate={()=>setEditing(selected)} onPreview={edit=>setCropDraft(edit?{id:selected,edit}:null)} onCommit={edit=>commitCrop(selected,edit)} splitDraft={splitDraft} onSplitDraft={value=>setSplitDraft(value?{...value,id:selected}:null)} onSplit={(axis,at)=>splitImage(selected,axis,at)} onClose={()=>{setEditing(current=>current===selected?null:current);setCropDraft(current=>current?.id===selected?null:current);setSplitDraft(current=>current?.id===selected?null:current);}}/>;
  return <>
   <input ref={input} type="file" className="sr-only" multiple accept=".jpg,.jpeg,.png,.webp,.avif,.tif,.tiff" aria-label="选择拼接图片文件" onChange={e=>importFiles(e.target.files)}/>
   <section className="stage stitch-stage" aria-label="拼接工作台">
@@ -149,8 +150,7 @@ export const StitchWorkspace=forwardRef(function StitchWorkspace({active,inspect
     </div>
     {project?.images.length?<>
      <div className="canvas-area"><div className="canvas-content"><div className="stitch-editing-surface">
-      <StitchCanvas project={displayProject} layout={layout} preview={!cropDraft&&!splitDraft&&output?output.preview:null} selected={selected} onSelect={selectImage} onEdit={editImage} onContext={contextImage} onRemove={removeImage} onReorder={reorder} onChange={(positions,operation)=>update(p=>applyCanvasTransform(p,positions,operation))} split={splitDraft} onSplitChange={value=>setSplitDraft({...value,id:editing})} disabled={busy||!!cropDraft||!!splitDraft} splitDisabled={busy}/>
-      {editingImage&&<ImageEditor key={editingImage.id} ref={editor} image={editingImage} value={editingValue} anchor={editorAnchor} hidden={!active} disabled={busy} onPreview={edit=>setCropDraft(edit?{id:editingImage.id,edit}:null)} onCommit={edit=>commitCrop(editingImage.id,edit)} splitDraft={splitDraft} onSplitDraft={value=>setSplitDraft(value?{...value,id:editingImage.id}:null)} onSplit={(axis,at)=>splitImage(editingImage.id,axis,at)} onClose={()=>{setEditing(null);setCropDraft(null);setSplitDraft(null);}}/>}
+      <StitchCanvas project={displayProject} layout={layout} preview={!cropDraft&&!splitDraft&&output?output.preview:null} selected={selected} onSelect={selectImage} onEdit={editImage} onContext={contextImage} onRemove={removeImage} onReorder={reorder} onChange={(positions,operation)=>update(p=>applyCanvasTransform(p,positions,operation))} renderControls={imageControls} split={splitDraft} onSplitChange={value=>setSplitDraft({...value,id:editing})} disabled={busy||!!cropDraft||!!splitDraft} splitDisabled={busy}/>
      </div>
      <div className="preview-info stitch-info" aria-live="polite"><span title={output?.autoResized?`设置 ${output.requestedWidth} × ${output.requestedHeight}；为满足体积上限已等比调整`:undefined}>{output?`${output.width} × ${output.height}${output.autoResized?' · 等比调整':''}`:layout?`${layout.width} × ${layout.height}`:calculation.error}</span>{layout?.rects.some(r=>r.autoCrop)&&<span>9:16 居中裁切</span>}<span className="preview-status" title={output?`${output.bytes.toLocaleString()} 字节${output.difference?`；RGB 最大误差 ${output.difference.maxError}/255，RMSE ${output.difference.rmse.toFixed(4)}；透明度误差 ${output.difference.alphaMaxError}${output.autoResized?'（以实际尺寸的等比缩放图为基准）':''}`:''}`:undefined}>{cropDraft?'编辑中…':processing?'计算中…':output?`${output.encoding||output.format.toUpperCase()} · ${megabytes(output.bytes)}`:error}</span></div></div></div>
     </>:<div className="canvas-area"><div className="canvas-content"><div className="stitch-editing-surface">{project&&<StitchCanvas project={project} layout={layout} disabled={busy}><div className="empty-state fixed-empty"><img className="empty-illustration" src="./assets/blue-file-empty.png" alt=""/><button className="primary import-button" aria-label="添加拼接图片" disabled={busy} onClick={add}><Plus size={28} weight="bold"/>{loading?'恢复中…':'添加图片'}</button></div></StitchCanvas>}</div><div className="preview-info stitch-info"><span>{layout?`${layout.width} × ${layout.height}`:''}</span></div></div></div>}

@@ -1,0 +1,74 @@
+{
+  "passed": true,
+  "date": "2026-10-14",
+  "platform": "Windows",
+  "runtime": {"node": "24.14.0", "electron": "44.7.0", "sharp": "0.35.5", "libvips": "8.18.7"},
+  "tests": {"passed": 221, "failed": 0},
+  "commandsPassed": [
+    "npm test",
+    "npm run build",
+    "npm run smoke:desktop",
+    "npm run smoke:ui",
+    "npm run smoke:canvas-fit",
+    "npm run smoke:canvas-resize",
+    "npm run smoke:canvas",
+    "npm run smoke:split",
+    "npm run smoke:recovery",
+    "npm run smoke:optimization",
+    "npm run smoke:png-budget",
+    "npm run verify:quality",
+    "npm run verify:png-budget"
+  ],
+  "checks": {
+    "fixedCanvasHeight": true,
+    "automaticWidthCappedAtHeightTimes2point5": true,
+    "proportionalWidthZoomPreservesOverflow": true,
+    "manualCanvasSizePreserved": true,
+    "directDragReorderInThreeStructuredLayouts": true,
+    "independentLayoutMemory": true,
+    "inlineCropAboveAndBelowPicture": true,
+    "fourEdgesRetainedSimultaneously": true,
+    "independentHorizontalAndVerticalLinks": true,
+    "singleFrontBodyTopCrop": true,
+    "twoCombinedSourcesSplitThenFrontOnlyCrop": true,
+    "fullOriginalSplitOnCanvas": true,
+    "splitCancelPreservesState": true,
+    "splitPiecesShareImmutableOriginal": true,
+    "noEncodingDuringDragResizeOrDivider": true,
+    "linkMetadataReusesEncodedResult": true,
+    "autosaveReloadAndBackupRecovery": true,
+    "batchMatchesIndividualExport": true,
+    "transparentRectangularExportWithoutUiLayers": true,
+    "compressionAndByteBudgetRegression": true
+  },
+  "browser": {
+    "isolatedTestStorage": true,
+    "source": "Reproducible 4K portrait diagrams, not user photographs",
+    "fixtureCommand": "node scripts/create-character-fixtures.mjs",
+    "reference": "Independent composition from original diagrams and saved project at actual output size; decoded RGBA compared",
+    "headMarkerPixelsAfterTopCrop": 0,
+    "outputs": [
+      {"file": "output/playwright/portrait-four.png", "width": 5995, "height": 2398, "bytes": 435910, "limit": 40000000, "maxRGB": 0, "maxAlpha": 0, "rmse": 0, "sha256": "2712de39a8e05b731148b3f363c597e079c49e8f804e2e10d3ad04efc92730ff"},
+      {"file": "output/playwright/portrait-batch-0.png", "width": 5995, "height": 2398, "bytes": 489519, "limit": 40000000, "maxRGB": 0, "maxAlpha": 0, "rmse": 0, "sha256": "025c13ff96cbcbce4caa42cc6b75f5a23bc51184ed5b540c514af421e1c0e29a"},
+      {"file": "output/playwright/portrait-batch-1.png", "width": 5995, "height": 2398, "bytes": 435910, "limit": 40000000, "maxRGB": 0, "maxAlpha": 0, "rmse": 0, "sha256": "2712de39a8e05b731148b3f363c597e079c49e8f804e2e10d3ad04efc92730ff"}
+    ],
+    "screenshots": ["four.png", "two.png", "split.png"]
+  },
+  "nativePhotoOutputs": [
+    {"file": "artifacts/content-canvas/height-content-fit-qingtu.png", "width": 600, "height": 240, "bytes": 332593, "limit": 10000000},
+    {"file": "artifacts/resize-canvas/height-resize-clipped-qingtu.png", "width": 500, "height": 240, "bytes": 166020, "limit": 10000000}
+  ],
+  "encodingRegression": {
+    "photo": {"width": 1536, "height": 1024, "bytes": 2486137, "limit": 2504360, "maxRGB": 2, "maxAlpha": 0, "rmse": 1.128951867},
+    "texture": {"width": 1600, "height": 900, "bytes": 2593616, "limit": 2599687, "maxRGB": 2, "maxAlpha": 0, "rmse": 1.354654784},
+    "gradientTextAndTransparent": "Zero encoding error in the quality regression fixtures",
+    "spatialResampling": "Zero encoding error does not imply zero spatial loss when originals are scaled. Tight-budget resolution fallback remains explicit.",
+    "paddingToInflateSize": false
+  },
+  "limitations": [
+    "The user's original approximately 28 MB PNG was not revalidated in this round",
+    "No Mac hardware validation in this round",
+    "No packaged installation, signing or release validation in this round",
+    "No main merge, release publication or signing key change"
+  ]
+}

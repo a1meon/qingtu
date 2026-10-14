@@ -1,4 +1,5 @@
 import {MAX_EDGE,MAX_RATIO} from './canvas-limits.mjs';
+import {fitHeightCanvas} from './canvas-height.mjs';
 
 function contentBounds(project){
  const poses=project.images.map(image=>project.positions[image.id]);
@@ -20,6 +21,11 @@ function fitted(project,{left,top,width,height},scale){
 // Imports/automatic arrangements normalize resolution; live gestures never do.
 export function fitCanvasToContent(project){
  if(!project.images.length)return project;
+ if(project.heightLocked){
+  const bounds=contentBounds(project),scale=project.canvas.height/bounds.height;
+  const positions=Object.fromEntries(project.images.map(image=>{const p=project.positions[image.id];return [image.id,{x:(p.x-bounds.left)*scale,y:(p.y-bounds.top)*scale,width:p.width*scale,height:p.height*scale}];}));
+  return fitHeightCanvas({...project,positions});
+ }
  const bounds=contentBounds(project),{width,height}=bounds;
  const requested=Number(project.export?.longEdge??MAX_EDGE);
  if(!Number.isInteger(requested)||requested<1||requested>MAX_EDGE)throw new Error('画布长边须为 1–5999 像素');
@@ -31,6 +37,7 @@ export function fitCanvasToContent(project){
 // Rebound only after a committed resize, preserving the user's actual image
 // sizes. Scaling back up to the requested long edge would undo a shrink.
 export function fitCanvasAfterResize(project){
+ if(project.heightLocked)return fitHeightCanvas(project);
  if(project.canvasMode!=='fixed'||project.canvasSizing!=='content'||!project.images.length)return project;
  return fitted(project,contentBounds(project),1);
 }
