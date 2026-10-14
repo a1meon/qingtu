@@ -1,0 +1,67 @@
+{
+  "passed": true,
+  "date": "2026-10-14",
+  "platform": "Windows Electron 44.7.0 + Chrome browser preview; Node 24.14.0",
+  "tests": 205,
+  "checksPassed": ["npm test", "npm run build", "npm run smoke:desktop", "npm run smoke:ui", "npm run smoke:canvas-fit", "npm run smoke:canvas", "npm run smoke:split", "npm run smoke:recovery", "npm run smoke:optimization", "npm run smoke:png-budget", "npm run verify:quality", "npm run verify:png-budget"],
+  "everyImportRefits": true,
+  "manualCanvasOverriddenByImport": true,
+  "dragKeepsCanvas": true,
+  "dragHasNoEncoding": true,
+  "importsPreserveRelativePlacementAndCrops": true,
+  "layoutCanvasAndPosesRestored": true,
+  "originalsUnchanged": true,
+  "browserOriginalBlobHashesMatchAssetIds": true,
+  "ratioLimitKeepsAllImagesAndBlocksExport": true,
+  "electronCanvases": {
+    "first": [4499, 5999],
+    "manualBeforeSecondImport": [900, 360],
+    "second": [900, 600],
+    "afterDrag": [900, 600],
+    "third": [900, 434],
+    "firstGrid": [368, 900]
+  },
+  "browserCanvases": {
+    "first": [675, 900],
+    "second": [900, 600],
+    "afterDrag": [900, 600],
+    "third": [900, 435],
+    "firstGrid": [368, 900]
+  },
+  "outputs": [
+    {
+      "platform": "Chrome",
+      "file": "output/playwright/browser-content-fit.png",
+      "width": 900,
+      "height": 435,
+      "bytes": 819441,
+      "limit": 10000000,
+      "maxRGB": 0,
+      "maxAlpha": 0,
+      "rmse": 0,
+      "sha256": "78a313373f58c2b1527b7f1707c1b3100e088d6eb82ff30e28219fa8b39f3a30"
+    },
+    {
+      "platform": "Electron",
+      "file": "artifacts/content-canvas/content-fit-qingtu-2.png",
+      "width": 900,
+      "height": 434,
+      "bytes": 792600,
+      "limit": 40000000,
+      "maxRGB": 0,
+      "maxAlpha": 0,
+      "rmse": 0,
+      "sha256": "d7fe62a8085b44999a4bc668d45948012954ff3889c8c81b77cdedbf7084fb1e"
+    }
+  ],
+  "pixelReference": "Independent composition from immutable repository 4K JPEG fixtures at actual output dimensions, compared as decoded RGBA. Does not imply original 4K spatial resolution was retained.",
+  "overflowExport": {"width": 900, "height": 600, "bytes": 1132925, "limit": 40000000},
+  "pngRegression": {
+    "photo": {"width": 1536, "height": 1024, "bytes": 2486137, "limit": 2504360, "maxRGB": 2, "maxAlpha": 0, "rmse": 1.1289518670498022},
+    "texture": {"width": 1600, "height": 900, "bytes": 2593616, "limit": 2599687, "maxRGB": 2, "maxAlpha": 0, "rmse": 1.354654783822555},
+    "gradientTextTransparent": {"maxRGB": 0, "maxAlpha": 0, "rmse": 0},
+    "strictBudgetResolutionFallbackPassed": true
+  },
+  "visualCheck": "Actual workspace and PNG photos inspected: relative placement, editable faded overflow and internal transparent gaps preserved; UI overlays absent from exported pixels.",
+  "limits": ["Repository fixtures and reproducible test images; user 28 MB original not revalidated this round", "Mac native runtime and packaged installation not tested", "No installer publication, signing-key change or main merge"]
+}

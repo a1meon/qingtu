@@ -76,6 +76,7 @@ async function waitFor(win,expr){for(let n=0;n<160;n++){if(await win.webContents
   await editCanvas(1200,480);
   await js("document.querySelector('[aria-label=\"添加拼接图片\"]').click()");
   await waitFor(win,"document.querySelectorAll('.stitch-layer').length===1 && document.querySelector('.stitch-info').textContent.includes(' MB') && document.querySelector('.save-status').textContent==='已自动保存'");
+  assert.deepEqual(await js("[Number(document.querySelector('#stitch-width').value),Number(document.querySelector('#stitch-height').value)]"),[1200,800],'import fits the source rather than locking to the previous 5:2 canvas');await editCanvas(1200,480);await waitFor(win,"document.querySelector('.stitch-info').textContent.includes(' MB') && document.querySelector('.save-status').textContent==='已自动保存'");
   const savedProject=(await store.list())[0],restored=await store.load(savedProject.id);
   assert.equal(await js("document.querySelectorAll('.stitch-stage [aria-label=\"预览方式\"],.canvas-actions [aria-label=\"添加拼接图片\"],.canvas-actions [aria-label=\"移除选中图片\"]').length"),0,'removed view switch and canvas add/delete controls');
   assert.equal(await js("document.querySelector('.canvas-cards-region .queue-toolbar').textContent.trim().startsWith('图像')"),true);
@@ -149,8 +150,9 @@ async function waitFor(win,expr){for(let n=0;n<160;n++){if(await win.webContents
   await waitFor(win,"!!document.querySelector('.stitch-layer.movable') && document.querySelector('.stitch-info').textContent.includes(' MB')");
   await js("window.dispatchEvent(new KeyboardEvent('keydown',{key:'o',ctrlKey:true,bubbles:true}))");
   await waitFor(win,"document.querySelectorAll('.stitch-layer').length===2 && document.querySelector('.save-status').textContent==='已自动保存'");
+  await waitFor(win,"document.querySelector('.stitch-stage').parentElement.querySelector('[role=alert]')?.textContent.includes('比例超过 2.5')");await editCanvas(1200,480);
   await waitFor(win,"document.querySelector('.stitch-info').textContent.includes(' MB')");assert.equal(await js("document.querySelector('.stitch-stage').parentElement.querySelector('.export-button').disabled"),false,'fixed canvas clips overflow instead of expanding bounds or blocking export');
-  await js("document.querySelector('[data-layout=horizontal]').click()");await waitFor(win,"document.querySelector('.stitch-info').textContent.includes(' MB') && document.querySelector('.save-status').textContent==='已自动保存'");await js("document.querySelector('[data-layout=free]').click()");await waitFor(win,"document.querySelector('.save-status').textContent==='已自动保存' && document.querySelector('.stitch-info').textContent.includes(' MB')");
+  await js("document.querySelector('[data-layout=horizontal]').click()");await waitFor(win,"document.querySelector('[data-layout=horizontal]').getAttribute('aria-pressed')==='true'");await editCanvas(1200,480);await waitFor(win,"document.querySelector('.stitch-info').textContent.includes(' MB') && document.querySelector('.save-status').textContent==='已自动保存'");await js("document.querySelector('[data-layout=free]').click()");await waitFor(win,"document.querySelector('.save-status').textContent==='已自动保存' && document.querySelector('.stitch-info').textContent.includes(' MB')");
   await js("document.querySelector('.stitch-layer').focus();new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)))");
   const selection=await js("(()=>{const image=document.querySelector('.stitch-layer.selected').getBoundingClientRect(),box=document.querySelector('.stitch-selection').getBoundingClientRect();return {image:[image.x,image.y,image.width,image.height],box:[box.x,box.y,box.width,box.height],right:box.right,middle:box.y+box.height/2,viewport:innerWidth};})()");
   assert.deepEqual(selection.box,selection.image,'selection bounds must hug the actual image');
@@ -184,6 +186,7 @@ async function waitFor(win,expr){for(let n=0;n<160;n++){if(await win.webContents
   for(const mode of ['horizontal','vertical','grid']){
    await js(`document.querySelector('[data-layout=${mode}]').click()`);
    await waitFor(win,`document.querySelector('[data-layout=${mode}]').getAttribute('aria-pressed')==='true'`);
+   await editCanvas(1200,480);
    if(mode==='grid')await js("(()=>{const input=document.querySelector('[aria-label=\"宫格行数\"]');Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(input,'2');input.dispatchEvent(new Event('input',{bubbles:true}));})()");
    await waitFor(win,"document.querySelector('.stitch-info').textContent.includes(' MB') && document.querySelector('.save-status').textContent==='已自动保存'");
    const orderBefore=(await store.load(savedProject.id)).images.map(image=>image.id),callsBefore=stitchCalls;
@@ -224,6 +227,7 @@ async function waitFor(win,expr){for(let n=0;n<160;n++){if(await win.webContents
   await editCanvas(800,320);
   await js("document.querySelector('[aria-label=\"添加拼接图片\"]').click()");
   await waitFor(win,"document.querySelectorAll('.stitch-layer').length===1 && document.querySelectorAll('.canvas-card img').length===2 && document.querySelector('.save-status').textContent==='已自动保存' && document.querySelector('.stitch-info').textContent.includes(' MB')");
+  await editCanvas(800,320);await waitFor(win,"document.querySelector('.stitch-info').textContent.includes(' MB') && document.querySelector('.save-status').textContent==='已自动保存'");
   const legacy=await store.load((await store.list()).find(p=>p.id!==savedProject.id).id);await store.save({...legacy,export:{...legacy.export,format:'auto'}});
   await js("document.querySelector('[aria-label=\"打开画布 图像 2\"]').click()");
   // The previous ready preview/status may still be painted while the async
@@ -245,7 +249,7 @@ async function waitFor(win,expr){for(let n=0;n<160;n++){if(await win.webContents
   await rightClick('.stitch-layer');assert.deepEqual(await js("Array.from(document.querySelectorAll('.canvas-context-menu button'),e=>e.textContent)"),['编辑图片','删除图片']);
   await js("document.querySelector('.canvas-context-menu button').click()");await waitFor(win,"!!document.querySelector('.image-editor')");await js("document.querySelector('[aria-label=\"关闭单图编辑\"]').click()");await waitFor(win,"!document.querySelector('.image-editor')");
   await js("window.dispatchEvent(new KeyboardEvent('keydown',{key:'o',ctrlKey:true,bubbles:true}))");await waitFor(win,"document.querySelectorAll('.stitch-layer').length===2 && document.querySelector('.save-status').textContent==='已自动保存'");
-  await rightClick('.stitch-layer:nth-child(2)');await js("document.querySelectorAll('.canvas-context-menu button')[1].click()");await waitFor(win,"document.querySelectorAll('.stitch-layer').length===1 && document.querySelector('.save-status').textContent==='已自动保存' && document.querySelector('.stitch-info').textContent.includes(' MB')");
+  await rightClick('.stitch-layer:nth-child(2)');await js("document.querySelectorAll('.canvas-context-menu button')[1].click()");await waitFor(win,"document.querySelectorAll('.stitch-layer').length===1 && document.querySelector('.save-status').textContent==='已自动保存'");await editCanvas(800,320);await waitFor(win,"document.querySelector('.save-status').textContent==='已自动保存' && document.querySelector('.stitch-info').textContent.includes(' MB')");
   assert.deepEqual((await store.load(legacy.id)).images,originals.two,'right-click removes only the targeted individual image');
   await js("document.querySelector('[aria-label=\"新建画布\"]').click()");await waitFor(win,"document.querySelectorAll('.canvas-card').length===3 && document.querySelectorAll('.stitch-layer').length===0 && document.querySelector('.save-status').textContent==='已自动保存'");
   assert.equal(await js("document.querySelector('.stitch-stage').parentElement.querySelector('.export-button').textContent"),'导出 2 张图像','empty project is skipped and not counted');assert.equal(await js("document.querySelector('.stitch-stage').parentElement.querySelector('.export-button').disabled"),false);

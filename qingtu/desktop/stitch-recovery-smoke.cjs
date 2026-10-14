@@ -35,7 +35,7 @@ async function waitFor(win,expression){for(let n=0;n<300;n++){if(await win.webCo
   await waitFor(win,"document.querySelectorAll('.stitch-layer').length===1");
   await js("document.querySelectorAll('.layout-options button')[3].click()");
   await waitFor(win,"!!document.querySelector('.stitch-layer.movable') && document.querySelector('.save-status').textContent==='已自动保存'");
-  const point=await js("(()=>{const r=document.querySelector('.stitch-layer').getBoundingClientRect();return {x:r.x+r.width/2,y:r.y+r.height/2};})()");
+  const point=await js("(()=>{const r=document.querySelector('.stitch-layer').getBoundingClientRect(),a=document.querySelector('.stitch-canvas-area').getBoundingClientRect();return {x:(Math.max(r.left,a.left)+Math.min(r.right,a.right))/2,y:(Math.max(r.top,a.top)+Math.min(r.bottom,a.bottom))/2};})()");
   win.webContents.debugger.attach('1.3');await win.webContents.debugger.sendCommand('Input.dispatchMouseEvent',{type:'mousePressed',...point,button:'left',clickCount:1});await win.webContents.debugger.sendCommand('Input.dispatchMouseEvent',{type:'mouseMoved',x:point.x+50,y:point.y+20,button:'left',buttons:1});
   await js("new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)))");
   // Quit before mouse release: application's Quit also waits for this gesture.

@@ -66,7 +66,7 @@ test('layout memories survive a normal reload and atomic recovery without droppi
  const {store}=await setup(t),image=await store.import(await fixture(),'memory.png');delete image.preview;
  let p={...project(image),canvasMode:'fixed',canvas:{width:600,height:240},positions:{[image.id]:{x:-20,y:30,width:320,height:200}}};
  p=switchCanvasLayout(p,'free');p.positions={[image.id]:{x:400,y:-80,width:120,height:300}};p=rememberCanvasLayout(p);await store.save(p);
- const reopened=await new ProjectStore(store.root).load(p.id);assert.deepEqual(reopened.layoutStates,p.layoutStates);assert.deepEqual(switchCanvasLayout(reopened,'horizontal').positions,{[image.id]:{x:-20,y:30,width:320,height:200}});
- await store.save({...p,name:'later'});await fs.writeFile(store.file(p.id),'interrupted');const recovered=await store.load(p.id);assert.equal(recovered.recovered,true);assert.deepEqual(recovered.layoutStates,p.layoutStates);
+ const reopened=await new ProjectStore(store.root).load(p.id);assert.deepEqual(reopened.layoutStates,p.layoutStates);assert.deepEqual(reopened.layoutCanvases,p.layoutCanvases);assert.deepEqual(switchCanvasLayout(reopened,'horizontal').positions,{[image.id]:{x:-20,y:30,width:320,height:200}});
+ await store.save({...p,name:'later'});await fs.writeFile(store.file(p.id),'interrupted');const recovered=await store.load(p.id);assert.equal(recovered.recovered,true);assert.deepEqual(recovered.layoutStates,p.layoutStates);assert.deepEqual(recovered.layoutCanvases,p.layoutCanvases);
  assert.throws(()=>store.save({...p,layoutStates:{free:{[image.id]:{x:NaN,y:0,width:1,height:1}}}}),/布局记忆/);assert.deepEqual((await store.load(p.id)).layoutStates,p.layoutStates);
 });

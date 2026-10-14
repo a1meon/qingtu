@@ -69,4 +69,4 @@ export const repository={
  }
 };
 
-export function newProject(){return {id:crypto.randomUUID(),name:'图像',images:[],initialOrder:[],canvasMode:'fixed',layout:'horizontal',grid:{rows:2,columns:2},positions:{},edits:{},canvas:{...DEFAULT_CANVAS},export:{format:'png',longEdge:DEFAULT_CANVAS.width,targetBytes:10000000,unit:'MB'},updatedAt:Date.now()};}
+export function newProject(){return {id:crypto.randomUUID(),name:'图像',images:[],initialOrder:[],canvasMode:'fixed',canvasSizing:'content',layout:'horizontal',grid:{rows:2,columns:2},positions:{},edits:{},canvas:{...DEFAULT_CANVAS},export:{format:'png',longEdge:5999,targetBytes:10000000,unit:'MB'},updatedAt:Date.now()};}

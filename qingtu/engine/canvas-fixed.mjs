@@ -1,5 +1,6 @@
 import {imageGeometry,cropFractions} from './stitch-edits.mjs';
 import {DEFAULT_CANVAS,validateCanvas} from './canvas-limits.mjs';
+import {fitCanvasToContent} from './canvas-fit.mjs';
 function validateGrid(grid,count){const rows=Number(grid?.rows),columns=Number(grid?.columns);if(![rows,columns].every(v=>Number.isInteger(v)&&v>=1&&v<=100)||count<rows||count>rows*columns)throw new Error('行列无法容纳全部图片，请调整宫格');return {rows,columns};}
 
 export function calculateFixedLayout(project,{draft=false}={}){
@@ -18,14 +19,12 @@ export function calculateFixedLayout(project,{draft=false}={}){
  return {width,height,rects,type:project.layout||'horizontal',fixed:true};
 }
 
-// Presets arrange full visible images inside the canvas. They never alter its
-// dimensions or crops; the saved poses remain editable after arrangement.
-export function arrangeImages(project,type=project.layout,grid=project.grid){
- validateCanvas(project.canvas.width,project.canvas.height);
- if(type==='free')return {...project,layout:type};
+// Shared normalized arrangements. The caller chooses whether to retain an
+// explicitly sized canvas or fit it to content; neither changes source crops.
+function arrangement(project,type,grid){
  if(!['horizontal','vertical','grid'].includes(type))throw new Error('布局类型无效');
  const images=project.images.map(image=>({...image,source:imageGeometry(image,project.edits?.[image.id])}));
- if(!images.length)return {...project,layout:type,grid,positions:{}};
+ if(!images.length)return {width:1,height:1,rects:[]};
  let width,height,rects=[];
  if(type==='horizontal'){
   width=images.reduce((sum,image)=>sum+image.source.width/image.source.height,0);height=1;
@@ -43,10 +42,22 @@ export function arrangeImages(project,type=project.layout,grid=project.grid){
    height+=h;offset+=length;
   }
  }
+ return {width,height,rects};
+}
+export function arrangeImages(project,type=project.layout,grid=project.grid){
+ validateCanvas(project.canvas.width,project.canvas.height);
+ if(type==='free')return {...project,layout:type};
+ const {width,height,rects}=arrangement(project,type,grid);
  const scale=Math.min(project.canvas.width/width,project.canvas.height/height);
  const left=(project.canvas.width-width*scale)/2,top=(project.canvas.height-height*scale)/2;
  const positions=Object.fromEntries(rects.map(rect=>[rect.id,{x:left+rect.x*scale,y:top+rect.y*scale,width:rect.width*scale,height:rect.height*scale}]));
  return {...project,layout:type,grid,positions};
+}
+
+export function arrangeContentImages(project,type=project.layout,grid=project.grid){
+ if(type==='free')return {...project,layout:type};
+ const {rects}=arrangement(project,type,grid);
+ return fitCanvasToContent({...project,layout:type,grid,positions:Object.fromEntries(rects.map(({id,...pose})=>[id,pose]))});
 }
 
 export function appendFixedImages(project,added){

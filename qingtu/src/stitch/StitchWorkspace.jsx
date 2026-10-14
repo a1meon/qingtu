@@ -4,9 +4,10 @@ import {api,desktop} from '../api.js';
 import {Dropdown} from '../Dropdown.jsx';
 import {TooltipButton} from '../TooltipButton.jsx';
 import {calculateLayout,moveImage} from '../../engine/stitch-layout.mjs';
-import {arrangeImages} from '../../engine/canvas-fixed.mjs';
+import {arrangeImages,arrangeContentImages} from '../../engine/canvas-fixed.mjs';
 import {setImageEdit,cropLimit} from '../../engine/stitch-edits.mjs';
-import {appendProjectImages,removeProjectImage,resetProject} from '../../engine/stitch-reset.mjs';
+import {removeProjectImage,resetProject} from '../../engine/stitch-reset.mjs';
+import {importCanvasImages} from '../../engine/canvas-import.mjs';
 import {repository} from './repository.js';
 import {useProjects} from './useProjects.js';
 import {StitchCanvas} from './StitchCanvas.jsx';
@@ -89,7 +90,7 @@ export const StitchWorkspace=forwardRef(function StitchWorkspace({active,inspect
  async function contextImage(id,anchor){if(busy)return;try{await settleEditor();setSelected(id);setContext({type:'image',id,anchor});}catch(e){setNotice(e.message);}}
  function contextCanvas(id,anchor){if(!busy)setContext({type:'canvas',id,anchor});}
  async function accept(items,owner){
-  if(items.length){await update(p=>{if(p.id!==owner)throw new Error('当前画布已切换，请重新导入');if(p.images.length+items.length>100||originalBytes([...p.images,...items])>500*1024*1024)throw new Error('每个项目最多 100 张、500 MB');return appendProjectImages(p,items);});setSelected(items[0].id);}
+  if(items.length){await update(p=>{if(p.id!==owner)throw new Error('当前画布已切换，请重新导入');if(p.images.length+items.length>100||originalBytes([...p.images,...items])>500*1024*1024)throw new Error('每个项目最多 100 张、500 MB');return importCanvasImages(p,items);});setSelected(items[0].id);}
  }
  async function runImportFiles(files){
   if(busy||importLock.current||!project)return;const list=Array.from(files);if(!list.length)return;const owner=project.id;importLock.current=true;setImporting(true);setNotice('');
@@ -121,12 +122,12 @@ export const StitchWorkspace=forwardRef(function StitchWorkspace({active,inspect
  async function setLayout(type){
   try{await settleEditor();if(getCurrent()?.layout!==type)await update(p=>switchCanvasLayout(p,type));}catch(e){setNotice(e.message);}
  }
- async function setGrid(changes){try{await settleEditor();await update(p=>{const grid={...p.grid,...changes};try{return arrangeImages(p,'grid',grid);}catch(e){if(e.message.includes('行列'))return {...p,grid};throw e;}});}catch(e){setNotice(e.message);}}
- const setCanvas=changes=>update(p=>({...p,canvas:{...p.canvas,...changes},export:{...p.export,longEdge:Math.max(changes.width??p.canvas.width,changes.height??p.canvas.height)}}));
+ async function setGrid(changes){try{await settleEditor();await update(p=>{const grid={...p.grid,...changes};try{return p.canvasSizing==='content'?arrangeContentImages(p,'grid',grid):arrangeImages(p,'grid',grid);}catch(e){if(e.message.includes('行列'))return {...p,grid};throw e;}});}catch(e){setNotice(e.message);}}
+ const setCanvas=changes=>update(p=>({...p,canvasSizing:'manual',canvas:{...p.canvas,...changes},export:{...p.export,longEdge:Math.max(changes.width??p.canvas.width,changes.height??p.canvas.height)}}));
  async function setPreset(value){if(value==='custom')return;try{await settleEditor();await setCanvas(presetCanvas(value));}catch(e){setNotice(e.message);}}
  const setExport=changes=>update(p=>({...p,export:{...p.export,...changes}}));
  async function removeImage(id){try{await settleEditor();await update(p=>removeProjectImage(p,id));if(selected===id)setSelected(null);}catch(e){setNotice(e.message);}}
- async function reorder(from,to){try{await settleEditor();await update(p=>{const next={...p,images:moveImage(p.images,from,to)};return next.layout==='free'?next:arrangeImages(next);});}catch(e){setNotice(e.message);}}
+ async function reorder(from,to){try{await settleEditor();await update(p=>{const next={...p,images:moveImage(p.images,from,to)};return next.layout==='free'?next:next.canvasSizing==='content'?arrangeContentImages(next):arrangeImages(next);});}catch(e){setNotice(e.message);}}
  async function openCanvas(id){if(busy||importLock.current)return;try{await settleEditor();await open(id);}catch(e){setNotice(e.message);}}
  async function createCanvas(){if(busy||importLock.current)return;try{await settleEditor();await create();}catch(e){setNotice(e.message);}}
  const editingImage=project?.images.find(image=>image.id===editing);

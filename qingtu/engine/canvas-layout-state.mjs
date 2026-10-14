@@ -1,5 +1,6 @@
-import {arrangeImages,appendFixedImages} from './canvas-fixed.mjs';
+import {arrangeImages,arrangeContentImages,appendFixedImages} from './canvas-fixed.mjs';
 import {imageGeometry} from './stitch-edits.mjs';
+import {fitCanvasToContent} from './canvas-fit.mjs';
 
 const modes=['horizontal','grid','vertical','free'];
 const validPose=p=>p&&['x','y','width','height'].every(key=>Number.isFinite(p[key])&&Math.abs(p[key])<=Number.MAX_SAFE_INTEGER/4)&&p.width>0&&p.height>0;
@@ -23,7 +24,7 @@ function restore(project,state){
 }
 export function rememberCanvasLayout(project){
  if(project.canvasMode!=='fixed')return project;
- if(!project.images.length)return {...project,layoutStates:{}};
+ if(!project.images.length)return {...project,layoutStates:{},layoutCanvases:{}};
  const layoutStates={};
  for(const mode of modes){
   const state=project.layoutStates?.[mode];if(!state)continue;
@@ -31,16 +32,29 @@ export function rememberCanvasLayout(project){
   layoutStates[mode]=Object.fromEntries(project.images.map(image=>[image.id,state[image.id]||fullPose(withPositions,image)]));
  }
  layoutStates[project.layout]=Object.fromEntries(project.images.map(image=>[image.id,fullPose(project,image)]));
- return {...project,layoutStates};
+ return {...project,layoutStates,layoutCanvases:{...project.layoutCanvases,[project.layout]:{...project.canvas,sizing:project.canvasSizing||'manual',longEdge:project.export?.longEdge??Math.max(project.canvas.width,project.canvas.height)}}};
 }
 export function switchCanvasLayout(project,type){
  if(!modes.includes(type))throw new Error('布局类型无效');
  if(type===project.layout)return project;
  const remembered=rememberCanvasLayout(project),state=remembered.layoutStates?.[type];
  let next;
- if(state)next={...remembered,layout:type,positions:restore(remembered,state)};
- else try{next=arrangeImages(remembered,type);}catch(error){if(type!=='grid'||!error.message.includes('行列'))throw error;next={...remembered,layout:type};}
+ const savedCanvas=remembered.layoutCanvases?.[type];
+ if(state)next={...remembered,layout:type,...(savedCanvas?{canvas:{width:savedCanvas.width,height:savedCanvas.height},canvasSizing:savedCanvas.sizing,export:{...remembered.export,longEdge:savedCanvas.longEdge??Math.max(savedCanvas.width,savedCanvas.height)}}:{}),positions:restore(remembered,state)};
+ else try{next=remembered.canvasSizing==='content'?arrangeContentImages(remembered,type):arrangeImages(remembered,type);}catch(error){if(type!=='grid'||!error.message.includes('行列'))throw error;next={...remembered,layout:type};}
  return rememberCanvasLayout(next);
+}
+// Imported pictures are shared across layouts. Refit each visited layout with
+// its own preserved relative poses, without loading or decoding other images.
+export function fitImportedCanvas(project){
+ const remembered=rememberCanvasLayout(project),layoutStates={},layoutCanvases={};
+ for(const mode of Object.keys(remembered.layoutStates||{})){
+  const edge=remembered.layoutCanvases?.[mode]?.longEdge??remembered.export?.longEdge;
+  const next=fitCanvasToContent({...remembered,layout:mode,export:{...remembered.export,longEdge:edge},positions:restore(remembered,remembered.layoutStates[mode])});
+  layoutStates[mode]=Object.fromEntries(next.images.map(image=>[image.id,fullPose(next,image)]));
+  layoutCanvases[mode]={...next.canvas,sizing:'content',longEdge:edge};
+ }
+ return {...fitCanvasToContent(remembered),layoutStates,layoutCanvases};
 }
 export function splitLayoutStates(states,id,ids,axis,fraction){
  if(!states)return states;
@@ -54,6 +68,11 @@ export function splitLayoutStates(states,id,ids,axis,fraction){
 }
 export function removeLayoutImageStates(states,id){return states&&Object.fromEntries(Object.entries(states).map(([mode,state])=>[mode,Object.fromEntries(Object.entries(state).filter(([key])=>key!==id))]));}
 export function validateLayoutStates(project){
+ if(project.canvasSizing!==undefined&&!['content','manual'].includes(project.canvasSizing))throw new Error('画布尺寸模式无效');
+ if(project.layoutCanvases!==undefined){
+  if(!project.layoutCanvases||typeof project.layoutCanvases!=='object'||Array.isArray(project.layoutCanvases))throw new Error('布局画布数据无效');
+  for(const [mode,canvas] of Object.entries(project.layoutCanvases))if(!modes.includes(mode)||!canvas||![canvas.width,canvas.height].every(Number.isFinite)||!['content','manual'].includes(canvas.sizing)||canvas.longEdge!==undefined&&!Number.isFinite(canvas.longEdge))throw new Error('布局画布数据无效');
+ }
  if(project.layoutStates===undefined)return;
  const states=project.layoutStates,ids=new Set(project.images.map(image=>image.id));
  if(!states||typeof states!=='object'||Array.isArray(states))throw new Error('布局记忆数据无效');
