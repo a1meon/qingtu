@@ -1,4 +1,11 @@
+import {fitCanvasAfterResize} from './canvas-fit.mjs';
+
 export const RESIZE_HANDLES=['nw','n','ne','e','se','s','sw','w'];
+
+export function applyCanvasTransform(project,positions,operation='move'){
+ const next={...project,positions};
+ return operation==='resize'?fitCanvasAfterResize(next):next;
+}
 
 // Keep the opposite edge/corner still. Shift permits independent dimensions;
 // otherwise preserve the image's current aspect, including a prior Shift edit.

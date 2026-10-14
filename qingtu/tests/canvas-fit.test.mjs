@@ -15,7 +15,7 @@ test('each import derives canvas from complete visible content and uses the requ
  const first=importCanvasImages(project(),[image('a')]);assert.deepEqual(first.canvas,{width:4499,height:5999});assert.equal(first.positions.a.x,0);assert.equal(first.positions.a.y,0);near(first.positions.a.width/first.positions.a.height,.75);
  const second=importCanvasImages(first,[image('b')]);assert.deepEqual(second.canvas,{width:5999,height:3999});near(second.positions.b.x,second.positions.a.width);near(second.positions.a.height,second.positions.b.height);assert.deepEqual(second.initialOrder,['a','b']);assert.deepEqual(first.images.map(i=>i.id),['a']);
 });
-test('imports override a manually chosen canvas, while later movement and resize never refit',()=>{
+test('imports override a manually chosen canvas, while position updates alone never refit',()=>{
  const p=importCanvasImages({...project(),canvasSizing:'manual',canvas:{width:1200,height:480},export:{longEdge:1200}},[image('a',100,100),image('b',100,100)]);assert.deepEqual(p.canvas,{width:1200,height:600});assert.equal(p.canvasSizing,'content');
  const moved=rememberCanvasLayout({...p,positions:{...p.positions,a:{x:-200,y:50,width:1100,height:700}}});assert.deepEqual(moved.canvas,p.canvas);assert.equal(calculateLayout(moved).rects[0].x,-200);
  const next=importCanvasImages(moved,[image('c',100,100)]);assert.equal(next.positions.a.x,0);assert.notDeepEqual(next.canvas,moved.canvas);const scale=next.positions.a.width/1100;near(next.positions.a.height/700,scale);near(next.positions.b.x-next.positions.a.x,(p.positions.b.x+200)*scale);

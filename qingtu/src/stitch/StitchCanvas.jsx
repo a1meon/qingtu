@@ -50,7 +50,7 @@ export function StitchCanvas({project,layout,onChange,onEdit,onContext,onRemove,
   delete canvas.current.dataset.interacting;canvas.current.querySelector('.snap-guides').replaceChildren();
   const rect=nextRect(g);
   if(cancelled||Math.hypot((g.dx||0)*scale,(g.dy||0)*scale)<3){showRect(g.element,g.rect);showRect(g.ghost,g.rect);showRect(canvas.current.querySelector('.stitch-selection'),g.rect);return;}
-  const {x,y,width,height}=rect;return onChange({...project.positions,[g.id]:{x,y,width,height}});
+  const {x,y,width,height}=rect;return onChange({...project.positions,[g.id]:{x,y,width,height}},g.handle?'resize':'move');
  }
  function renderLayer(rect,ghost=false){
      const image=project.images.find(i=>i.id===rect.id);

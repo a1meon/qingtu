@@ -1,0 +1,29 @@
+{
+  "passed": true,
+  "date": "2026-10-14",
+  "platform": "Windows Electron 44.7.0 + Chrome; Node 24.14.0",
+  "tests": 210,
+  "checksPassed": ["npm test", "npm run build", "npm run smoke:desktop", "npm run smoke:ui", "npm run smoke:canvas-fit", "npm run smoke:canvas-resize", "npm run smoke:canvas", "npm run smoke:split", "npm run smoke:recovery", "npm run smoke:optimization", "npm run smoke:png-budget", "npm run verify:quality", "npm run verify:png-budget"],
+  "initialCanvas": [450, 600],
+  "enlargedCanvas": [600, 800],
+  "shrunkCanvas": [300, 400],
+  "shiftIndependentCanvas": [450, 400],
+  "subsequentProportionalCanvas": [225, 200],
+  "presetCanvas": [5984, 3366],
+  "manualCanvas": [800, 400],
+  "autoGrowAndShrink": true,
+  "noNormalizationUndoingShrink": true,
+  "noEncodeDuringGestures": true,
+  "movementAllowsOverflow": true,
+  "presetResizeKeepsFrame": true,
+  "numericSizeResizeKeepsFrame": true,
+  "layoutAndReloadRestoreCanvas": true,
+  "originalUnchanged": true,
+  "edgeAndRatioLimitsRetained": true,
+  "outputs": [
+    {"platform": "Chrome", "file": "output/playwright/browser-resize-fit.png", "width": 300, "height": 400, "bytes": 232400, "limit": 10000000, "maxRGB": 0, "maxAlpha": 0, "rmse": 0, "opaqueToEveryEdge": true, "sha256": "58b7492721c5da9825fd4909ffbcf919defa54a80c8041fc97ea1ae4980efc8e"},
+    {"platform": "Electron", "file": "artifacts/resize-canvas/resize-fit-qingtu.png", "width": 300, "height": 400, "bytes": 232400, "limit": 10000000, "maxRGB": 0, "maxAlpha": 0, "rmse": 0, "opaqueToEveryEdge": true, "sha256": "58b7492721c5da9825fd4909ffbcf919defa54a80c8041fc97ea1ae4980efc8e"}
+  ],
+  "pixelReference": "Independent same-size composition from immutable repository 4K JPEG fixture; decoded RGBA byte comparison. Does not imply original spatial resolution is retained after resizing.",
+  "limits": ["Tests use repository fixtures; user 28 MB original not revalidated this round", "Mac native runtime and packaged installation not tested", "No installer release, main merge or signing-key change"]
+}
