@@ -53,3 +53,11 @@ test('true import order survives reorder and crash recovery; invalid orders cann
  await store.save({...p,name:'新版'});await fs.writeFile(store.file(p.id),'interrupted');
  const restored=await new ProjectStore(root).load(p.id);assert.deepEqual(restored.initialOrder,p.initialOrder);assert.deepEqual(resetProject(restored).images,[image,second]);
 });
+test('atomic recovery retains fixed canvas, off-canvas transforms and independent dimensions',async t=>{
+ const {root,store}=await setup(t),image=await store.import(await fixture(),'fixed.png');delete image.preview;
+ const p={...project(image),canvasMode:'fixed',canvas:{width:5995,height:2398},initialOrder:[image.id],positions:{[image.id]:{x:-120.5,y:2600,width:800,height:300}}};
+ await store.save(p);await store.save({...p,canvas:{width:2000,height:1000}});await fs.writeFile(store.file(p.id),'interrupted');const restored=await new ProjectStore(root).load(p.id);
+ assert.equal(restored.recovered,true);assert.deepEqual(restored.canvas,p.canvas);assert.deepEqual(restored.positions,p.positions);assert.ok((await store.readAsset(image.assetId)).equals(await fixture()));
+ assert.throws(()=>store.save({...p,positions:{[image.id]:{x:0,y:0,width:800,height:NaN}}}),/位置或尺寸/);
+ await store.save({...p,canvas:{width:6000,height:2000}});assert.deepEqual((await store.load(p.id)).canvas,{width:6000,height:2000},'invalid user settings remain recoverable while layout validation blocks export');
+});

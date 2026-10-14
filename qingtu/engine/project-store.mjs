@@ -47,6 +47,13 @@ export class ProjectStore{
   if(project.thumbnail!=null&&(typeof project.thumbnail!=='string'||!project.thumbnail.startsWith('data:image/png;base64,')||project.thumbnail.length>200000))throw new Error('画布缩略图无效');
   let bytes=0;
   if(project.edits!=null&&(typeof project.edits!=='object'||Array.isArray(project.edits)))throw new Error('单图编辑数据无效');
+  if(project.canvasMode!=null&&project.canvasMode!=='fixed')throw new Error('画布模式无效');
+  if(project.canvasMode==='fixed'){
+   // Illegal user dimensions may be saved for recovery, but render validates
+   // the pixel/ratio limits before allocating a raster or claiming success.
+   if(!project.canvas||![project.canvas.width,project.canvas.height].every(Number.isFinite))throw new Error('画布尺寸数据无效');
+   for(const image of project.images){const p=project.positions?.[image.id];if(!p||![p.x,p.y,p.width,p.height].every(Number.isFinite)||p.width<=0||p.height<=0||[p.x,p.y,p.width,p.height].some(v=>Math.abs(v)>Number.MAX_SAFE_INTEGER/4))throw new Error('图片位置或尺寸无效');}
+  }
   for(const image of project.images){this.assetFile(image.assetId);if(!validId(image.id)||![image.width,image.height,image.bytes].every(v=>Number.isInteger(v)&&v>0))throw new Error('图片数据无效');imageGeometry(image,project.edits?.[image.id]);bytes+=image.bytes;}
   if(bytes>500*1024*1024)throw new Error('每个项目最多 100 张、500 MB');
  }

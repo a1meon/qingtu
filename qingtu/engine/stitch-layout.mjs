@@ -1,10 +1,7 @@
 import {imageGeometry,cropFractions} from './stitch-edits.mjs';
-export const MAX_EDGE=5999,MAX_RATIO=2.5;
-export function validateCanvas(width,height){
- if(![width,height].every(v=>Number.isInteger(v)&&v>0&&v<=MAX_EDGE))throw new Error('画布宽高须为 1–5999 像素');
- if(Math.max(width,height)/Math.min(width,height)>MAX_RATIO)throw new Error('画布比例超过 2.5，请调整布局');
- return {width,height};
-}
+import {MAX_EDGE,MAX_RATIO,validateCanvas} from './canvas-limits.mjs';
+import {calculateFixedLayout} from './canvas-fixed.mjs';
+export {MAX_EDGE,MAX_RATIO,validateCanvas} from './canvas-limits.mjs';
 export function moveImage(images,from,to){const copy=[...images];const index=copy.findIndex(i=>i.id===from),target=copy.findIndex(i=>i.id===to);if(index<0||target<0)return copy;copy.splice(target,0,...copy.splice(index,1));return copy;}
 export function appendFreeImages(project,added){
  const positions={...project.positions},existing=project.images||[];
@@ -51,6 +48,7 @@ function resolution(width,height,longEdge,draft=false,exact=false){
  return {width:w,height:h,factor};
 }
 export function calculateLayout(project,{draft=false}={}){
+ if(project.canvasMode==='fixed')return calculateFixedLayout(project,{draft});
  const originals=project.images||[];if(!originals.length)throw new Error('请添加图片');
  if(originals.some(i=>![i.width,i.height].every(v=>Number.isInteger(v)&&v>0)))throw new Error('图片尺寸无效');
  const images=originals.map(image=>{const source=imageGeometry(image,project.edits?.[image.id]);return {...image,original:image,source,width:source.width,height:source.height};});

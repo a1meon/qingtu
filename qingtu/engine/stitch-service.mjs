@@ -5,12 +5,17 @@ import {encodePngWithinBudget} from './png-budget.mjs';
 import {INPUT_OPTIONS} from './image.mjs';
 import {imageGeometry} from './stitch-edits.mjs';
 import {encodeJpeg} from './jpeg-quality.mjs';
+import {clipRectangle} from './canvas-clip.mjs';
 
 export async function composeProject(project,store,{isObsolete}={}){
  const check=()=>{if(isObsolete?.())throw new Error('预览参数已更新');};
  const layout=calculateLayout(project);let canvas=Buffer.alloc(layout.width*layout.height*4);
- for(const rect of layout.rects){
-  check();const source=await store.readAsset(rect.assetId);check();
+ for(const pose of layout.rects){
+  check();
+  const rect=layout.fixed?{...pose,x:Math.round(pose.x),y:Math.round(pose.y),width:Math.max(1,Math.round(pose.x+pose.width)-Math.round(pose.x)),height:Math.max(1,Math.round(pose.y+pose.height)-Math.round(pose.y))}:pose;
+  const clipped=clipRectangle(rect,layout);
+  if(!clipped)continue;
+  const source=await store.readAsset(rect.assetId);check();
   const meta=await sharp(source,INPUT_OPTIONS).metadata(),image=project.images.find(i=>i.id===rect.id),rotated=[5,6,7,8].includes(meta.orientation);
   if(image.width!==(rotated?meta.height:meta.width)||image.height!==(rotated?meta.width:meta.height)||image.bytes!==source.length)throw new Error('原图副本与项目尺寸不一致，请检查项目数据');
   let pipeline=sharp(source,INPUT_OPTIONS).rotate().toColourspace('srgb');
@@ -18,16 +23,16 @@ export async function composeProject(project,store,{isObsolete}={}){
   if(rect.proportionalCrop){
    // Round only at the export raster. Symmetric sides differ by at most one
    // output pixel; keeping the source height preserves the original scale.
-   const fullWidth=Math.ceil(image.width/image.height*rect.height);
+   const fullWidth=layout.fixed?Math.ceil(rect.width/(1-2*project.edits[image.id].fraction)-1e-9):Math.ceil(image.width/image.height*rect.height);
    if(fullWidth<rect.width)throw new Error('分辨率过低，无法保持左右裁剪，请增加长边');
-   pipeline=pipeline.resize(fullWidth,rect.height,{fit:'fill'}).extract({left:Math.floor((fullWidth-rect.width)/2),top:0,width:rect.width,height:rect.height});
+   pipeline=pipeline.resize(fullWidth,rect.height,{fit:'fill'}).extract({left:Math.floor((fullWidth-rect.width)/2)+clipped.sourceLeft,top:clipped.sourceTop,width:clipped.width,height:clipped.height});
   }else if(rect.autoCrop){
    if(geometry.left||geometry.top)pipeline=pipeline.extract(geometry);
    const resized=await pipeline.resize({height:rect.height}).ensureAlpha().raw().toBuffer({resolveWithObject:true});
    pipeline=sharp(resized.data,{raw:resized.info}).extract({left:Math.floor((resized.info.width-rect.width)/2),top:0,width:rect.width,height:rect.height});
-  }else {if(geometry.left||geometry.top)pipeline=pipeline.extract(geometry);pipeline=pipeline.resize(rect.width,rect.height,{fit:'fill'});}
+  }else {if(geometry.left||geometry.top)pipeline=pipeline.extract(geometry);pipeline=pipeline.resize(rect.width,rect.height,{fit:'fill'});if(layout.fixed)pipeline=pipeline.extract({left:clipped.sourceLeft,top:clipped.sourceTop,width:clipped.width,height:clipped.height});}
   const part=await pipeline.ensureAlpha().raw().toBuffer();
-  canvas=await sharp(canvas,{raw:{width:layout.width,height:layout.height,channels:4}}).composite([{input:part,raw:{width:rect.width,height:rect.height,channels:4},left:rect.x,top:rect.y}]).raw().toBuffer();
+  canvas=await sharp(canvas,{raw:{width:layout.width,height:layout.height,channels:4}}).composite([{input:part,raw:{width:clipped.width,height:clipped.height,channels:4},left:clipped.left,top:clipped.top}]).raw().toBuffer();
  }
  return {data:canvas,info:{width:layout.width,height:layout.height,channels:4},layout};
 }

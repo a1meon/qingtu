@@ -23,7 +23,7 @@ export function useProjects(){
  const update=change=>{
   const previous=current.current;if(!previous)return;
   const next=typeof change==='function'?change(previous):{...previous,...change};
-  try{const layout=calculateLayout(next);next.canvas={width:layout.width,height:layout.height};next.crops=Object.fromEntries(layout.rects.map(r=>[r.id,r.crop]));}catch{next.canvas=null;next.crops={};}
+  try{const layout=calculateLayout(next);if(next.canvasMode!=='fixed')next.canvas={width:layout.width,height:layout.height};next.crops=Object.fromEntries(layout.rects.map(r=>[r.id,r.crop]));}catch{if(next.canvasMode!=='fixed')next.canvas=null;next.crops={};}
   current.current=next;setProject(next);return persist(next);
  };
  const open=async id=>{
@@ -37,7 +37,7 @@ export function useProjects(){
    current.current=ready;setProject(ready);
    setSaveError('');
    if(value.recovered)setSaveError('已恢复上次完整保存；请检查编辑状态后重试保存');
-   else if(formatChanged||orderChanged||!value.thumbnail&&value.images.length)persist(ready);
+   else if(value.canvasMode!=='fixed'||formatChanged||orderChanged||!value.thumbnail&&value.images.length)persist(ready);
   }catch(error){setSaveError(error.message);throw error;}finally{if(revision===loadRevision.current)setLoading(false);}
  };
  const create=async()=>{

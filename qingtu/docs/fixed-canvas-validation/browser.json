@@ -1,0 +1,17 @@
+{
+  "passed": true,
+  "dimensions": [
+    1000,
+    400
+  ],
+  "bytes": 875759,
+  "limitBytes": 10000000,
+  "sha256": "5ed398246ed28035107d02f5aff051380f6069718a882ee57fd4cff971340c18",
+  "transparentPixels": 46149,
+  "fullColour": true,
+  "indexedDbBlobsRestored": true,
+  "independentWidthHeightRestored": true,
+  "shiftResizeVerified": true,
+  "negativePoseAndClippedExport": true,
+  "noEncodeDuringDrag": true
+}

@@ -9,6 +9,7 @@ import {ImageService} from '../engine/service.mjs';
 import {StitchService} from '../engine/stitch-service.mjs';
 import {moveImage,initializeFree,calculateLayout} from '../engine/stitch-layout.mjs';
 import {optimizeHorizontal} from '../engine/stitch-optimize.mjs';
+import {appendFixedImages,arrangeImages} from '../engine/canvas-fixed.mjs';
 async function setup(t){const root=await fs.mkdtemp(path.join(os.tmpdir(),'qingtu-stitch-'));t.after(()=>fs.rm(root,{recursive:true,force:true}));const store=new ProjectStore(path.join(root,'store')),images=new ImageService();return {root,store,images,service:new StitchService(store,images)};}
 const settings={longEdge:120,format:'png',targetBytes:1000000};
 async function solid(store,name,width,height,color){const source=await sharp({create:{width,height,channels:4,background:color}}).png().toBuffer();const item=await store.import(source,name);delete item.preview;return item;}
@@ -123,4 +124,50 @@ test('obsolete in-flight compositions stop loading remaining originals without d
  const exported=service.render(p),latest=service.render({...p,export:{...settings,longEdge:100}},{latest:true});release();
  const [old]=await obsolete;assert.equal(old.status,'rejected');assert.match(old.reason.message,/预览参数已更新/);
  const [result,newest]=await Promise.all([exported,latest]);assert.equal(reads,5,'obsolete composition reads only its current asset');assert.equal(newest.width,100);assert.ok(images.result(result.token));
+});
+
+test('fixed export clips every canvas edge from source pixels without modifying originals or poses',async t=>{
+ const {store,images,service}=await setup(t),width=120,height=100,data=Buffer.alloc(width*height*4);
+ for(let y=0;y<height;y++)for(let x=0;x<width;x++){const i=(y*width+x)*4;data[i]=x;data[i+1]=y;data[i+2]=170;data[i+3]=255;}
+ const source=await sharp(data,{raw:{width,height,channels:4}}).png().toBuffer(),item=await store.import(source,'coordinates.png');delete item.preview;
+ for(const [x,y] of [[-20,-10],[30,40],[-30,40],[40,-20]]){
+  const pose={x,y,width,height},p={id:'fixed-clip',canvasMode:'fixed',canvas:{width:100,height:100},images:[item],layout:'free',positions:{[item.id]:pose},export:settings};
+  await store.save(p);const r=await service.render(await store.load(p.id)),actual=await sharp(images.result(r.token).output.buffer).ensureAlpha().raw().toBuffer();assert.deepEqual([r.width,r.height],[100,100]);
+  for(let cy=0;cy<100;cy++)for(let cx=0;cx<100;cx++){
+   const offset=(cy*100+cx)*4,sx=cx-x,sy=cy-y,inside=sx>=0&&sx<width&&sy>=0&&sy<height;
+   assert.deepEqual([...actual.subarray(offset,offset+4)],inside?[sx,sy,170,255]:[0,0,0,0]);
+  }
+  assert.deepEqual((await store.load(p.id)).positions[item.id],pose);assert.ok((await store.readAsset(item.assetId)).equals(source));
+ }
+});
+test('fixed Shift stretches and manual crops match explicit resize pixels before boundary clipping',async t=>{
+ const {store,images,service}=await setup(t),width=60,height=40,data=Buffer.alloc(width*height*4);
+ for(let y=0;y<height;y++)for(let x=0;x<width;x++){const i=(y*width+x)*4;data[i]=x*4;data[i+1]=y*6;data[i+2]=180;data[i+3]=x<30?255:128;}
+ const source=await sharp(data,{raw:{width,height,channels:4}}).png().toBuffer(),item=await store.import(source,'stretch-alpha.png');delete item.preview;
+ const p={id:'fixed-stretch',canvasMode:'fixed',canvas:{width:100,height:60},images:[item],layout:'horizontal',positions:{[item.id]:{x:-10,y:-5,width:110,height:65}},edits:{[item.id]:{axis:'horizontal',amount:5}},export:settings};
+ const r=await service.render(p),actual=await sharp(images.result(r.token).output.buffer).ensureAlpha().raw().toBuffer();
+ const resized=await sharp(source).extract({left:5,top:0,width:50,height:40}).resize(110,65,{fit:'fill'}).extract({left:10,top:5,width:100,height:60}).ensureAlpha().raw().toBuffer();
+ const expected=await sharp({create:{width:100,height:60,channels:4,background:'#00000000'}}).composite([{input:resized,raw:{width:100,height:60,channels:4}}]).raw().toBuffer();
+ assert.deepEqual([r.width,r.height],[100,60]);assert.ok(actual.equals(expected));assert.ok((await store.readAsset(item.assetId)).equals(source));
+});
+test('images wholly outside fixed canvas are neither decoded nor included in export',async t=>{
+ const {store,images,service}=await setup(t),a=await solid(store,'visible',20,20,'#ff0000'),b=await solid(store,'outside',20,20,'#00ff00');let reads=0;
+ const read=store.readAsset.bind(store);store.readAsset=async id=>{reads++;return read(id);};
+ const p={id:'fixed-outside',canvasMode:'fixed',canvas:{width:100,height:100},images:[a,b],layout:'free',positions:{[a.id]:{x:10,y:10,width:20,height:20},[b.id]:{x:100,y:0,width:5000,height:5000}},export:settings};
+ const r=await service.render(p),data=await sharp(images.result(r.token).output.buffer).ensureAlpha().raw().toBuffer();assert.equal(reads,1);assert.deepEqual([r.width,r.height],[100,100]);assert.equal(data[(10*100+10)*4],255);assert.equal(data[3],0);assert.equal(p.images.length,2);
+});
+test('fixed 4K right append clips the last image while presets retain full images and exact default canvas',async t=>{
+ const {store,images,service}=await setup(t),files=[];
+ for(const [name,w,h,color] of [['a',3072,4096,'#ff0000'],['b',3072,4096,'#00ff00'],['c',2160,3840,'#0000ff'],['d',2160,3840,'#ffff0080']])files.push(await solid(store,name,w,h,color));
+ const p=appendFixedImages({id:'fixed-four',canvasMode:'fixed',canvas:{width:5995,height:2398},images:[],layout:'horizontal',positions:{},edits:{},export:{...settings,longEdge:5995}},files);
+ const result=await service.render(p),saved=images.result(result.token).output,raw=await sharp(saved.buffer).ensureAlpha().raw().toBuffer();
+ assert.deepEqual([result.width,result.height],[5995,2398]);assert.ok(saved.buffer.length<=settings.targetBytes);assert.deepEqual([...raw.subarray(raw.length-4)],[255,255,0,128]);assert.ok(result.layout.rects.every(r=>!r.autoCrop&&!r.crop));assert.ok(p.positions[files[3].id].x+p.positions[files[3].id].width>5995);
+ const arranged=await service.render(arrangeImages(p)),data=await sharp(images.result(arranged.token).output.buffer).ensureAlpha().raw().toBuffer();assert.deepEqual([arranged.width,arranged.height],[5995,2398]);assert.equal(data[3],0,'only user-confirmed internal transparent space, no canvas growth');
+});
+test('fixed percentage crop remains centred and clipped correctly after nonuniform resizing',async t=>{
+ const {store,images,service}=await setup(t),width=120,height=100,data=Buffer.alloc(width*height*4);
+ for(let y=0;y<height;y++)for(let x=0;x<width;x++){const i=(y*width+x)*4;data[i]=x;data[i+1]=y;data[i+2]=80;data[i+3]=255;}
+ const source=await sharp(data,{raw:{width,height,channels:4}}).png().toBuffer(),item=await store.import(source,'percentage.png');delete item.preview;
+ const p={id:'fraction-clipped',canvasMode:'fixed',canvas:{width:100,height:100},images:[item],positions:{[item.id]:{x:-10,y:-5,width:120,height:105}},edits:{[item.id]:{axis:'horizontal',fraction:.1}},layout:'free',export:settings};
+ const r=await service.render(p),actual=await sharp(images.result(r.token).output.buffer).ensureAlpha().raw().toBuffer(),expected=await sharp(source).resize(150,105,{fit:'fill'}).extract({left:25,top:5,width:100,height:100}).ensureAlpha().raw().toBuffer();assert.ok(actual.equals(expected));
 });

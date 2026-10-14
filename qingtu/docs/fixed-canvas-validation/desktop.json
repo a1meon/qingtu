@@ -1,0 +1,46 @@
+{
+  "passed": true,
+  "platform": "win32",
+  "source": "Reproducible 4K-size fixtures derived from repository photo samples",
+  "fixedDefault": [
+    5995,
+    2398
+  ],
+  "allHandles": 8,
+  "defaultProportional": true,
+  "shiftIndependent": true,
+  "noEncodeDuringGestures": true,
+  "negativeCoordinatesClip": true,
+  "rightAppendOverflowRetained": true,
+  "presetDoesNotResizeCanvas": true,
+  "optimizeUsesCustomCanvasRatio": true,
+  "originalBytesIdentical": true,
+  "edgeAndRatioLimits": true,
+  "reloadRestoresTransforms": true,
+  "exports": [
+    {
+      "name": "fixed-right-append-qingtu.png",
+      "width": 5995,
+      "height": 2398,
+      "bytes": 19587218,
+      "limit": 40000000,
+      "sha256": "fb773fe06a1042cd378905d574a264a9e88a64e390e677060788ee3ee702c206"
+    },
+    {
+      "name": "fixed-shift-clipped-qingtu.png",
+      "width": 5995,
+      "height": 2398,
+      "bytes": 19074736,
+      "limit": 40000000,
+      "sha256": "ce92868110384a87663873298078365e3a630a9d3bf5862e028c098c687011aa"
+    },
+    {
+      "name": "fixed-2-to-1-optimized-qingtu.png",
+      "width": 600,
+      "height": 300,
+      "bytes": 405869,
+      "limit": 40000000,
+      "sha256": "d80b33cfa1f71cc028a7af904f3127484ae087b9122ddf2e73745aa47f71fa89"
+    }
+  ]
+}

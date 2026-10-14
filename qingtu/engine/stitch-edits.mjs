@@ -19,9 +19,11 @@ export function setImageEdit(project,id,edit){
  const image=project.images.find(image=>image.id===id);if(!image)throw new Error('图片已移除');
  const before=imageGeometry(image,project.edits?.[id]),after=imageGeometry(image,edit);
  const next={...project,edits:{...project.edits,[id]:{axis:edit.axis,amount:edit.amount}}};
- if(project.layout==='free'){
+ if(project.canvasMode==='fixed'||project.layout==='free'){
   const p=project.positions[id],scale=p.width/before.width,width=after.width*scale;
-  next.positions={...project.positions,[id]:{x:p.x+(p.width-width)/2,y:p.y+(before.height-after.height)*scale/2,width}};
+  const height=project.canvasMode==='fixed'?p.height*after.height/before.height:after.height*scale;
+  const oldHeight=project.canvasMode==='fixed'?p.height:before.height*scale;
+  next.positions={...project.positions,[id]:{x:p.x+(p.width-width)/2,y:p.y+(oldHeight-height)/2,width,...(project.canvasMode==='fixed'?{height}:{})}};
  }
  return next;
 }

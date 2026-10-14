@@ -1,5 +1,6 @@
 import {setImageEdit} from './stitch-edits.mjs';
 import {appendFreeImages} from './stitch-layout.mjs';
+import {appendFixedImages} from './canvas-fixed.mjs';
 
 export function validateImportOrder(project){
  if(project.initialOrder===undefined)return;
@@ -16,7 +17,7 @@ export function recordImportOrder(project,order){
  const next={...project,initialOrder:[...order]};validateImportOrder(next);return next;
 }
 export function appendProjectImages(project,images){
- const order=knownImportOrder(project),next=project.layout==='free'?appendFreeImages(project,images):{...project,images:[...project.images,...images]};
+ const order=knownImportOrder(project),next=project.canvasMode==='fixed'?appendFixedImages(project,images):project.layout==='free'?appendFreeImages(project,images):{...project,images:[...project.images,...images]};
  return order?{...next,initialOrder:[...order,...images.map(image=>image.id)]}:next;
 }
 export function removeProjectImage(project,id){

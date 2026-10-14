@@ -28,7 +28,8 @@ const pause=ms=>new Promise(resolve=>setTimeout(resolve,ms));
   await js("window.qingtu.windowAction('close')");return;
  }
  await waitFor("!document.querySelector('[aria-label=\"添加拼接图片\"]').disabled");
- await js("(()=>{const el=document.querySelector('#stitch-long-edge');Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(el,'1200');el.dispatchEvent(new Event('input',{bubbles:true}));})()");
+ await js("(()=>{const el=document.querySelector('#stitch-width');Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(el,'1200');el.dispatchEvent(new Event('input',{bubbles:true}));})()");
+ await js("(()=>{const el=document.querySelector('#stitch-height');Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(el,'480');el.dispatchEvent(new Event('input',{bubbles:true}));})()");
  await js("document.querySelector('[aria-label=\"添加拼接图片\"]').click()");await waitFor("document.querySelectorAll('.stitch-layer').length===1 && document.querySelector('.save-status').textContent==='已自动保存'");
  await js("window.dispatchEvent(new KeyboardEvent('keydown',{key:'o',ctrlKey:true,bubbles:true}))");await waitFor("document.querySelectorAll('.stitch-layer').length===2 && document.querySelector('.save-status').textContent==='已自动保存'");
  let started=false,finished=false;

@@ -1,5 +1,7 @@
 import {api,desktop,readFile} from '../api.js';
 import {canvasThumbnail} from './thumbnail.js';
+import {DEFAULT_CANVAS} from '../../engine/canvas-limits.mjs';
+import {migrateFixedCanvas} from '../../engine/canvas-migrate.mjs';
 
 let database;
 const request=req=>new Promise((resolve,reject)=>{req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error);});
@@ -44,6 +46,7 @@ export const repository={
   }return image;
  },
  async prepare(project,{previews=true}={}){
+  project=migrateFixedCanvas(project);
   if(!desktop){
    const missing=await api.stitchMissing(project.images.map(i=>i.assetId));
    for(const id of missing){
@@ -66,4 +69,4 @@ export const repository={
  }
 };
 
-export function newProject(){return {id:crypto.randomUUID(),name:'图像',images:[],initialOrder:[],layout:'horizontal',grid:{rows:2,columns:2},positions:{},edits:{},canvas:null,export:{format:'png',longEdge:5999,targetBytes:10000000,unit:'MB'},updatedAt:Date.now()};}
+export function newProject(){return {id:crypto.randomUUID(),name:'图像',images:[],initialOrder:[],canvasMode:'fixed',layout:'horizontal',grid:{rows:2,columns:2},positions:{},edits:{},canvas:{...DEFAULT_CANVAS},export:{format:'png',longEdge:DEFAULT_CANVAS.width,targetBytes:10000000,unit:'MB'},updatedAt:Date.now()};}

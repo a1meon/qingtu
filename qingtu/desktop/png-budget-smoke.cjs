@@ -26,8 +26,8 @@ async function waitFor(win,expr){for(let n=0;n<600;n++){if(await win.webContents
   await fs.mkdir('artifacts/png-budget',{recursive:true});await win.webContents.capturePage().then(image=>fs.writeFile('artifacts/png-budget/compression-ui.png',image.toPNG()));
   await js("document.querySelector('.export-button').click()");await waitFor(win,"document.querySelector('.notice')?.textContent.includes('1 张已等比调整尺寸')");
   reports.push({module:'compression',width:compression.width,height:compression.height,bytes:compression.bytes,requested:[width,height],actualSizeVisible:true});
-  await js("document.querySelector('[aria-label=\"图像拼接\"]').click()");await waitFor(win,"!!document.querySelector('[aria-label=\"添加拼接图片\"]')");await js("document.querySelector('[aria-label=\"添加拼接图片\"]').click()");
-  await waitFor(win,"!!document.querySelector('.stitch-layer')&&!document.querySelector('.project-name').disabled");await edit('#stitch-long-edge',600);
+  await js("document.querySelector('[aria-label=\"图像拼接\"]').click()");await waitFor(win,"!!document.querySelector('[aria-label=\"添加拼接图片\"]')");await edit('#stitch-width',600);await edit('#stitch-height',240);await js("document.querySelector('[aria-label=\"添加拼接图片\"]').click()");
+  await waitFor(win,"!!document.querySelector('.stitch-layer')&&!document.querySelector('.project-name').disabled");
   await js("document.querySelector('[aria-label=\"拼接大小单位\"]').click()");await waitFor(win,"!!document.querySelector('[role=option]')");await js("[...document.querySelectorAll('[role=option]')].find(e=>e.textContent==='KB').click()");await edit('#stitch-target',1);
   await waitFor(win,"document.querySelector('.stitch-info')?.textContent.includes('等比调整')&&!document.querySelector('.stitch-info')?.textContent.includes('计算中')");
   const text=await js("document.querySelector('.stitch-info').textContent"),project=await store.load((await store.list())[0].id);
@@ -36,7 +36,7 @@ async function waitFor(win,expr){for(let n=0;n<600;n++){if(await win.webContents
   win.webContents.debugger.attach('1.3');await win.webContents.debugger.sendCommand('Input.dispatchMouseEvent',{type:'mousePressed',...point,button:'left',buttons:1,clickCount:1});await win.webContents.debugger.sendCommand('Input.dispatchMouseEvent',{type:'mouseMoved',x:point.x+20,y:point.y,buttons:1});
   await waitFor(win,"document.querySelector('.stitch-canvas').dataset.interacting==='true'");assert.equal(await js("getComputedStyle(document.querySelector('.stitch-layer img')).visibility"),'visible');
   await win.webContents.debugger.sendCommand('Input.dispatchMouseEvent',{type:'mouseReleased',x:point.x+20,y:point.y,button:'left',buttons:0,clickCount:1});win.webContents.debugger.detach();
-  await waitFor(win,"!document.querySelector('.stitch-canvas').dataset.interacting");assert.equal(await js("getComputedStyle(document.querySelector('.stitch-layer img')).visibility"),'hidden','decoded output returns after native drag');
+  await waitFor(win,"!document.querySelector('.stitch-canvas').dataset.interacting&&!!document.querySelector('.stitch-output-preview')");assert.equal(await js("getComputedStyle(document.querySelector('.stitch-layer img')).visibility"),'hidden','decoded output returns after native drag');
   assert.equal(project.export.longEdge,600);assert.equal(project.export.targetBytes,1000);assert.deepEqual([project.images[0].width,project.images[0].height],[width,height]);assert.ok((await store.readAsset(project.images[0].assetId)).equals(await fs.readFile(source)));
   await win.webContents.capturePage().then(image=>fs.writeFile('artifacts/png-budget/stitch-ui.png',image.toPNG()));
   await js("document.querySelector('.module-content:not([hidden]) .export-button').click()");await waitFor(win,"document.querySelector('.notice')?.textContent.includes('等比调整')");

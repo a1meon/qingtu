@@ -84,13 +84,24 @@ label,h2 { display:block; font-size:16px; font-weight:700; margin-bottom:14px; l
 .canvas-cards .canvas-card-open img { object-fit:contain; }
 .stitch-canvas-area { flex:1; min-height:0; width:100%; display:flex; align-items:center; justify-content:center; overflow:hidden; }
 .stitch-canvas { position:relative; flex-shrink:0; background:#fff; box-shadow:0 4px 18px #2a43551a; }
+.stitch-content { position:absolute; inset:0; overflow:hidden; }
+.fixed-empty { position:absolute; inset:0; justify-content:center; gap:12px; transform:none; }
+.fixed-empty .empty-illustration { width:190px; height:145px; margin:-20px 0; }
 .stitch-layer { position:absolute; overflow:hidden; user-select:none; touch-action:none; outline:none; }
 .stitch-layer img { width:100%; height:100%; object-fit:fill; pointer-events:none; }
 .stitch-output-preview { position:absolute; inset:0; width:100%; height:100%; object-fit:fill; pointer-events:none; }
 .stitch-canvas.has-output-preview:not([data-interacting="true"]) .stitch-layer img { visibility:hidden; }
 .stitch-canvas[data-interacting="true"] .stitch-output-preview { visibility:hidden; }
 .stitch-selection { position:absolute; z-index:2; pointer-events:none; border:2px solid #14aaf3; }
-.stitch-selection .resize-handle { pointer-events:auto; bottom:-2px; right:-2px; }
+.stitch-selection .resize-handle { pointer-events:auto; width:11px; height:11px; padding:0; border:2px solid white; border-radius:3px; transform:translate(-50%,-50%); }
+.stitch-selection .handle-nw { left:0; top:0; bottom:auto; right:auto; cursor:nwse-resize; }
+.stitch-selection .handle-n { left:50%; top:0; bottom:auto; right:auto; cursor:ns-resize; }
+.stitch-selection .handle-ne { left:100%; top:0; bottom:auto; right:auto; cursor:nesw-resize; }
+.stitch-selection .handle-e { left:100%; top:50%; bottom:auto; right:auto; cursor:ew-resize; }
+.stitch-selection .handle-se { left:100%; top:100%; bottom:auto; right:auto; cursor:nwse-resize; }
+.stitch-selection .handle-s { left:50%; top:100%; bottom:auto; right:auto; cursor:ns-resize; }
+.stitch-selection .handle-sw { left:0; top:100%; bottom:auto; right:auto; cursor:nesw-resize; }
+.stitch-selection .handle-w { left:0; top:50%; bottom:auto; right:auto; cursor:ew-resize; }
 .stitch-layer.movable,.stitch-layer.reorderable { cursor:grab; }
 .stitch-layer.movable:active,.stitch-layer.reorderable:active { cursor:grabbing; }
 .reorder-indicator { position:absolute; border:2px dashed #119fe7; background:#14aaf318; }

@@ -25,7 +25,8 @@ async function waitFor(win,expression){for(let n=0;n<300;n++){if(await win.webCo
   await waitFor(win,"document.querySelectorAll('.stitch-layer').length===1 && document.querySelector('.save-status').textContent==='已自动保存'");
   const save=store.save.bind(store);store.save=async value=>{await pause(200);return save(value);};
   console.log('Editing then closing');
-  await js("(()=>{const input=document.querySelector('#stitch-long-edge');Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(input,'2400');input.dispatchEvent(new Event('input',{bubbles:true}));})()");
+  await js("(()=>{const input=document.querySelector('#stitch-width');Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(input,'2400');input.dispatchEvent(new Event('input',{bubbles:true}));})()");
+  await js("(()=>{const input=document.querySelector('#stitch-height');Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(input,'2000');input.dispatchEvent(new Event('input',{bubbles:true}));})()");
   // Normal close is requested immediately, while the new autosave is pending.
   await js("window.qingtu.windowAction('close')");
   console.log('Close requested');
@@ -53,7 +54,7 @@ async function waitFor(win,expression){for(let n=0;n<300;n++){if(await win.webCo
   app.quit();
  }else{
   await waitFor(win,"document.querySelectorAll('.stitch-layer').length===1");
-  assert.equal(await js("document.querySelector('#stitch-long-edge').value"),'2400');
+  assert.equal(await js("document.querySelector('#stitch-width').value"),'2400');assert.equal(await js("document.querySelector('#stitch-height').value"),'2000');
   assert.equal(await js("document.querySelector('#stitch-format').textContent"),'PNG');
   const project=await store.load((await store.list())[0].id);assert.equal(project.images.length,1);assert.equal(project.export.longEdge,2400);
   assert.deepEqual(project.initialOrder,project.images.map(image=>image.id));
