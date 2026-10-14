@@ -32,7 +32,7 @@ export function cropFractions(image,source){
 export function setImageEdit(project,id,edit){
  const image=project.images.find(image=>image.id===id);if(!image)throw new Error('图片已移除');
  const before=imageGeometry(image,project.edits?.[id]),after=imageGeometry(image,edit);
- const next={...project,edits:{...project.edits,[id]:edit.edges?{edges:{...edit.edges},links:{horizontal:edit.links?.horizontal??true,vertical:edit.links?.vertical??true}}:{axis:edit.axis,amount:edit.amount}}};
+ const next={...project,edits:{...project.edits,[id]:edit.edges?{edges:{...edit.edges},links:{horizontal:edit.links?.horizontal??true,vertical:edit.links?.vertical??false}}:{axis:edit.axis,amount:edit.amount}}};
  if(before.width===after.width&&before.height===after.height)return next;
  if(project.canvasMode==='fixed'||project.layout==='free'){
   if(project.heightLocked&&project.layout==='horizontal'){

@@ -1,0 +1,74 @@
+{
+  "passed": true,
+  "date": "2026-10-14",
+  "platform": "Windows",
+  "tests": {
+    "passed": 225,
+    "failed": 0
+  },
+  "commandsPassed": [
+    "npm test",
+    "npm run build",
+    "npm run smoke:ui",
+    "npm run smoke:recovery",
+    "npm run smoke:split",
+    "npm run smoke:desktop"
+  ],
+  "browser": {
+    "passed": true,
+    "fourDirectEdges": true,
+    "sliderRemoved": true,
+    "verticalDefaultIndependent": true,
+    "linkedBothSelected": true,
+    "noEncodeOrSaveDuringDrag": true,
+    "independentNumericCrop": true,
+    "outwardRestore": true,
+    "escapeCancels": true,
+    "fourValuesRetained": true,
+    "heightPreserved": true,
+    "immutableOriginal": true,
+    "reloadRestoresLinks": true,
+    "realPngExport": true,
+    "pageErrors": [],
+    "cancelRestoresPrefillAxis": true,
+    "cancelKeepsEditorAfterRelease": true,
+    "topSelectionClearsUnappliedHorizontalPrefill": true
+  },
+  "output": {
+    "passed": true,
+    "file": "output/playwright/crop-edge-export.png",
+    "width": 353,
+    "height": 480,
+    "bytes": 20687,
+    "limit": 10000000,
+    "edges": {
+      "left": 0,
+      "top": 850,
+      "right": 0,
+      "bottom": 50
+    },
+    "maxRGB": 0,
+    "maxAlpha": 0,
+    "rmse": 0,
+    "sha256": "b9a89032f6a201062b19fe6367081672ba03ceb93079390c199c1a2da75f55cd",
+    "reference": "Independent crop and resize from reproducible 4K diagram, compared at actual output size; not a user photograph"
+  },
+  "windows": {
+    "realCropEdgeDrag": true,
+    "independentVerticalDefault": true,
+    "pairedLinkPositions": true,
+    "linkedBothSelected": true,
+    "noEncodeOrSaveDuringDrag": true,
+    "normalCloseDuringUnreleasedCrop": true,
+    "untouchedPrefillNotAppliedOnQuit": true,
+    "sourceMovedRecovery": true,
+    "splitRegression": true,
+    "cancelKeepsEditorAfterRelease": true,
+    "cancelDoesNotApplyUntouched50px": true
+  },
+  "limitations": [
+    "Reproducible diagram, not user photographs",
+    "No Mac hardware check in this round",
+    "No package publication or main merge"
+  ]
+}

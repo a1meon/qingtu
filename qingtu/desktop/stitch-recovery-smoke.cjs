@@ -48,10 +48,12 @@ async function waitFor(win,expression){for(let n=0;n<300;n++){if(await win.webCo
  }else if(phase==='crop'){
   await waitFor(win,"document.querySelectorAll('.stitch-layer').length===1 && document.querySelector('.save-status').textContent==='已自动保存'");
   await js("document.querySelector('.stitch-layer').dispatchEvent(new MouseEvent('dblclick',{bubbles:true}))");
-  await waitFor(win,"!!document.querySelector('.crop-slider')");
-  await js("(()=>{const slider=document.querySelector('.crop-slider');slider.dispatchEvent(new PointerEvent('pointerdown',{bubbles:true,pointerId:9,buttons:1}));Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(slider,'20');slider.dispatchEvent(new Event('input',{bubbles:true}));return new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));})()");
+  await waitFor(win,"!!document.querySelector('.crop-edge-left')");
+  const point=await js("(()=>{const r=document.querySelector('.crop-edge-left').getBoundingClientRect(),p=document.querySelector('.stitch-layer.selected').getBoundingClientRect();return {x:r.x+r.width/2,y:r.y+r.height/2,dx:p.width*20/400};})()");
+  win.webContents.debugger.attach('1.3');await win.webContents.debugger.sendCommand('Input.dispatchMouseEvent',{type:'mousePressed',x:point.x,y:point.y,button:'left',buttons:1,clickCount:1});await win.webContents.debugger.sendCommand('Input.dispatchMouseEvent',{type:'mouseMoved',x:point.x+point.dx,y:point.y,buttons:1});
+  await js("new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)))");assert.equal(await js("document.querySelector('#crop-amount').value"),'20');
   const prior=await store.load((await store.list())[0].id);assert.equal(prior.edits?.[prior.images[0].id],undefined);
-  // Quit before the crop slider is released. The latest draft must flush.
+  // Quit before the crop edge is released. The latest draft must flush.
   app.quit();
  }else{
   await waitFor(win,"document.querySelectorAll('.stitch-layer').length===1");
@@ -65,7 +67,7 @@ async function waitFor(win,expression){for(let n=0;n<300;n++){if(await win.webCo
   await waitFor(win,"document.querySelector('.notice')?.textContent.includes('已导出 1 张图像')");
   const filename=(await fs.readdir(exports))[0],sharp=(await import('sharp')).default,meta=await sharp(path.join(exports,filename)).metadata(),bytes=(await fs.stat(path.join(exports,filename))).size;
   assert.deepEqual([meta.width,meta.height],[2400,2000]);assert.ok(bytes<=10000000);
-  await fs.writeFile(path.join(root,'result.json'),JSON.stringify({passed:true,closeBeforeReady:true,normalCloseFlush:true,closeDuringGesture:true,untouchedPrefillNotAppliedOnQuit:true,importOrderRestored:true,closeDuringCropSlider:true,reopenedAfterSourceMoved:true,restoredDimensions:[meta.width,meta.height],format:meta.format,bytes,originalCopy:true},null,2));
+  await fs.writeFile(path.join(root,'result.json'),JSON.stringify({passed:true,closeBeforeReady:true,normalCloseFlush:true,closeDuringGesture:true,untouchedPrefillNotAppliedOnQuit:true,importOrderRestored:true,closeDuringCropEdge:true,reopenedAfterSourceMoved:true,restoredDimensions:[meta.width,meta.height],format:meta.format,bytes,originalCopy:true},null,2));
   await js("window.qingtu.windowAction('close')");
  }
 })().catch(error=>{console.error(error);app.exit(1);});

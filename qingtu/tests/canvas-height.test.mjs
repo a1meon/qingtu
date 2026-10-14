@@ -27,6 +27,7 @@ test('independent four-edge crops retain fixed display height and front top-only
  const both=setImageEdit(next,'front',{edges:{left:100,right:150,top:700,bottom:50},links:{horizontal:false,vertical:false}});assert.deepEqual(imageGeometry(p.images[2],both.edits.front),{left:100,top:700,width:1910,height:3090});assert.equal(both.positions.front.height,2398);
 });
 test('association applies equal opposite cuts, unlinking preserves the other edge and limits cannot discard all source pixels',()=>{
+ const defaults=setImageEdit(four(),'front',{edges:{left:0,right:0,top:0,bottom:0}});assert.deepEqual(defaults.edits.front.links,{horizontal:true,vertical:false});
  const image=img('a',100,160),edges={left:5,right:10,top:20,bottom:0};assert.deepEqual(changeCropEdge(image,edges,'top',30,false),{...edges,top:30});assert.deepEqual(changeCropEdge(image,edges,'left',15,true),{...edges,left:15,right:15});assert.equal(changeCropEdge(image,edges,'top',500,true).top,79);assert.equal(changeCropEdge(image,edges,'left',500,false).left,89);
  assert.throws(()=>imageGeometry(image,{edges:{...edges,left:100}}),/四边裁剪/);
 });

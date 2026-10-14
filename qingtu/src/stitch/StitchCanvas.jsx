@@ -4,7 +4,7 @@ import {RESIZE_HANDLES,resizeImageRect} from '../../engine/canvas-transform.mjs'
 import {addFlushHandler} from '../lifecycle.js';
 import {CanvasSplitOverlay} from './CanvasSplitOverlay.jsx';
 
-export function StitchCanvas({project,layout,onChange,onEdit,onContext,onRemove,onReorder,selected,onSelect,disabled,preview,children,split,onSplitChange,splitDisabled,renderControls}){
+export function StitchCanvas({project,layout,onChange,onEdit,onContext,onRemove,onReorder,selected,onSelect,disabled,preview,children,split,onSplitChange,splitDisabled,cropping,renderControls}){
  const area=useRef(),canvas=useRef(),gesture=useRef(),frame=useRef(),flushRef=useRef(),moveRef=useRef(),endRef=useRef(),[bounds,setBounds]=useState({width:600,height:360});
  flushRef.current=()=>finish(false);moveRef.current=move;endRef.current=end;
  useEffect(()=>addFlushHandler(()=>flushRef.current()),[]);
@@ -85,12 +85,12 @@ export function StitchCanvas({project,layout,onChange,onEdit,onContext,onRemove,
     <div className="snap-guides" aria-hidden/>
    </div>
    <div className="stitch-canvas-edge" aria-hidden/>
-   {selectedRect&&!split&&<div className="stitch-selection" style={{left:selectedRect.x*scale,top:selectedRect.y*scale,width:selectedRect.width*scale,height:selectedRect.height*scale}}>
+   {selectedRect&&!split&&!cropping&&<div className="stitch-selection" style={{left:selectedRect.x*scale,top:selectedRect.y*scale,width:selectedRect.width*scale,height:selectedRect.height*scale}}>
     {(project.heightLocked&&project.layout==='horizontal'?['w','e']:RESIZE_HANDLES).map(handle=><button key={handle} data-handle={handle} className={`resize-handle handle-${handle}`} aria-label={`缩放 ${selectedImage.name} ${handle}`} title={project.heightLocked?'等比调整宽度':'拖动缩放 · Shift 自由比例'} disabled={disabled} onPointerDown={e=>start(e,selectedRect,handle)}/>)}
    </div>}
    {split&&selectedRect&&<CanvasSplitOverlay image={selectedImage} rect={selectedRect} scale={scale} value={split} onChange={onSplitChange} disabled={splitDisabled}/>}
    <div className="reorder-indicator" hidden/>
-   {selectedRect&&renderControls&&renderControls((()=>{const left=(bounds.width-layout.width*scale)/2,top=(bounds.height-layout.height*scale)/2-38,clamp=(value,min,max)=>Math.max(min,Math.min(max,value)),x=selectedRect.x*scale,y=selectedRect.y*scale,width=selectedRect.width*scale,height=selectedRect.height*scale;return {tools:{left:clamp(x+(width-154)/2,8-left,bounds.width-left-162),top:clamp(y-43,8-top,bounds.height-top-43)},panel:{left:clamp(x+width-300,8-left,bounds.width-left-308),top:clamp(y+height+10,48-top,bounds.height-top-(split?129:114))}};})())}
+   {selectedRect&&renderControls&&renderControls((()=>{const left=(bounds.width-layout.width*scale)/2,top=(bounds.height-layout.height*scale)/2-38,clamp=(value,min,max)=>Math.max(min,Math.min(max,value)),x=selectedRect.x*scale,y=selectedRect.y*scale,width=selectedRect.width*scale,height=selectedRect.height*scale;return {rect:selectedRect,scale,tools:{left:clamp(x+(width-154)/2,8-left,bounds.width-left-162),top:clamp(y-43,8-top,bounds.height-top-43)},panel:{left:clamp(x+width-300,8-left,bounds.width-left-308),top:clamp(y+height+10,48-top,bounds.height-top-(split?129:80))}};})())}
   </div>:<div className="stitch-invalid">请调整画布</div>}
  </div>;
 }
