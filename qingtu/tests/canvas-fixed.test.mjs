@@ -51,8 +51,8 @@ test('manual crop and reset preserve nonuniform source scale, centre, canvas and
  const reset=resetProject({...cropped,images:[b,a]});assert.deepEqual(reset.positions.a,p.positions.a);assert.deepEqual(reset.canvas,p.canvas);assert.deepEqual(reset.images,[a,b]);assert.deepEqual(reset.edits,{});
 });
 test('one-click follows the current canvas ratio without changing its dimensions',()=>{
- const p=appendFixedImages({...project(),canvas:{width:2000,height:1000},export:{longEdge:2000}},[image('a',3,4),image('b',3,4),image('c',9,16),image('d',9,16)]),next=optimizeHorizontal(p);
- assert.deepEqual(next.canvas,p.canvas);assert.deepEqual(next.export,p.export);assert.ok(next.images.every(i=>Math.abs(next.edits[i.id].fraction-5/42)<1e-12));
+ const p=appendFixedImages({...project(),canvas:{width:2000,height:1000},export:{longEdge:2000}},[image('a',3072,4096),image('b',3072,4096),image('c',2160,3840),image('d',2160,3840)]),next=optimizeHorizontal(p);
+ assert.deepEqual(next.canvas,p.canvas);assert.deepEqual(next.export,p.export);assert.deepEqual(next.edits.c.edges,{left:60,right:60,top:960,bottom:0});assert.ok(['a','b','d'].every(id=>Math.abs(next.edits[id].fraction-37/198)<1e-12));
  const layout=calculateLayout(next);assert.ok(Math.abs(layout.rects[0].y)<1e-9);assert.equal(optimizeHorizontal(next),next);
  const defaultOptimized=optimizeHorizontal({...p,canvas:{...DEFAULT_CANVAS}}),r=calculateLayout(defaultOptimized);assert.deepEqual([r.width,r.height],[5995,2398]);assert.ok(Math.abs(r.rects[0].y)<1e-9);
 });
@@ -65,7 +65,7 @@ test('migration preserves legacy visible layout, dimensions, explicit crops and 
  const invalid=migrateFixedCanvas({...legacy,layout:'grid',grid:{rows:20,columns:1}});assert.equal(invalid.images.length,4);assert.equal(invalid.layout,'grid');assert.equal(Object.keys(invalid.positions).length,4);assert.throws(()=>calculateLayout(invalid),/行列/);assert.equal(calculateLayout(invalid,{draft:true}).rects.length,4);
 });
 test('optimization availability compares complete originals to the custom canvas ratio and invalid canvases stay disabled',()=>{
- const p=appendProjectImages({...project(),canvas:{width:2000,height:1000}},[image('a',100,100),image('b',100,100),image('c',100,100)]);
+ const p=appendProjectImages({...project(),canvas:{width:2000,height:1000}},[image('a',1000,1000),image('b',1000,1000),image('c',1000,1000)]);
  assert.equal(optimizationAvailability(p).enabled,true);const optimized=optimizeHorizontal(p);assert.equal(optimizationAvailability(optimized).enabled,false);
  assert.equal(optimizationAvailability({...optimized,canvas:{width:1500,height:1000}}).enabled,true,'a newly narrower canvas requires a new original-based crop');
  assert.equal(optimizationAvailability({...p,images:p.images.slice(0,2)}).enabled,false,'matching original ratio needs no crop');

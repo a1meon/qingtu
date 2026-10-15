@@ -1,4 +1,4 @@
-export const CONTROL_PANEL_HEIGHT={crop:90,split:130};
+export const CONTROL_PANEL_HEIGHT={crop:116,split:130};
 
 // Reserve only the controls that are actually visible. This is display space,
 // independent of the project's saved canvas and export pixel dimensions.

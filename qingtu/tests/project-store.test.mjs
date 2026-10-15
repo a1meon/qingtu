@@ -51,11 +51,11 @@ test('project and asset identifiers cannot escape the private storage directory'
  const {store}=await setup(t);await assert.rejects(store.load('../outside'));await assert.rejects(store.readAsset('../outside'));assert.throws(()=>store.save({id:'../outside',images:[]}));
 });
 test('atomic project backups restore the complete percentage-crop generation after an interrupted save',async t=>{
- const {root,store}=await setup(t),image=await store.import(await fixture(),'a.png');delete image.preview;
+ const {root,store}=await setup(t),source=await sharp(await fixture()).resize(800,600).png().toBuffer(),image=await store.import(source,'a.png');delete image.preview;
  const p={...project(image),images:[image,{...image,id:'second-image'},{...image,id:'third-image'}]};
  const optimized=optimizeHorizontal(p);await store.save(optimized);await store.save({...optimized,name:'新名称'});
  await fs.writeFile(store.file(p.id),'interrupted');await fs.writeFile(store.file(p.id,'.partial.tmp'),'{');
- const restored=await new ProjectStore(root).load(p.id);assert.equal(restored.recovered,true);assert.deepEqual(restored.edits,optimized.edits);assert.deepEqual(restored.export,optimized.export);assert.deepEqual(restored.images,p.images);assert.ok((await store.readAsset(image.assetId)).equals(await fixture()));
+ const restored=await new ProjectStore(root).load(p.id);assert.equal(restored.recovered,true);assert.deepEqual(restored.edits,optimized.edits);assert.deepEqual(restored.edits['third-image'].edges,{left:60,right:60,top:150,bottom:0});assert.deepEqual(restored.export,optimized.export);assert.deepEqual(restored.images,p.images);assert.ok((await store.readAsset(image.assetId)).equals(source));
 });
 test('true import order survives reorder and crash recovery; invalid orders cannot replace a manifest',async t=>{
  const {root,store}=await setup(t),image=await store.import(await fixture(),'first.png');delete image.preview;

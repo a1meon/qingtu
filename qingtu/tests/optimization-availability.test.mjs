@@ -12,12 +12,12 @@ test('the original 2.625 example stays eligible despite the existing automatic 9
  const original=project([image('a',3072,4096),image('b',3072,4096),image('c',2160,3840),image('d',2160,3840)]),before=structuredClone(original);
  assert.equal(optimizationAvailability(original).enabled,true);assert.deepEqual(original,before);
  const optimized=optimizeHorizontal(original);assert.equal(optimizationAvailability(optimized).enabled,false);
- assert.equal(optimizationAvailability({...optimized,edits:Object.fromEntries(original.images.map(image=>[image.id,{axis:'horizontal',fraction:1/42}]))}).enabled,false,'equivalent persisted fractions do not need another optimization');
- assert.equal(optimizationAvailability({...optimized,images:[...optimized.images].reverse()}).enabled,false,'reordering does not require a fresh crop');
+ assert.equal(optimizationAvailability({...optimized,edits:Object.fromEntries(original.images.map(image=>[image.id,{axis:'horizontal',fraction:1/42}]))}).enabled,true,'the former uniform crop can adopt the new third-image default');
+ assert.equal(optimizationAvailability({...optimized,images:[...optimized.images].reverse()}).enabled,true,'changing the current third image requires a fresh crop');
  assert.equal(optimizationAvailability({...optimized,edits:{}}).enabled,true,'reset crops allows recalculation');
 });
 test('user edits can be recomputed from originals while sub-pixel crops are unavailable',()=>{
- const original=project([image('a',3,4),image('b',3,4),image('c',9,16),image('d',9,16)]);
+ const original=project([image('a',3072,4096),image('b',3072,4096),image('c',2160,3840),image('d',2160,3840)]);
  assert.equal(optimizationAvailability({...original,edits:{a:{axis:'horizontal',amount:1}}}).enabled,true);
  assert.equal(optimizationAvailability(project([image('a',1,1),image('b',100,1)])).enabled,false);
 });

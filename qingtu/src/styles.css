@@ -160,6 +160,12 @@ label,h2 { display:block; font-size:16px; font-weight:700; margin-bottom:14px; l
 .crop-edge-options button.active { color:#068ece; background:#e3f5ff; }
 .crop-edge-options .crop-link,.crop-edge-options .crop-reset { display:grid; place-items:center; flex:0 0 26px; }
 .inline-crop-value,.inline-split-value { display:flex; align-items:center; justify-content:space-between; gap:10px; }
+.crop-amount-slider { appearance:none; display:block; width:100%; height:18px; margin:0 0 8px; padding:0; accent-color:var(--blue); cursor:ew-resize; touch-action:none; }
+.crop-amount-slider::-webkit-slider-runnable-track { height:6px; border-radius:4px; background:linear-gradient(to right,var(--blue) var(--crop-progress),#dfedf7 var(--crop-progress)); }
+.crop-amount-slider::-webkit-slider-thumb { appearance:none; width:16px; height:16px; margin-top:-5px; border:2px solid #fff; border-radius:50%; background:var(--blue); box-shadow:0 1px 3px #087ca044; }
+.crop-amount-slider::-moz-range-track { height:6px; border-radius:4px; background:#dfedf7; }
+.crop-amount-slider::-moz-range-progress { height:6px; border-radius:4px; background:var(--blue); }
+.crop-amount-slider::-moz-range-thumb { width:12px; height:12px; border:2px solid #fff; border-radius:50%; background:var(--blue); }
 .inline-image-editor label { margin:0; }
 .inline-image-editor .number-with-unit { width:108px; height:32px; }
 .inline-image-editor .number-with-unit input { padding:4px 27px 4px 8px; font-size:12px; }

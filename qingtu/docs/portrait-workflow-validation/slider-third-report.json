@@ -1,0 +1,99 @@
+{
+  "passed": true,
+  "fixture": "reproducible diagrams, not user originals",
+  "cropSliderRestoresZero": true,
+  "noEncodingWhileHeld": true,
+  "unlinkedVertical": true,
+  "reloadRestoresEdits": true,
+  "project": {
+    "canvas": {
+      "width": 1200,
+      "height": 480
+    },
+    "images": [
+      {
+        "name": "01-front-face.png",
+        "width": 3072,
+        "height": 4096,
+        "edit": {
+          "axis": "horizontal",
+          "fraction": 0.06565656565656569
+        },
+        "position": {
+          "x": 0,
+          "y": 0,
+          "width": 312.7272727272727,
+          "height": 480
+        }
+      },
+      {
+        "name": "02-side-face.png",
+        "width": 3072,
+        "height": 4096,
+        "edit": {
+          "axis": "horizontal",
+          "fraction": 0.06565656565656569
+        },
+        "position": {
+          "x": 312.7272727272727,
+          "y": 0,
+          "width": 312.7272727272727,
+          "height": 480
+        }
+      },
+      {
+        "name": "03-front-body.png",
+        "width": 2160,
+        "height": 3840,
+        "edit": {
+          "edges": {
+            "left": 60,
+            "top": 960,
+            "right": 60,
+            "bottom": 0
+          },
+          "links": {
+            "horizontal": true,
+            "vertical": false
+          }
+        },
+        "position": {
+          "x": 625.4545454545454,
+          "y": 0,
+          "width": 340,
+          "height": 480
+        }
+      },
+      {
+        "name": "04-back-body.png",
+        "width": 2160,
+        "height": 3840,
+        "edit": {
+          "axis": "horizontal",
+          "fraction": 0.06565656565656569
+        },
+        "position": {
+          "x": 965.4545454545454,
+          "y": 0,
+          "width": 234.54545454545453,
+          "height": 480
+        }
+      }
+    ]
+  },
+  "export": {
+    "width": 1200,
+    "height": 480,
+    "bytes": 81905,
+    "limit": 10000000,
+    "format": "png",
+    "palette": false,
+    "differenceAgainstOriginalSourceComposite": {
+      "maxError": 0,
+      "alphaMaxError": 0,
+      "mae": 0,
+      "rmse": 0,
+      "psnr": null
+    }
+  }
+}

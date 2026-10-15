@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {proportionalHorizontalEdits,optimizeHorizontal} from '../engine/stitch-optimize.mjs';
+import {proportionalHorizontalEdits,optimizeHorizontal,optimizationEdits} from '../engine/stitch-optimize.mjs';
 import {calculateLayout,initializeFree} from '../engine/stitch-layout.mjs';
 import {imageGeometry,setImageEdit} from '../engine/stitch-edits.mjs';
 
@@ -46,7 +46,7 @@ test('explicit percentage crops remain editable, resettable and retain visible c
 test('optimization replaces every prior crop in one immutable edit and is idempotent',()=>{
  const p={images:originals,layout:'horizontal',edits:{a:{axis:'vertical',amount:500},c:{axis:'horizontal',amount:100}},grid:{rows:2,columns:2},positions:{a:{x:1,y:2,width:30}},export:{longEdge:5999,targetBytes:40000000,format:'png'}};
  const before=structuredClone(p),next=optimizeHorizontal(p);
- assert.deepEqual(p,before);assert.deepEqual(next.edits,proportionalHorizontalEdits(originals));assert.deepEqual(next.export,{...p.export,longEdge:5995});assert.equal(next.images,p.images);assert.equal(next.positions,p.positions);assert.equal(next.grid,p.grid);
+ assert.deepEqual(p,before);assert.deepEqual(next.edits.c.edges,{left:60,right:60,top:960,bottom:0});assert.deepEqual(next.export,{...p.export,longEdge:5995});assert.equal(next.images,p.images);assert.equal(next.positions,p.positions);assert.equal(next.grid,p.grid);
  assert.equal(optimizeHorizontal(next),next,'repeated click does not change state or enqueue another encoding');
  assert.equal(optimizeHorizontal({...p,export:{...p.export,longEdge:1200}}).export.longEdge,1200);
  assert.equal(optimizeHorizontal({...p,export:{...p.export,longEdge:1234}}).export.longEdge,1230);
@@ -58,6 +58,19 @@ test('integer allocation stays within one pixel of equal-height scaling for up t
   const images=Array.from({length:count},(_,n)=>({id:'image-'+n,width:1000+(n*791)%3600,height:800+(n*313)%4000}));
   const p=optimizeHorizontal({images,layout:'horizontal',export:{longEdge:5999}}),r=calculateLayout(p);
   assert.equal(r.width*2,r.height*5);assert.equal(r.rects.reduce((sum,rect)=>sum+rect.width,0),r.width);
-  for(const [n,rect] of r.rects.entries())assert.ok(Math.abs(rect.width-images[n].width/images[n].height*(1-2*p.edits[images[n].id].fraction)*r.height)<1);
+  for(const [n,rect] of r.rects.entries()){const source=imageGeometry(images[n],p.edits[images[n].id]);assert.ok(Math.abs(rect.width-source.width/source.height*r.height)<1);}
  }
+});
+
+test('third portrait has exact source cuts while the other originals share the remaining crop budget',()=>{
+ const edits=optimizationEdits(originals);
+ assert.deepEqual(edits.c,{edges:{left:60,right:60,top:960,bottom:0},links:{horizontal:true,vertical:false}});
+ for(const id of ['a','b','d'])assert.ok(Math.abs(edits[id].fraction-13/198)<1e-12);
+ const ratio=originals.reduce((sum,image)=>{const g=imageGeometry(image,edits[image.id]);return sum+g.width/g.height;},0);
+ assert.ok(Math.abs(ratio-2.5)<1e-12);
+ const reordered=[originals[0],originals[2],originals[1],originals[3]],next=optimizationEdits(reordered);
+ assert.deepEqual(next.b.edges,{left:60,right:60,top:1024,bottom:0},'current third image receives the default, without identifying people');
+ assert.ok(next.c.fraction>0);assert.equal(next.c.edges,undefined);
+ assert.throws(()=>optimizationEdits([{id:'a',width:1000,height:1000},{id:'b',width:1000,height:1000},{id:'c',width:120,height:1000}]),/太小/);
+ assert.throws(()=>optimizationEdits([{id:'a',width:1000,height:1000},{id:'b',width:1000,height:1000},{id:'c',width:5000,height:1000}]),/过宽/);
 });

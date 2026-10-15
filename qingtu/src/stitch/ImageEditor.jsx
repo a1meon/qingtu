@@ -18,7 +18,7 @@ export const ImageEditor=forwardRef(function ImageEditor({image,value,open,place
  callbacks.current={onPreview,onCommit,onClose};
  const axis=['left','right'].includes(side)?'horizontal':'vertical',linked=draft.links[axis],amount=draft.edges[side],opposite={left:'right',right:'left',top:'bottom',bottom:'top'}[side];
  const size=axis==='horizontal'?image.width:image.height,max=linked?Math.floor((size-1)/2):size-1-draft.edges[opposite];
- function preview(next){touched.current=true;prefill.current=false;latest.current=next;setDraft(next);if(!frame.current)frame.current=requestAnimationFrame(()=>{frame.current=null;callbacks.current.onPreview(latest.current);});}
+ function preview(next){touched.current=true;prefill.current=false;latest.current=next;setDraft(next);if(!frame.current)frame.current=requestAnimationFrame(()=>{frame.current=null;callbacks.current.onPreview(latest.current,pointer.current?{gesture:true}:undefined);});}
  function commit(){
   clearTimeout(timer.current);cancelAnimationFrame(frame.current);frame.current=null;
   if(!touched.current){callbacks.current.onPreview(null);return Promise.resolve();}
@@ -84,6 +84,7 @@ export const ImageEditor=forwardRef(function ImageEditor({image,value,open,place
     </div>)}
      <button className="crop-reset" aria-label="重置此图裁剪" title="重置此图裁剪" disabled={disabled} onClick={()=>{preview({...latest.current,edges:{...empty}});commit().catch(e=>setError(e.message));}}><ArrowCounterClockwise size={17}/></button>
     </div>
+    <input className="crop-amount-slider" aria-label="裁剪量滑块" type="range" min="0" max={max} step="1" value={amount} style={{'--crop-progress':`${max?100*amount/max:0}%`}} disabled={disabled} onPointerDown={()=>{clearTimeout(timer.current);pointer.current=true;}} onChange={event=>change(event.target.value)} onPointerUp={finish} onPointerCancel={finish} onKeyUp={finish} onBlur={finish}/>
     <div className="inline-crop-value"><label htmlFor="crop-amount">{linked?(axis==='horizontal'?'左右各裁':'上下各裁'):`${names[side]}方裁剪`}</label><div className="number-with-unit"><input id="crop-amount" aria-label="裁剪像素" type="number" min="0" max={max} step="1" value={amount} disabled={disabled} onFocus={event=>event.target.select()} onChange={event=>change(event.target.value)} onBlur={()=>{if(!pointer.current)finish();}} onKeyDown={event=>{if(event.key==='Enter')finish();}}/><span>px</span></div></div>
    </>}
    {error&&<p className="split-error" role="alert">{error}</p>}

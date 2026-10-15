@@ -81,7 +81,9 @@ test('one-click 4K crop removes both sides of every ratio and saves an exact tra
  const {root,store,images,service}=await setup(t),files=[],buffers=[],colors=['#ff0000','#00ff00','#0000ff','#ffff0080'];
  for(const [n,[width,height]] of [[3072,4096],[3072,4096],[2160,3840],[2160,3840]].entries()){
   const strip=await sharp({create:{width:30,height,channels:4,background:'#ff00ff'}}).png().toBuffer();
-  const source=await sharp({create:{width,height,channels:4,background:colors[n]}}).composite([{input:strip,left:0,top:0},{input:strip,left:width-30,top:0}]).png().toBuffer();
+  const overlays=[{input:strip,left:0,top:0},{input:strip,left:width-30,top:0}];
+  if(n===2)overlays.push({input:await sharp({create:{width,height:960,channels:4,background:'#ff6600'}}).png().toBuffer(),left:0,top:0});
+  const source=await sharp({create:{width,height,channels:4,background:colors[n]}}).composite(overlays).png().toBuffer();
   buffers.push(source);const image=await store.import(source,'original-'+n+'.png');delete image.preview;files.push(image);
  }
  const p={id:'one-click-4k',name:'一键优化',images:files,layout:'horizontal',edits:{[files[0].id]:{axis:'vertical',amount:30}},export:{...settings,longEdge:5999}},optimized=optimizeHorizontal(p);
@@ -93,7 +95,8 @@ test('one-click 4K crop removes both sides of every ratio and saves an exact tra
  for(const [n,rect] of r.layout.rects.entries()){
   const expected=n===0?[255,0,0,255]:n===1?[0,255,0,255]:n===2?[0,0,255,255]:[255,255,0,128];
   for(const [x,y] of [[rect.x,0],[rect.x+rect.width-1,info.height-1]]){const offset=(y*info.width+x)*4;assert.deepEqual([...data.subarray(offset,offset+4)],expected,'both source side strips removed, square corners retained');}
-  assert.ok(rect.proportionalCrop&&!rect.autoCrop);assert.ok((await reopened.readAsset(files[n].assetId)).equals(buffers[n]));
+  if(n===2){assert.deepEqual(restored.edits[files[n].id].edges,{left:60,right:60,top:960,bottom:0});assert.equal(rect.crop.top,.25);assert.equal(rect.crop.left,60/2160);}else assert.ok(rect.proportionalCrop);
+  assert.ok(!rect.autoCrop);assert.ok((await reopened.readAsset(files[n].assetId)).equals(buffers[n]));
  }
 });
 

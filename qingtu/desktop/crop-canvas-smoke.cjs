@@ -11,7 +11,7 @@ const {createSmoke}=require('./portrait-smoke-helpers.cjs');
  const original=await s.load(),selectedId=await s.js("document.querySelector('.stitch-layer.selected').dataset.imageId"),image=original.images.find(image=>image.id===selectedId),asset=await s.store.readAsset(image.assetId),results=[];
  const paint=()=>s.js('new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)))');
  await s.js("window.cropTrace=[];for(const type of ['pointerdown','click'])document.addEventListener(type,event=>window.cropTrace.push({type,id:event.pointerId,detail:event.detail,target:event.target.className,editor:!!document.querySelector('.image-editor')}),true)");
- const send=(type,point,buttons)=>s.win.webContents.debugger.sendCommand('Input.dispatchMouseEvent',{type,...point,button:type==='mouseMoved'?'none':'left',buttons,clickCount:1});
+ const send=(type,point,buttons)=>s.win.webContents.debugger.sendCommand('Input.dispatchMouseEvent',{type,...point,button:buttons?'left':type==='mouseMoved'?'none':'left',buttons,clickCount:1});
  async function drag(handle,fx,fy,{cancel=false,snap=false}={}){
   await paint();const before=await s.load(),calls=s.calls(),point=await s.js(`(()=>{const r=document.querySelector('[data-crop-handle=${handle}]').getBoundingClientRect(),p=document.querySelector('.stitch-layer.selected').getBoundingClientRect(),c=document.querySelector('.stitch-canvas').getBoundingClientRect();return {x:r.x+r.width/2,y:r.y+r.height/2,dx:${snap}?c.right-p.right-2:p.width*${fx},dy:p.height*${fy},height:p.height};})()`);
   const end={x:point.x+point.dx,y:point.y+point.dy};s.win.webContents.debugger.attach('1.3');
@@ -36,9 +36,21 @@ const {createSmoke}=require('./portrait-smoke-helpers.cjs');
   assert.ok(edges.left>0&&edges.left===edges.right);assert.ok(handle.includes('n')?edges.top>0&&edges.bottom===0:edges.bottom>0&&edges.top===0);
  }
  await s.click('.crop-reset');await s.ready();await drag('se',-.25,-.25,{cancel:true});
+ await s.click('.crop-reset');await s.ready();await paint();
+ const sliderStart=await s.load(),sliderCalls=s.calls(),sliderBox=await s.js("(()=>{const r=document.querySelector('.crop-amount-slider').getBoundingClientRect();return {left:r.left+8,right:r.right-8,y:r.y+r.height/2};})()");
+ s.win.webContents.debugger.attach('1.3');
+ try{
+  await send('mouseMoved',{x:sliderBox.left,y:sliderBox.y},0);await send('mousePressed',{x:sliderBox.left,y:sliderBox.y},1);await paint();for(let n=1;n<=16;n++)await send('mouseMoved',{x:sliderBox.left+(sliderBox.right-sliderBox.left)*n/16,y:sliderBox.y},1);await paint();
+  assert.ok(Number(await s.js("document.querySelector('#crop-amount').value"))>image.width*.4,JSON.stringify({imageWidth:image.width,sliderBox,dom:await s.js("(()=>{const e=document.querySelector('.crop-amount-slider'),r=e.getBoundingClientRect();return {value:e.value,max:e.max,amount:document.querySelector('#crop-amount').value,rect:[r.x,r.y,r.width,r.height],hit:document.elementFromPoint(r.left+8,r.y+r.height/2)?.outerHTML,trace:window.cropTrace.slice(-4)};})()")}));
+  assert.equal(s.calls(),sliderCalls);assert.deepEqual((await s.load()).edits,sliderStart.edits,'held slider does not save');
+  await s.capture('slider-large-crop.png');
+  await send('mouseMoved',{x:sliderBox.left,y:sliderBox.y},1);await paint();assert.equal(Number(await s.js("document.querySelector('#crop-amount').value")),0,'dragging back restores full source content');
+  await send('mouseReleased',{x:sliderBox.left,y:sliderBox.y},0);
+ }finally{s.win.webContents.debugger.detach();}
+ await s.ready();const sliderRestored=await s.load();assert.deepEqual(sliderRestored.canvas,sliderStart.canvas);assert.deepEqual(sliderRestored.edits[image.id].edges,{left:0,right:0,top:0,bottom:0});
  await s.edit('#stitch-width',330);await s.ready();await s.click('[aria-label="关联左右裁剪"]');await s.ready();
  const snapped=await drag('right',-.22,0,{snap:true});assert.ok(Math.abs(snapped.positions[image.id].x+snapped.positions[image.id].width-330)<1);assert.equal(snapped.edits[image.id].edges.left,0);
  assert.ok((await s.store.readAsset(image.assetId)).equals(asset),'crop does not change original pixels');
  const output=await s.save('live-corner-snap');await fs.writeFile(path.join(s.artifact,'project.json'),JSON.stringify(snapped));
- await s.finish({passed:true,fourActualCorners:true,realtimeCanvasAndFields:true,retainsDisplayHeight:true,independentLinks:true,noEncodingOrSavingDuringDrag:true,escapeRestoresCanvas:true,manualCanvasFixed:true,canvasEdgeSnap:true,selectionAligned:true,immutableOriginal:true,results,output});
+ await s.finish({passed:true,cropSliderRestoresFullContent:true,sliderNoSaveOrEncodeWhileHeld:true,fourActualCorners:true,realtimeCanvasAndFields:true,retainsDisplayHeight:true,independentLinks:true,noEncodingOrSavingDuringDrag:true,escapeRestoresCanvas:true,manualCanvasFixed:true,canvasEdgeSnap:true,selectionAligned:true,immutableOriginal:true,results,output});
 })().catch(error=>{console.error(error);app.exit(1);});

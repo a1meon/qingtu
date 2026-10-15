@@ -59,7 +59,7 @@ export function calculateLayout(project,{draft=false}={}){
  let width,height,rects;
  if(type==='horizontal'){
   let ratios=images.map(i=>i.width/i.height),ratio=ratios.reduce((a,b)=>a+b,0);
-  const exact=images.every(i=>project.edits?.[i.id]?.fraction!=null)&&Math.abs(ratio-MAX_RATIO)<1e-12;
+  const exact=images.some(i=>project.edits?.[i.id]?.fraction!=null)&&Math.abs(ratio-MAX_RATIO)<1e-12;
   if(exact)ratio=MAX_RATIO;
   if(!draft&&ratio<1/MAX_RATIO)throw new Error('横排画布比例超过 2.5，请调整布局');
   const cropIndices=images.map((i,n)=>i.original.width*16===i.original.height*9&&!i.source.left&&!i.source.top?n:-1).filter(n=>n>=0);
