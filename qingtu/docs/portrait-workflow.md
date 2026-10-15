@@ -166,3 +166,17 @@ Chrome 独立测试项目使用可复现示意图：导入时为 **360×480**，
 新增测试覆盖导入基准不被后续导入覆盖、四边裁剪及拉伸后恢复、自由布局中心、自动横排衔接及宽度收缩、手动画布保持、旧图和旧拆分回退、连续拆分与删除、各布局记忆，以及正常保存和异常备份恢复。没有使用用户个人原图；Mac 原生窗口及安装包未验证，未发布。
 
 本轮 **249 项测试**、构建及 Windows `smoke:reset-zoom`、`smoke:ui`、`smoke:desktop`、`smoke:recovery`、`smoke:optimization`、`smoke:optimization-settings`、`smoke:crop`、`smoke:offscreen`、`smoke:canvas-resize`、`smoke:canvas-fit`、`smoke:canvas`、`smoke:split`、`smoke:png-budget`、`verify:quality`、`verify:png-budget` 全部通过。分割导出曾因磁盘空间不足失败；清理工作区内重复生成的测试导出后重跑通过，未删除用户原文件或项目。质量检查继续覆盖照片、纹理、渐变、文字和透明图片，本次没有修改压缩算法。
+
+## 调整尺寸后可再次优化（2026-10-15）
+
+修复已优化图片放大或缩小后“一键优化”仍为禁用的问题。旧判断只比较源裁剪量，忽略了图片的实际位置和宽高；现在按钮与执行共用同一判断，同时比较裁剪和目标横排矩形。尺寸或位置需要重新整理时可点击，裁剪与排列完全匹配时仍禁用。判断只计算几何数据，不读取原图、不保存、不编码。非法画布、非横排和不可行裁剪保持原有提示。
+
+![图片已放大，右上角一键优化重新可用](portrait-workflow-validation/resize-optimize-enabled.png)
+
+![再次优化后等高铺满当前画布](portrait-workflow-validation/resize-reoptimized.png)
+
+新增回归用例先在旧代码上复现失败，再验证两张预组合图和四张独立图、自动和手动画布、放大、缩小、Shift 拉伸与移动，以及无关设置不重复优化。Windows `smoke:optimization-settings` 实际拖动完成三种缩放，再点击优化，验证重新铺满、完成后禁用、原图与导入尺寸基准不变、画布和导出参数不被优化改写。放大后重开项目，按钮仍可点击。
+
+浏览器使用可复现示意图执行同样的三次缩放与重新优化，输出画布依次为 1200×480、1152×480、1197×480；每次优化使用操作前当前尺寸。最终 [PNG 导出](portrait-workflow-validation/resize-reoptimized-export.png) 为 **1197×480、82,368 B / 10,000,000 B**，全彩 PNG；与原图合成参考的 RGB 最大差、RMSE、alpha 最大差均为 **0**。Windows 照片导出为 **597×240、336,945 B / 10,000,000 B**。详见 [验证记录](portrait-workflow-validation/resize-optimize-report.json)。本轮未验证用户个人原图、Mac 原生窗口或安装包，未发布。
+
+本轮 **250 项测试**、构建及 Windows `smoke:optimization-settings`、`smoke:ui`、`smoke:desktop`、`smoke:reset-zoom`、`smoke:crop`、`smoke:offscreen`、`smoke:canvas-resize`、`smoke:canvas-fit`、`smoke:recovery`、`smoke:optimization`、`smoke:png-budget`、`smoke:canvas`、`smoke:split`、`verify:quality`、`verify:png-budget` 全部通过。4K 拼接、拆分与原图副本检查保持通过；本次没有修改编码算法或发布流程。

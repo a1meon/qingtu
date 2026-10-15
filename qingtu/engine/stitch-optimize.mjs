@@ -7,11 +7,16 @@ function targetRatio(project){if(project.canvasMode!=='fixed')return 2.5;const c
 export function optimizationAvailability(project){
  if(!project?.images?.length)return {enabled:false,hint:'请先添加图片'};
  if(project.layout!=='horizontal')return {enabled:false,hint:'仅横排可用'};
- let edits,settings;try{settings=optimizationSettings(project.optimization);edits=optimizationEdits(project.images,targetRatio(project),settings);}catch(error){return {enabled:false,hint:error.message};}
- if(project.images.every(image=>sameCrop(image,project.edits?.[image.id],edits[image.id])))return {enabled:false,hint:'当前裁剪已优化'};
+ let next,settings;try{settings=optimizationSettings(project.optimization);const edits=optimizationEdits(project.images,targetRatio(project),settings);next=project.canvasMode==='fixed'?arrangeImages({...project,edits},'horizontal'):{edits};}catch(error){return {enabled:false,hint:error.message};}
+ if(sameOptimization(project,next))return {enabled:false,hint:'当前裁剪已优化'};
  return {enabled:true,hint:project.images.length>=3?`第三张顶部裁 ${settings.topPercent}%、左右各裁 ${settings.sidePixels} px，其余左右裁剪铺满画布`:'按原图统一左右裁剪并铺满画布'};
 }
 function sameCrop(image,a,b){const left=imageGeometry(image,a),right=imageGeometry(image,b);return ['left','top','width','height'].every(key=>Math.abs(left[key]-right[key])<1e-9);}
+// Availability and execution must agree: matching crops alone do not mean
+// a resized, stretched or moved picture still fills its intended rectangle.
+function sameOptimization(project,next){
+ return project.images.every(image=>sameCrop(image,project.edits?.[image.id],next.edits[image.id])&&(project.canvasMode!=='fixed'||['x','y','width','height'].every(key=>Math.abs(project.positions?.[image.id]?.[key]-next.positions[image.id][key])<1e-9)));
+}
 
 export function optimizationEdits(images,target=2.5,options){
  const {topPercent,sidePixels}=optimizationSettings(options);
@@ -46,8 +51,7 @@ export function optimizeHorizontal(project){
  }))return project;
  if(project.canvasMode==='fixed'){
   const next=arrangeImages({...project,optimization:settings,edits},'horizontal');
-  const same=project.images.every(image=>{const p=project.positions[image.id],q=next.positions[image.id];return sameCrop(image,project.edits?.[image.id],edits[image.id])&&['x','y','width','height'].every(key=>Math.abs(p[key]-q[key])<1e-9);});
-  return same?project:next;
+  return sameOptimization(project,next)?project:next;
  }
  return {...project,optimization:settings,edits,export:{...project.export,longEdge}};
 }

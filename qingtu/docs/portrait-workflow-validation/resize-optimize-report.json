@@ -1,0 +1,112 @@
+{
+  "passed": true,
+  "fixture": "reproducible diagrams, not user originals",
+  "resizedProjectReopen": true,
+  "transformations": [
+    {
+      "name": "enlarge",
+      "buttonEnabledAfterResize": true,
+      "filledCanvas": true,
+      "canvas": {
+        "width": 1200,
+        "height": 480
+      }
+    },
+    {
+      "name": "shrink",
+      "buttonEnabledAfterResize": true,
+      "filledCanvas": true,
+      "canvas": {
+        "width": 1152,
+        "height": 480
+      }
+    },
+    {
+      "name": "stretch",
+      "buttonEnabledAfterResize": true,
+      "filledCanvas": true,
+      "canvas": {
+        "width": 1197,
+        "height": 480
+      }
+    }
+  ],
+  "date": "2026-10-15",
+  "tests": 250,
+  "native": {
+    "passed": true,
+    "defaults": {
+      "topPercent": 25,
+      "sidePixels": 100
+    },
+    "custom": {
+      "topPercent": 20,
+      "sidePixels": 150
+    },
+    "settingsOnlyNoCropOrEncode": true,
+    "autosaveAndReopen": true,
+    "invalidNotSavedOrApplied": true,
+    "customCutsExact": true,
+    "defaultCutsExact": true,
+    "resizeReopensOptimization": true,
+    "resizedProjectReopen": true,
+    "transformations": [
+      {
+        "name": "enlarge",
+        "buttonReenabled": true,
+        "reoptimized": true,
+        "canvas": {
+          "width": 600,
+          "height": 240
+        }
+      },
+      {
+        "name": "shrink",
+        "buttonReenabled": true,
+        "reoptimized": true,
+        "canvas": {
+          "width": 568,
+          "height": 240
+        }
+      },
+      {
+        "name": "stretch",
+        "buttonReenabled": true,
+        "reoptimized": true,
+        "canvas": {
+          "width": 597,
+          "height": 240
+        }
+      }
+    ],
+    "originalsUnchanged": true,
+    "output": {
+      "file": "artifacts/optimization-settings/default-100-optimization-qingtu-3.png",
+      "width": 597,
+      "height": 240,
+      "bytes": 336945,
+      "limit": 10000000
+    }
+  },
+  "export": {
+    "file": "resize-reoptimized-export.png",
+    "width": 1197,
+    "height": 480,
+    "bytes": 82368,
+    "limitBytes": 10000000,
+    "fullColour": true,
+    "sha256": "d4179a52e3e5b5e8a85e1d5484847ed071ccaa177af8e826173838ce0ece1819",
+    "differenceAgainstOriginalComposite": {
+      "maxError": 0,
+      "alphaMaxError": 0,
+      "mae": 0,
+      "rmse": 0,
+      "psnr": null
+    }
+  },
+  "notVerified": [
+    "Mac native runtime",
+    "Packaged installers",
+    "User personal original image"
+  ]
+}
