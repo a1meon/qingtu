@@ -4,6 +4,7 @@ import {RESIZE_HANDLES,applyCanvasTransform} from '../../engine/canvas-transform
 import {snapResizeRect} from '../../engine/transform-snap.mjs';
 import {addFlushHandler} from '../lifecycle.js';
 import {CanvasSplitOverlay} from './CanvasSplitOverlay.jsx';
+import {CONTROL_PANEL_HEIGHT,fitCanvasViewport} from './canvas-viewport.js';
 
 export function StitchCanvas({project:sourceProject,layout:sourceLayout,onChange,onResizePreview,onEdit,onContext,onRemove,onReorder,selected,onSelect,disabled,preview,children,split,onSplitChange,splitDisabled,cropping,cropGesture,guides:cropGuides=[],renderControls}){
  const area=useRef(),canvas=useRef(),gesture=useRef(),frame=useRef(),flushRef=useRef(),moveRef=useRef(),endRef=useRef(),cropView=useRef(),[bounds,setBounds]=useState({width:600,height:360}),[resizeDraft,setResizeDraft]=useState(null);
@@ -17,17 +18,17 @@ export function StitchCanvas({project:sourceProject,layout:sourceLayout,onChange
   document.addEventListener('pointermove',track);document.addEventListener('pointerup',release);document.addEventListener('pointercancel',cancel);document.addEventListener('keydown',shift);document.addEventListener('keyup',shift);
   return()=>{document.removeEventListener('pointermove',track);document.removeEventListener('pointerup',release);document.removeEventListener('pointercancel',cancel);document.removeEventListener('keydown',shift);document.removeEventListener('keyup',shift);};
  },[]);
- const naturalScale=layout?Math.max(.000001,Math.min((bounds.width-50)/layout.width,(bounds.height-(project.images.length?200:35))/layout.height)):1;
- if(cropGesture&&!cropView.current)cropView.current={scale:naturalScale,width:layout.width,height:layout.height};
+ const naturalView=layout?fitCanvasViewport(bounds,layout,{hasImages:!!project.images.length,editor:split?'split':cropping?'crop':null}):{scale:1,offsetY:0};
+ if(cropGesture&&!cropView.current)cropView.current={...naturalView,width:layout.width,height:layout.height};
  if(!cropGesture)cropView.current=null;
- const view=resizeDraft?gesture.current?.view:cropView.current,scale=view?.scale||naturalScale,offsetX=view?(layout.width-view.width)*scale/2:0,offsetY=(project.images.length?-38:0)+(view?(layout.height-view.height)*scale/2:0);
+ const view=resizeDraft?gesture.current?.view:cropView.current,scale=view?.scale||naturalView.scale,offsetX=view?(layout.width-view.width)*scale/2:0,offsetY=(view?.offsetY??naturalView.offsetY)+(view?(layout.height-view.height)*scale/2:0);
  const selectedRect=layout?.rects.find(rect=>rect.id===selected),selectedImage=project.images.find(image=>image.id===selected);
  function editAt(event,id){const r=event.currentTarget.getBoundingClientRect();onEdit(id,event.type==='dblclick'&&(event.clientX||event.clientY)?{x:event.clientX,y:event.clientY}:{x:r.x+r.width/2,y:r.y+r.height/2});}
  function showRect(element,rect){if(element)Object.assign(element.style,{left:rect.x*scale+'px',top:rect.y*scale+'px',width:rect.width*scale+'px',height:rect.height*scale+'px'});}
  function start(event,rect,handle=null){
   if(disabled||event.button!==0)return;
   event.preventDefault();event.stopPropagation();onSelect(rect.id);event.currentTarget.setPointerCapture(event.pointerId);
-  gesture.current={id:rect.id,rect,handle,project,layout,view:{scale,width:layout.width,height:layout.height},scale,targets:[...layout.rects.filter(r=>r.id!==rect.id),{x:0,y:0,width:layout.width,height:layout.height,edgesOnly:true}],reorder:!handle&&project.layout!=='free',pointerId:event.pointerId,startX:event.clientX,startY:event.clientY,lastX:event.clientX,lastY:event.clientY,shift:event.shiftKey,element:canvas.current.querySelector(`[data-image-id="${rect.id}"]`),ghost:canvas.current.querySelector(`[data-ghost-image-id="${rect.id}"]`)};
+  gesture.current={id:rect.id,rect,handle,project,layout,view:{scale,offsetY,width:layout.width,height:layout.height},scale,targets:[...layout.rects.filter(r=>r.id!==rect.id),{x:0,y:0,width:layout.width,height:layout.height,edgesOnly:true}],reorder:!handle&&project.layout!=='free',pointerId:event.pointerId,startX:event.clientX,startY:event.clientY,lastX:event.clientX,lastY:event.clientY,shift:event.shiftKey,element:canvas.current.querySelector(`[data-image-id="${rect.id}"]`),ghost:canvas.current.querySelector(`[data-ghost-image-id="${rect.id}"]`)};
  }
  function move(event){
   const g=gesture.current;if(!g||event.pointerId!==g.pointerId||event.buttons===0)return;
@@ -101,7 +102,7 @@ export function StitchCanvas({project:sourceProject,layout:sourceLayout,onChange
    {split&&selectedRect&&<CanvasSplitOverlay image={selectedImage} rect={selectedRect} scale={scale} value={split} onChange={onSplitChange} disabled={splitDisabled}/>}
    <div className="reorder-indicator" hidden/>
    <div className="snap-guides crop-snap-guides" aria-hidden>{cropGuides.map((line,index)=><span key={index} className={`snap-guide ${line.axis}`} style={{[line.axis==='x'?'left':'top']:line.value*scale}}/>)}</div>
-   {selectedRect&&renderControls&&renderControls((()=>{const left=(bounds.width-layout.width*scale)/2+offsetX,top=(bounds.height-layout.height*scale)/2+offsetY,clamp=(value,min,max)=>Math.max(min,Math.min(max,value)),x=selectedRect.x*scale,y=selectedRect.y*scale,width=selectedRect.width*scale,height=selectedRect.height*scale;return {project,targets:[...layout.rects.filter(rect=>rect.id!==selected),{x:0,y:0,width:layout.width,height:layout.height,edgesOnly:true}],rect:selectedRect,scale,tools:{left:clamp(x+(width-154)/2,8-left,bounds.width-left-162),top:clamp(y-43,8-top,bounds.height-top-43)},panel:{left:clamp(x+(split?width-300:(width-300)/2),8-left,bounds.width-left-308),top:clamp(y+height+10,48-top,bounds.height-top-(split?129:80))}};})())}
+   {selectedRect&&renderControls&&renderControls((()=>{const left=(bounds.width-layout.width*scale)/2+offsetX,top=(bounds.height-layout.height*scale)/2+offsetY,clamp=(value,min,max)=>Math.max(min,Math.min(max,value)),x=selectedRect.x*scale,y=selectedRect.y*scale,width=selectedRect.width*scale,height=selectedRect.height*scale;return {project,targets:[...layout.rects.filter(rect=>rect.id!==selected),{x:0,y:0,width:layout.width,height:layout.height,edgesOnly:true}],rect:selectedRect,scale,tools:{left:clamp(x+(width-154)/2,8-left,bounds.width-left-162),top:clamp(y-43,8-top,bounds.height-top-43)},panel:{left:clamp(x+(split?width-300:(width-300)/2),8-left,bounds.width-left-308),top:clamp(y+height+10,48-top,bounds.height-top-CONTROL_PANEL_HEIGHT[split?'split':'crop']-8)}};})())}
   </div>:<div className="stitch-invalid">请调整画布</div>}
  </div>;
 }

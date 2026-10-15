@@ -89,3 +89,24 @@ Chrome 独立测试存储使用可复现角色示意图，逐一真实拖动八�
 | [照片右边吸附裁剪 PNG](portrait-workflow-validation/corner-snap-export.png) | 330×240 | 190,722 / 10,000,000 | 0 / 0 | 0 |
 
 以仓库两张 3072×4096 照片原图独立提取、Lanczos3 缩放并矩形合成参考，在输出原始分辨率逐通道比较；没有导出界面线框、白色显示底或外边距。使用相同 JPEG 缩放解码路径，避免把解码器快速缩放的细微差异算作编码损失。像素记录见 [corner-pixels.json](portrait-workflow-validation/corner-pixels.json)。本轮没有重新验证用户约 28 MB 的原图，也没有 Mac 实机或安装包发布验证。
+
+## 小窗口画布适配（2026-10-15）
+
+原先只要导入图片，预览便固定扣除 200 CSS px 给编辑控件；1024×650 窗口的工作区仅约 226 px 高，普通查看时画布因此只有约 26 px 高。现在仅为可见控件预留空间：普通查看保留上方工具及缩放手柄位置，打开裁剪或分割时再为下方操作栏留位。外层预览、底部项目卡片和右侧设置的位置保持一致；调整的只是显示缩放，不改变保存的画布或导出像素，也不触发拼接编码。裁剪和缩放手势同时冻结显示缩放及偏移，避免指针映射变化。
+
+在独立 Chrome 测试存储中，以四张可复现角色示意图、1200×480 画布真实检查：
+
+| 页面尺寸 | 修改前普通查看的画布高度 | 修改后 | 裁剪模式 |
+| --- | ---: | ---: | ---: |
+| 1440×1000 | 338 CSS px | 344 CSS px | 344 CSS px |
+| 1280×820 | 176 CSS px | 280 CSS px | 216 CSS px |
+| 1024×650 | 26 CSS px | 158 CSS px | 66 CSS px |
+| 900×650 | 26 CSS px | 154 CSS px | 66 CSS px |
+
+![1024×650 修改前，固定预留空间使画布过小](portrait-workflow-validation/small-window-before.png)
+
+![1024×650 修改后，普通查看占用更多工作区](portrait-workflow-validation/small-window-after.png)
+
+以上窗口中的画布、工具、裁剪与分割面板均位于工作区内；恢复到 1440×1000 后画布显示位置和大小与首次一致。整个窗口及未修改编辑器切换过程产生 **0 次编码请求**，画布设置始终为 1200×480。原始记录见 [small-window-report.json](portrait-workflow-validation/small-window-report.json)。原生 `smoke:ui` 新增 1024×650 实际视口检查，继续保留原有模块位置、保存和导出断言；吸附测试改为按实际 CSS 像素距离命中，避免显示比例改变后固定百分比拖动落在吸附范围外。
+
+本轮 **234 项测试**、构建、Windows `smoke:desktop`、`smoke:ui`、`smoke:crop`、`smoke:canvas-resize`、`smoke:canvas-fit`、`smoke:canvas`、`smoke:split`、`smoke:recovery`、`smoke:optimization`、`smoke:png-budget` 及 `verify:quality`、`verify:png-budget` 全部通过。实际照片裁剪输出仍为 330×240、190,722 B，低于 10,000,000 B；全尺寸拼接导出及原图不变检查继续通过。测试中磁盘空间不足导致的一次导出失败，在仅清理重复测试导出后重跑通过。Mac 原生窗口及安装包本轮未验证，未发布安装包。

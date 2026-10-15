@@ -13,7 +13,7 @@ const {createSmoke}=require('./portrait-smoke-helpers.cjs');
  await s.js("window.cropTrace=[];for(const type of ['pointerdown','click'])document.addEventListener(type,event=>window.cropTrace.push({type,id:event.pointerId,detail:event.detail,target:event.target.className,editor:!!document.querySelector('.image-editor')}),true)");
  const send=(type,point,buttons)=>s.win.webContents.debugger.sendCommand('Input.dispatchMouseEvent',{type,...point,button:type==='mouseMoved'?'none':'left',buttons,clickCount:1});
  async function drag(handle,fx,fy,{cancel=false,snap=false}={}){
-  await paint();const before=await s.load(),calls=s.calls(),point=await s.js(`(()=>{const r=document.querySelector('[data-crop-handle=${handle}]').getBoundingClientRect(),p=document.querySelector('.stitch-layer.selected').getBoundingClientRect();return {x:r.x+r.width/2,y:r.y+r.height/2,dx:p.width*${fx},dy:p.height*${fy},height:p.height};})()`);
+  await paint();const before=await s.load(),calls=s.calls(),point=await s.js(`(()=>{const r=document.querySelector('[data-crop-handle=${handle}]').getBoundingClientRect(),p=document.querySelector('.stitch-layer.selected').getBoundingClientRect(),c=document.querySelector('.stitch-canvas').getBoundingClientRect();return {x:r.x+r.width/2,y:r.y+r.height/2,dx:${snap}?c.right-p.right-2:p.width*${fx},dy:p.height*${fy},height:p.height};})()`);
   const end={x:point.x+point.dx,y:point.y+point.dy};s.win.webContents.debugger.attach('1.3');
   try{
    await send('mousePressed',{x:point.x,y:point.y},1);
