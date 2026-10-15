@@ -2,7 +2,7 @@
 
 Mac / Windows 本地图片压缩与拼接工具。拖入图片，设置大小或分辨率，预览并导出。压缩模块底部是图片队列，拼接模块底部是整个画布的项目卡片。
 
-本分支实现固定高度的人物拼接工作流、直接拖动换序、四边及四角关联裁剪、画布上分割、独立布局记忆、多项目自动保存恢复和全彩高保真 PNG。最新规则、真实截图与导出验证见 [docs/portrait-workflow.md](docs/portrait-workflow.md)，提速与原图分割基础见 [docs/split-and-speed.md](docs/split-and-speed.md)。本分支尚未发布安装包。
+本分支实现固定高度的人物拼接工作流、直接拖动换序、四边及四角关联裁剪、画布上分割、独立布局记忆、多项目自动保存恢复和全彩高保真 PNG。最新规则、真实截图与导出验证见 [docs/portrait-workflow.md](docs/portrait-workflow.md)，提速与原图分割基础见 [docs/split-and-speed.md](docs/split-and-speed.md)。0.4.6 Windows 安装包已在本地生成并验证，按用户要求等待 Mac 包一起发行，尚未公开发布；见 [发行准备记录](docs/release-0.4.6.md)。
 
 ## 使用
 

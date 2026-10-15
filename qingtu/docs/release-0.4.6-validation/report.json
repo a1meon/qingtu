@@ -1,0 +1,98 @@
+{
+  "version": "0.4.6",
+  "date": "2026-10-15",
+  "status": "Windows built and verified; joint publication awaits original Mac build/signing environment and Gitee web login",
+  "unitTests": 250,
+  "buildPassed": true,
+  "platform": "Windows x64",
+  "installer": {
+    "name": "Qingtu-0.4.6-win-x64.exe",
+    "bytes": 123024045,
+    "sha256": "fda8db4a71012d67e6019736565d8b80fe4314170df154f487a198c1666d5999",
+    "sha512": "XQyaCpw6t67os/o921RUEhVhoRgwNPcSQMedFcUyJNawzBbev895gTMfP2jkjO9uyvs/rPounk1W/3LUdA4wzQ=="
+  },
+  "artifacts": [
+    {
+      "name": "Install-Qingtu-0.4.6-Windows.cmd",
+      "bytes": 1663,
+      "sha256": "1915972604159b58c425078d1b1ddfddb0b3f035fc86cd680e48d55f99053bd8"
+    },
+    {
+      "name": "latest.yml",
+      "bytes": 767,
+      "sha256": "fdbf8d6123a8c8006e4b9a97a14fe64f58ad29b02ce0e4ec1d452f74c3602406"
+    },
+    {
+      "name": "Qingtu-0.4.6-win-x64.exe.part01",
+      "bytes": 67108864,
+      "sha256": "11160093eb9500a94725861e4919a9befab609d714759829ddd34a5c1ea97a7d"
+    },
+    {
+      "name": "Qingtu-0.4.6-win-x64.exe.part02",
+      "bytes": 55915181,
+      "sha256": "c142ad773380038508792a45c55ce5b6f312167cd335f0566904718a3cf139be"
+    },
+    {
+      "name": "SHA256SUMS-Windows.txt",
+      "bytes": 372,
+      "sha256": "e17096a6bbb1f7019014af1e0fa3d83c58227c540394ca14cd3930c751b057db"
+    }
+  ],
+  "realNsisSdkLocalDownload": true,
+  "sourceAndAsarMatch": true,
+  "noCredentialsOrProjectDataPackaged": true,
+  "macPublicKeyUnchanged": true,
+  "packagedUi": {
+    "passed": true,
+    "version": "0.4.6",
+    "actualPackagedExe": true,
+    "freshIsolatedProfile": true,
+    "security": {
+      "nodeInRenderer": false,
+      "preload": true
+    },
+    "fourOriginals": true,
+    "resizeThenReoptimize": true,
+    "resetImportedSizes": true,
+    "autosaveReopen": true,
+    "canvas": {
+      "width": 1200,
+      "height": 480
+    }
+  },
+  "packagedEngine": {
+    "passed": true,
+    "packagedModules": true,
+    "nativeSharpFromAsar": true,
+    "stitched": {
+      "file": "0.4-qingtu-3.png",
+      "width": 1200,
+      "height": 480,
+      "bytes": 82471,
+      "limit": 10000000
+    },
+    "compressed": {
+      "file": "packaged-photo-qingtu-4.png",
+      "width": 1200,
+      "height": 800,
+      "bytes": 1622380,
+      "limit": 10000000
+    },
+    "tightBudget": {
+      "file": "packaged-photo-qingtu-5.png",
+      "width": 999,
+      "height": 666,
+      "bytes": 986217,
+      "limit": 1000000,
+      "actualDimensionsReported": true
+    },
+    "fittingOriginalByteIdentical": true,
+    "originalCopiesUnchanged": true,
+    "normalCloseProjectReadable": true
+  },
+  "notVerified": [
+    "Mac arm64/x64 0.4.6 builds and runtime",
+    "Installation over an existing user installation",
+    "Anonymous remote download before upload"
+  ]
+}
