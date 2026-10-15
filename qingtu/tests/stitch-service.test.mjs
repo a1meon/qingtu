@@ -95,7 +95,7 @@ test('one-click 4K crop removes both sides of every ratio and saves an exact tra
  for(const [n,rect] of r.layout.rects.entries()){
   const expected=n===0?[255,0,0,255]:n===1?[0,255,0,255]:n===2?[0,0,255,255]:[255,255,0,128];
   for(const [x,y] of [[rect.x,0],[rect.x+rect.width-1,info.height-1]]){const offset=(y*info.width+x)*4;assert.deepEqual([...data.subarray(offset,offset+4)],expected,'both source side strips removed, square corners retained');}
-  if(n===2){assert.deepEqual(restored.edits[files[n].id].edges,{left:60,right:60,top:960,bottom:0});assert.equal(rect.crop.top,.25);assert.equal(rect.crop.left,60/2160);}else assert.ok(rect.proportionalCrop);
+  if(n===2){assert.deepEqual(restored.edits[files[n].id].edges,{left:100,right:100,top:960,bottom:0});assert.equal(rect.crop.top,.25);assert.equal(rect.crop.left,100/2160);}else assert.ok(rect.proportionalCrop);
   assert.ok(!rect.autoCrop);assert.ok((await reopened.readAsset(files[n].assetId)).equals(buffers[n]));
  }
 });

@@ -3,6 +3,7 @@ import {canvasThumbnail} from './thumbnail.js';
 import {DEFAULT_CANVAS} from '../../engine/canvas-limits.mjs';
 import {migrateFixedCanvas} from '../../engine/canvas-migrate.mjs';
 import {enableHeightCanvas} from '../../engine/canvas-height.mjs';
+import {optimizationSettings} from '../../engine/optimization-settings.mjs';
 
 let database;
 const request=req=>new Promise((resolve,reject)=>{req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error);});
@@ -15,7 +16,7 @@ async function db(){
  });return database;
 }
 const storageError=error=>new Error(error?.name==='QuotaExceededError'?'本地空间不足，项目尚未保存。请释放空间后重试':`项目保存失败：${error?.message||'本地存储不可用'}`);
-function clean(project){return {...project,images:project.images.map(({preview,...image})=>image),updatedAt:Date.now()};}
+function clean(project){return {...project,optimization:optimizationSettings(project.optimization),images:project.images.map(({preview,...image})=>image),updatedAt:Date.now()};}
 export const repository={
  async list(){
   if(desktop)return api.stitchList();
@@ -70,4 +71,4 @@ export const repository={
  }
 };
 
-export function newProject(){return {id:crypto.randomUUID(),name:'图像',images:[],initialOrder:[],canvasMode:'fixed',heightLocked:true,canvasSizing:'content',layout:'horizontal',grid:{rows:2,columns:2},positions:{},edits:{},canvas:{...DEFAULT_CANVAS},export:{format:'png',longEdge:5999,targetBytes:10000000,unit:'MB'},updatedAt:Date.now()};}
+export function newProject(){return {id:crypto.randomUUID(),name:'图像',images:[],initialOrder:[],canvasMode:'fixed',heightLocked:true,canvasSizing:'content',layout:'horizontal',grid:{rows:2,columns:2},positions:{},edits:{},optimization:optimizationSettings(),canvas:{...DEFAULT_CANVAS},export:{format:'png',longEdge:5999,targetBytes:10000000,unit:'MB'},updatedAt:Date.now()};}

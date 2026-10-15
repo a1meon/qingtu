@@ -73,6 +73,13 @@ export const StitchWorkspace=forwardRef(function StitchWorkspace({active,inspect
   finally{setOptimizing(false);}
  }
  function optimize(){if(busy)return;setOptimizing(true);setOptimization({phase:'prepare'});const task=runOptimize();optimizeTask.current=task;return task;}
+ function setOptimizationSettings(settings){
+  const current=getCurrent(),cache=lastPreview.current,task=update({optimization:settings});
+  // These settings only affect the next explicit optimization. Reuse the
+  // unchanged rendered pixels while the new parameters are autosaved.
+  if(cache?.project===current)lastPreview.current={...cache,project:getCurrent()};
+  return task;
+ }
  function splitImage(id,axis,at){
   if(busy||splitLock.current)return splitTask.current;
   splitLock.current=true;setSplitting(true);
@@ -146,7 +153,7 @@ export const StitchWorkspace=forwardRef(function StitchWorkspace({active,inspect
      <div className="preview-actions">
       <span className={`save-status ${saveError?'error':''}`} role="status">{saveError?'未保存':saving?'保存中…':project?'已自动保存':''}</span>
       {!inspectorOpen&&<TooltipButton label="展开导出设置" placement="left" className="icon-button panel-toggle" onClick={()=>setInspectorOpen(true)}><SidebarSimple size={23}/></TooltipButton>}
-      <CanvasTools project={project} busy={busy} onReset={requestReset} onOptimize={optimize}/>
+      <CanvasTools project={project} busy={busy} onReset={requestReset} onOptimize={optimize} onSettings={setOptimizationSettings}/>
      </div>
     </div>
     {project?.images.length?<>

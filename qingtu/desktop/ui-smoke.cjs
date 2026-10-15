@@ -67,7 +67,7 @@ async function waitFor(win,expr){for(let n=0;n<160;n++){if(await win.webContents
   assert.deepEqual(await js("Array.from(document.querySelectorAll('.layout-options button'),e=>e.textContent)"),['横排','宫格','竖排','自由']);
   assert.equal(await js("document.querySelector('.file-toolbar .canvas-actions').getAttribute('aria-label')"),'画布工具');
   assert.equal(await js("getComputedStyle(document.querySelector('.canvas-actions')).backgroundColor"),'rgba(0, 0, 0, 0)');
-  assert.deepEqual(await js("Array.from(document.querySelectorAll('.canvas-actions button'),e=>e.getAttribute('aria-label'))"),['重置裁剪与顺序','一键优化'],'only reset and optimize, with optimization on the right');
+  assert.deepEqual(await js("Array.from(document.querySelectorAll('.canvas-actions button'),e=>e.getAttribute('aria-label'))"),['重置裁剪与顺序','一键优化','设置优化裁剪'],'reset and one optimization group, with its configurable crop dropdown');
   assert.equal(await js("getComputedStyle(document.querySelector('.canvas-reset')).backgroundColor"),'rgb(255, 255, 255)');
   assert.ok((await js("getComputedStyle(document.querySelector('.canvas-optimize')).backgroundImage")).includes('linear-gradient'),'optimization has its own designed background');
   assert.equal(await js("document.querySelectorAll('.canvas-card input[type=checkbox]').length"),0);

@@ -52,7 +52,7 @@ test('manual crop and reset preserve nonuniform source scale, centre, canvas and
 });
 test('one-click follows the current canvas ratio without changing its dimensions',()=>{
  const p=appendFixedImages({...project(),canvas:{width:2000,height:1000},export:{longEdge:2000}},[image('a',3072,4096),image('b',3072,4096),image('c',2160,3840),image('d',2160,3840)]),next=optimizeHorizontal(p);
- assert.deepEqual(next.canvas,p.canvas);assert.deepEqual(next.export,p.export);assert.deepEqual(next.edits.c.edges,{left:60,right:60,top:960,bottom:0});assert.ok(['a','b','d'].every(id=>Math.abs(next.edits[id].fraction-37/198)<1e-12));
+ assert.deepEqual(next.canvas,p.canvas);assert.deepEqual(next.export,p.export);assert.deepEqual(next.edits.c.edges,{left:100,right:100,top:960,bottom:0});assert.ok(['a','b','d'].every(id=>Math.abs(next.edits[id].fraction-107/594)<1e-12));
  const layout=calculateLayout(next);assert.ok(Math.abs(layout.rects[0].y)<1e-9);assert.equal(optimizeHorizontal(next),next);
  const defaultOptimized=optimizeHorizontal({...p,canvas:{...DEFAULT_CANVAS}}),r=calculateLayout(defaultOptimized);assert.deepEqual([r.width,r.height],[5995,2398]);assert.ok(Math.abs(r.rects[0].y)<1e-9);
 });

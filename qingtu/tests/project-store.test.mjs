@@ -55,7 +55,16 @@ test('atomic project backups restore the complete percentage-crop generation aft
  const p={...project(image),images:[image,{...image,id:'second-image'},{...image,id:'third-image'}]};
  const optimized=optimizeHorizontal(p);await store.save(optimized);await store.save({...optimized,name:'新名称'});
  await fs.writeFile(store.file(p.id),'interrupted');await fs.writeFile(store.file(p.id,'.partial.tmp'),'{');
- const restored=await new ProjectStore(root).load(p.id);assert.equal(restored.recovered,true);assert.deepEqual(restored.edits,optimized.edits);assert.deepEqual(restored.edits['third-image'].edges,{left:60,right:60,top:150,bottom:0});assert.deepEqual(restored.export,optimized.export);assert.deepEqual(restored.images,p.images);assert.ok((await store.readAsset(image.assetId)).equals(source));
+ const restored=await new ProjectStore(root).load(p.id);assert.equal(restored.recovered,true);assert.deepEqual(restored.edits,optimized.edits);assert.deepEqual(restored.edits['third-image'].edges,{left:100,right:100,top:150,bottom:0});assert.deepEqual(restored.export,optimized.export);assert.deepEqual(restored.images,p.images);assert.ok((await store.readAsset(image.assetId)).equals(source));
+});
+
+test('optimization parameters remain independent per project and survive interrupted saves',async t=>{
+ const {root,store}=await setup(t),source=await sharp(await fixture()).resize(800,600).png().toBuffer(),image=await store.import(source,'options.png');delete image.preview;
+ const a={...project(image),id:'settings-a',optimization:{topPercent:12.5,sidePixels:120}},b={...project(image),id:'settings-b',optimization:{topPercent:30,sidePixels:50}};
+ await store.save(a);await store.save(b);await store.save({...a,optimization:{topPercent:20,sidePixels:100}});
+ await fs.writeFile(store.file(a.id),'interrupted');const reopened=new ProjectStore(root),restored=await reopened.load(a.id);
+ assert.equal(restored.recovered,true);assert.deepEqual(restored.optimization,a.optimization);assert.deepEqual((await reopened.load(b.id)).optimization,b.optimization);assert.ok((await reopened.readAsset(image.assetId)).equals(source));
+ for(const optimization of [{topPercent:100,sidePixels:100},{topPercent:25,sidePixels:-1},'bad'])assert.throws(()=>store.save({...b,optimization}),/裁剪|设置/);
 });
 test('true import order survives reorder and crash recovery; invalid orders cannot replace a manifest',async t=>{
  const {root,store}=await setup(t),image=await store.import(await fixture(),'first.png');delete image.preview;

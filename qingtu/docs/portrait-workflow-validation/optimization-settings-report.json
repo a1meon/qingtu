@@ -1,0 +1,129 @@
+{
+  "passed": true,
+  "fixture": "reproducible diagrams, not user originals",
+  "settingsOnlyNoCropOrEncode": true,
+  "customAppliedOnClick": true,
+  "reopenRetainsSettings": true,
+  "defaultAppliedOnClick": true,
+  "customSettings": {
+    "topPercent": 20,
+    "sidePixels": 150
+  },
+  "customThirdEdges": {
+    "left": 150,
+    "right": 150,
+    "top": 768,
+    "bottom": 0
+  },
+  "project": {
+    "optimization": {
+      "topPercent": 25,
+      "sidePixels": 100
+    },
+    "canvas": {
+      "width": 1200,
+      "height": 480
+    },
+    "edits": {
+      "aa379db9-f920-4258-ad02-b715834cc34e": {
+        "axis": "horizontal",
+        "fraction": 0.05892255892255893
+      },
+      "692c2400-ab31-47c6-9779-9dc4bb58f5b0": {
+        "axis": "horizontal",
+        "fraction": 0.05892255892255893
+      },
+      "8788dbf2-f63d-4387-abe1-320bcece3178": {
+        "edges": {
+          "left": 100,
+          "right": 100,
+          "top": 960,
+          "bottom": 0
+        },
+        "links": {
+          "horizontal": true,
+          "vertical": false
+        }
+      },
+      "450ca31b-7cbc-4992-953b-7298a08cbd5a": {
+        "axis": "horizontal",
+        "fraction": 0.05892255892255893
+      }
+    },
+    "positions": {
+      "aa379db9-f920-4258-ad02-b715834cc34e": {
+        "x": 0,
+        "y": 0,
+        "width": 317.57575757575756,
+        "height": 480
+      },
+      "692c2400-ab31-47c6-9779-9dc4bb58f5b0": {
+        "x": 317.57575757575756,
+        "y": 0,
+        "width": 317.57575757575756,
+        "height": 480
+      },
+      "8788dbf2-f63d-4387-abe1-320bcece3178": {
+        "x": 635.1515151515151,
+        "y": 0,
+        "width": 326.6666666666667,
+        "height": 480
+      },
+      "450ca31b-7cbc-4992-953b-7298a08cbd5a": {
+        "x": 961.8181818181819,
+        "y": 0,
+        "width": 238.1818181818182,
+        "height": 480
+      }
+    },
+    "images": [
+      {
+        "id": "aa379db9-f920-4258-ad02-b715834cc34e",
+        "name": "01-front-face.png",
+        "width": 3072,
+        "height": 4096,
+        "assetId": "449fa5a638101c039ba4efbcd7d3cfb04386ae4f67e7b54f5fb0bc10a2674a51",
+        "bytes": 537784
+      },
+      {
+        "id": "692c2400-ab31-47c6-9779-9dc4bb58f5b0",
+        "name": "02-side-face.png",
+        "width": 3072,
+        "height": 4096,
+        "assetId": "3b0c145832fcd355e721a37748e99025ff3c45583b150e96b63fb1acd81b97fc",
+        "bytes": 524417
+      },
+      {
+        "id": "8788dbf2-f63d-4387-abe1-320bcece3178",
+        "name": "03-front-body.png",
+        "width": 2160,
+        "height": 3840,
+        "assetId": "7c49d75eb182a132c15584c444e740be4c39dd2c13eed0876470ac446f53bfe4",
+        "bytes": 408647
+      },
+      {
+        "id": "450ca31b-7cbc-4992-953b-7298a08cbd5a",
+        "name": "04-back-body.png",
+        "width": 2160,
+        "height": 3840,
+        "assetId": "8cbe9c60d541dc725074b7f13d10ba2aabbd152d2ba8d3a1dda587f4087b7b76",
+        "bytes": 412534
+      }
+    ]
+  },
+  "export": {
+    "width": 1200,
+    "height": 480,
+    "bytes": 82471,
+    "limit": 10000000,
+    "format": "png",
+    "palette": false,
+    "differenceAgainstOriginalSourceComposite": {
+      "maxError": 0,
+      "alphaMaxError": 0,
+      "mae": 0,
+      "rmse": 0,
+      "psnr": null
+    }
+  }
+}

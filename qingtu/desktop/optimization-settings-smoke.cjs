@@ -1,0 +1,22 @@
+const {app}=require('electron');
+const assert=require('node:assert/strict');
+const fs=require('node:fs/promises');
+const path=require('node:path');
+const {createSmoke}=require('./portrait-smoke-helpers.cjs');
+(async()=>{
+ const s=await createSmoke('qingtu-opt-settings-','optimization-settings');
+ await s.edit('#stitch-height',240);await s.importFiles(['01-alpine.jpg','02-cabin.jpg','03-coast.jpg','04-alpine.jpg'].map(name=>path.resolve('artifacts/stitch-fixtures',name)));
+ const original=await s.load(),beforeCalls=s.calls();await s.click('[aria-label="设置优化裁剪"]');await s.wait("!!document.querySelector('.optimization-settings')");
+ assert.deepEqual(await s.js("[document.querySelector('[aria-label=\"优化顶部裁剪比例\"]').value,document.querySelector('[aria-label=\"优化左右裁剪像素\"]').value]"),['25','100']);
+ await s.edit('[aria-label="优化顶部裁剪比例"]',20);await s.edit('[aria-label="优化左右裁剪像素"]',150);await s.ready();
+ const configured=await s.load();assert.deepEqual(configured.optimization,{topPercent:20,sidePixels:150});assert.deepEqual(configured.edits,original.edits);assert.deepEqual(configured.positions,original.positions);assert.equal(s.calls(),beforeCalls,'editing ready optimization settings never encodes unchanged pixels');
+ await s.capture('configured.png');await s.click('.canvas-optimize');await s.wait("!document.querySelector('.stitch-dialog')&&!document.querySelector('.project-name').disabled");await s.ready();
+ const optimized=await s.load();assert.deepEqual(optimized.edits[optimized.images[2].id].edges,{left:150,right:150,top:768,bottom:0});assert.deepEqual(optimized.canvas,original.canvas);assert.equal(await s.js("document.querySelector('.canvas-optimize').disabled"),true);
+ await s.win.webContents.reload();await s.wait("!!document.querySelector('[aria-label=\"图像拼接\"]')");await s.click('[aria-label="图像拼接"]');await s.ready();await s.click('[aria-label="设置优化裁剪"]');await s.wait("!!document.querySelector('.optimization-settings')");
+ assert.deepEqual(await s.js("[document.querySelector('[aria-label=\"优化顶部裁剪比例\"]').value,document.querySelector('[aria-label=\"优化左右裁剪像素\"]').value]"),['20','150']);
+ const calls=s.calls();await s.edit('[aria-label="优化顶部裁剪比例"]',100);await s.wait("document.querySelector('.optimization-settings [role=alert]')?.textContent.includes('小于 100')");assert.equal(await s.js("document.querySelector('.canvas-optimize').disabled"),true);assert.deepEqual((await s.load()).optimization,{topPercent:20,sidePixels:150});assert.equal(s.calls(),calls);
+ await s.edit('[aria-label="优化顶部裁剪比例"]',25);await s.edit('[aria-label="优化左右裁剪像素"]',100);await s.ready();await s.click('.canvas-optimize');await s.wait("!document.querySelector('.stitch-dialog')&&!document.querySelector('.project-name').disabled");await s.ready();
+ const restored=await s.load();assert.deepEqual(restored.edits[restored.images[2].id].edges,{left:100,right:100,top:960,bottom:0});
+ for(let n=0;n<original.images.length;n++)assert.ok((await s.store.readAsset(original.images[n].assetId)).equals(await fs.readFile(path.resolve('artifacts/stitch-fixtures',original.images[n].name))));
+ const output=await s.save('default-100-optimization');await s.finish({passed:true,defaults:{topPercent:25,sidePixels:100},custom:{topPercent:20,sidePixels:150},settingsOnlyNoCropOrEncode:true,autosaveAndReopen:true,invalidNotSavedOrApplied:true,customCutsExact:true,defaultCutsExact:true,originalsUnchanged:true,output});
+})().catch(error=>{console.error(error);app.exit(1);});

@@ -1,12 +1,26 @@
-import {ArrowCounterClockwise} from '@phosphor-icons/react';
+import {useEffect,useRef,useState} from 'react';
+import {ArrowCounterClockwise,CaretDown} from '@phosphor-icons/react';
 import {TooltipButton} from '../TooltipButton.jsx';
 import {OptimizeIcon} from './OptimizeIcon.jsx';
 import {optimizationAvailability} from '../../engine/stitch-optimize.mjs';
+import {OptimizationSettings} from './OptimizationSettings.jsx';
 
-export function CanvasTools({project,busy,onReset,onOptimize}){
+export function CanvasTools({project,busy,onReset,onOptimize,onSettings}){
+ const [open,setOpen]=useState(false),[invalid,setInvalid]=useState(''),root=useRef(),toggle=useRef();
+ const close=()=>{setOpen(false);setInvalid('');};
+ useEffect(()=>{close();},[project?.id,busy]);
+ useEffect(()=>{
+  if(!open)return;
+  const outside=event=>{if(!root.current.contains(event.target))close();},escape=event=>{if(event.key==='Escape'){event.stopPropagation();close();toggle.current?.focus();}};
+  document.addEventListener('pointerdown',outside);document.addEventListener('keydown',escape);return()=>{document.removeEventListener('pointerdown',outside);document.removeEventListener('keydown',escape);};
+ },[open]);
  const optimization=optimizationAvailability(project);
  return <div className="canvas-actions" role="group" aria-label="画布工具">
   <TooltipButton label="重置裁剪与顺序" placement="left" className="canvas-reset" disabled={busy||!project?.images.length} onClick={onReset}><ArrowCounterClockwise size={19}/></TooltipButton>
-  <button className="canvas-optimize" aria-label="一键优化" title={optimization.hint} disabled={busy||!optimization.enabled} onClick={onOptimize}><span className="optimizer-glyph"><OptimizeIcon size={20}/></span><span>一键优化</span></button>
+  <div className="canvas-optimize-group" ref={root}>
+   <button className="canvas-optimize" aria-label="一键优化" title={optimization.hint} disabled={busy||!optimization.enabled||!!invalid} onClick={()=>{close();onOptimize();}}><span className="optimizer-glyph"><OptimizeIcon size={20}/></span><span>一键优化</span></button>
+   <button className="canvas-optimize-settings" aria-label="设置优化裁剪" title="优化裁剪设置" aria-expanded={open} disabled={busy||!project} ref={toggle} onClick={()=>{if(open)close();else setOpen(true);}}><CaretDown size={14} weight="bold"/></button>
+   {open&&<OptimizationSettings key={project.id} value={project.optimization} hint={!optimization.enabled&&optimization.hint!=='当前裁剪已优化'?optimization.hint:null} onChange={onSettings} onValidityChange={setInvalid}/>}
+  </div>
  </div>;
 }

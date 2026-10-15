@@ -2,6 +2,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import {createHash,randomUUID} from 'node:crypto';
 import sharp from 'sharp';
+import {optimizationSettings} from './optimization-settings.mjs';
 import {INPUT_OPTIONS,SUPPORTED} from './image.mjs';
 import {imageGeometry} from './stitch-edits.mjs';
 import {validateImportOrder} from './stitch-reset.mjs';
@@ -44,6 +45,7 @@ export class ProjectStore{
  }
  validate(project){
   if(!project||!validId(project.id)||!Array.isArray(project.images)||project.images.length>100)throw new Error('项目数据无效');
+  optimizationSettings(project.optimization);
   validateImportOrder(project);
   validateLayoutStates(project);
   if(Buffer.byteLength(JSON.stringify(project))>2*1024*1024)throw new Error('项目数据过大');

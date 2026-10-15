@@ -136,3 +136,15 @@ Chrome 独立测试存储使用可复现角色示意图，逐一真实拖动八�
 Chrome 独立测试存储以可复现示意图执行同样流程，240×240 的 [实际 PNG 导出](portrait-workflow-validation/offscreen-recovered-export.png) 为 **7,964 B / 10,000,000 B**。按完整原图独立缩放、提取画布交集后逐像素比较，RGB 最大误差、RMSE、alpha 最大误差均为 **0**，没有把越界淡显、选框或“显示全部”的预览范围写入导出。完整记录见 [offscreen-report.json](portrait-workflow-validation/offscreen-report.json)。
 
 新增单元检查覆盖左右上下越界、负坐标、多图同时纳入视野、小窗口及普通视图保持原有显示大小。本轮 237 项测试及构建通过；Windows 依次运行 `smoke:offscreen`、`smoke:ui`、`smoke:desktop`、`smoke:crop`、`smoke:canvas-resize`、`smoke:canvas-fit`、`smoke:canvas`、`smoke:split`、`smoke:recovery`、`smoke:optimization`、`smoke:png-budget`、`verify:quality`、`verify:png-budget`。本轮样片来自仓库照片和可复现示意图，Mac 实机及安装包未验证，未发布。
+
+## 可设置的优化裁剪，默认左右各 100 px（2026-10-15）
+
+默认参数更新为第三张顶部 25%、左右各 100 个原图像素，底部 0。一键优化旁的下拉提供“顶部 %”和“左右各 px”，每个画布独立自动保存。修改参数不会立即改变图片，点击一键优化才按完整原图重新计算；已就绪预览在参数保存时直接复用。主按钮因已优化而禁用时，下拉仍可打开。空值、负值、小数像素及顶部 100% 会提示且不保存；合法参数若无法保留至少一个源像素或填满画布，会说明原因并禁用优化。已有 60 px 编辑保持原样，直到再次执行优化。
+
+![默认顶部 25%、左右各 100 px 的设置入口](portrait-workflow-validation/optimization-settings-default.png)
+
+Windows 新增 `smoke:optimization-settings`：实际修改为顶部 20%、左右各 150 px，保存后裁剪和位置未变，未发起新编码；点击后第三张精确裁剪为顶部 768 px、左右各 150 px。重新打开仍为 20%/150 px；输入顶部 100% 被阻止，改回 25%/100 px 并点击后得到顶部 960 px、左右各 100 px。保持原图副本，实际照片导出 **600×240、338,644 B / 10,000,000 B**。单元测试另覆盖零裁剪、小数百分比、多个项目独立保存及异常保存恢复。
+
+Chrome 独立测试项目采用可复现示意图，也验证了改参数不重排、点击才应用、刷新恢复与默认值。实际 [PNG 导出](portrait-workflow-validation/optimization-settings-export.png) 为 **1200×480、82,471 B / 10,000,000 B**，全彩 PNG，RGB 最大误差、RMSE、alpha 最大误差均为 **0**（对原始图片按保存的裁剪与位置合成参考）。详见 [optimization-settings-report.json](portrait-workflow-validation/optimization-settings-report.json)。没有测试用户个人原图。
+
+本轮 **241 项测试**、构建及 Windows `smoke:optimization-settings`、`smoke:ui`、`smoke:desktop`、`smoke:crop`、`smoke:offscreen`、`smoke:canvas-resize`、`smoke:canvas-fit`、`smoke:canvas`、`smoke:split`、`smoke:recovery`、`smoke:optimization`、`smoke:png-budget`、`verify:quality`、`verify:png-budget` 全部通过。Mac 原生窗口及安装包未验证，未发布。
