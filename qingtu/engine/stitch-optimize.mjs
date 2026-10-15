@@ -1,7 +1,7 @@
 import {arrangeImages} from './canvas-fixed.mjs';
 import {validateCanvas} from './canvas-limits.mjs';
 import {imageGeometry} from './stitch-edits.mjs';
-import {optimizationSettings} from './optimization-settings.mjs';
+import {optimizationSettings,optimizationImageCrops} from './optimization-settings.mjs';
 function targetRatio(project){if(project.canvasMode!=='fixed')return 2.5;const canvas=validateCanvas(project.canvas.width,project.canvas.height);return canvas.width/canvas.height;}
 // Work from immutable original dimensions, never from already cropped previews.
 export function optimizationAvailability(project){
@@ -9,7 +9,8 @@ export function optimizationAvailability(project){
  if(project.layout!=='horizontal')return {enabled:false,hint:'仅横排可用'};
  let next,settings;try{settings=optimizationSettings(project.optimization);const edits=optimizationEdits(project.images,targetRatio(project),settings);next=project.canvasMode==='fixed'?arrangeImages({...project,edits},'horizontal'):{edits};}catch(error){return {enabled:false,hint:error.message};}
  if(sameOptimization(project,next))return {enabled:false,hint:'当前裁剪已优化'};
- return {enabled:true,hint:settings.imageNumber!==null&&settings.imageNumber<=project.images.length?`第${settings.imageNumber}张顶部裁 ${settings.topPercent}%、左右各裁 ${settings.sidePixels} px，其余左右裁剪铺满画布`:'按原图统一左右裁剪并铺满画布'};
+ const crops=optimizationImageCrops(settings,project.images),selected=project.images.filter(image=>crops[image.id]?.enabled);
+ return {enabled:true,hint:selected.length?`为 ${selected.length} 张图片应用特殊裁剪，其余左右裁剪铺满画布`:'按原图统一左右裁剪并铺满画布'};
 }
 function sameCrop(image,a,b){const left=imageGeometry(image,a),right=imageGeometry(image,b);return ['left','top','width','height'].every(key=>Math.abs(left[key]-right[key])<1e-9);}
 // Availability and execution must agree: matching crops alone do not mean
@@ -19,17 +20,20 @@ function sameOptimization(project,next){
 }
 
 export function optimizationEdits(images,target=2.5,options){
- const {topPercent,sidePixels,imageNumber}=optimizationSettings(options);
  if(images?.length>100||images?.some(image=>![image.width,image.height].every(value=>Number.isInteger(value)&&value>0)))throw new Error('图片尺寸无效');
- if(!images?.length||imageNumber===null||imageNumber>images.length)return proportionalHorizontalEdits(images,target);
- const selectedIndex=imageNumber-1,selected=images[selectedIndex],top=Math.round(selected.height*topPercent/100);
- if(sidePixels>Math.floor((selected.width-1)/2)||selected.height-top<1)throw new Error(`第${imageNumber}张裁剪后不足 1 像素，请减小顶部或左右裁剪`);
- const fixed={edges:{left:sidePixels,right:sidePixels,top,bottom:0},links:{horizontal:true,vertical:false}};
- const remaining=images.filter((_,index)=>index!==selectedIndex),ratio=(selected.width-2*sidePixels)/(selected.height-top),rest=target-ratio;
- if(!remaining.length){if(Math.abs(rest)<1e-9)return {[selected.id]:fixed};throw new Error('所选图片裁剪后无法匹配画布，请调整裁剪或添加图片');}
- if(rest<=0)throw new Error(`第${imageNumber}张裁剪后过宽，无法铺满当前画布，请调整画布或图片`);
+ const crops=optimizationImageCrops(options,images||[]),selected=images?.filter(image=>crops[image.id]?.enabled)||[];
+ if(!selected.length)return proportionalHorizontalEdits(images,target);
+ const fixed={};let ratio=0;
+ for(const image of selected){
+  const {topPercent,sidePixels}=crops[image.id],top=Math.round(image.height*topPercent/100),number=images.indexOf(image)+1;
+  if(sidePixels>Math.floor((image.width-1)/2)||image.height-top<1)throw new Error(`第${number}张裁剪后不足 1 像素，请减小顶部或左右裁剪`);
+  fixed[image.id]={edges:{left:sidePixels,right:sidePixels,top,bottom:0},links:{horizontal:true,vertical:false}};ratio+=(image.width-2*sidePixels)/(image.height-top);
+ }
+ const remaining=images.filter(image=>!crops[image.id]?.enabled),rest=target-ratio;
+ if(!remaining.length){if(Math.abs(rest)<1e-9)return fixed;throw new Error('所选图片裁剪后无法匹配画布，请调整裁剪参数或取消部分选择');}
+ if(rest<=0)throw new Error('所选图片裁剪后过宽，无法铺满当前画布，请调整裁剪参数或画布');
  const edits=proportionalHorizontalEdits(remaining,rest);
- return Object.fromEntries(images.map((image,index)=>[image.id,index===selectedIndex?fixed:edits[image.id]]));
+ return Object.fromEntries(images.map(image=>[image.id,Object.hasOwn(fixed,image.id)?fixed[image.id]:edits[image.id]]));
 }
 export function proportionalHorizontalEdits(images,target=2.5){
  if(!images?.length)throw new Error('请添加图片');

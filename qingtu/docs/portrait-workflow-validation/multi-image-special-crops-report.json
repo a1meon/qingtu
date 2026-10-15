@@ -1,0 +1,58 @@
+{
+  "passed": true,
+  "exactButtonsForZeroOneFourImages": true,
+  "multipleIndependentCrops": true,
+  "defaultThird15Percent": true,
+  "settingsOnlyNoCropOrEncode": true,
+  "autosaveAndReopen": true,
+  "parametersFollowImageAfterReorder": true,
+  "invalidNotSaved": true,
+  "deselectInvalidRecoversSavedValues": true,
+  "noSelectionUniformCrop": true,
+  "noSelectionSurvivesReopen": true,
+  "independentProjects": true,
+  "resizeReopensOptimization": true,
+  "originalsUnchanged": true,
+  "transformations": [
+    {
+      "name": "enlarge",
+      "canvas": {
+        "width": 600,
+        "height": 240
+      }
+    },
+    {
+      "name": "shrink",
+      "canvas": {
+        "width": 567,
+        "height": 240
+      }
+    },
+    {
+      "name": "stretch",
+      "canvas": {
+        "width": 598,
+        "height": 240
+      }
+    }
+  ],
+  "multiOutput": {
+    "file": "artifacts/optimization-settings/independent-multi-crops-qingtu.png",
+    "width": 600,
+    "height": 240,
+    "bytes": 335410,
+    "limit": 10000000
+  },
+  "output": {
+    "file": "artifacts/optimization-settings/multi-image-special-crops-qingtu-4.png",
+    "width": 598,
+    "height": 240,
+    "bytes": 334066,
+    "limit": 10000000
+  },
+  "platform": "darwin",
+  "arch": "arm64",
+  "unitTests": 262,
+  "installerTested": false,
+  "published": false
+}

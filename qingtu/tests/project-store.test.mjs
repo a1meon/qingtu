@@ -76,6 +76,14 @@ test('optimization parameters remain independent per project and survive interru
  assert.equal(restored.recovered,true);assert.deepEqual(restored.optimization,a.optimization);assert.deepEqual((await reopened.load(b.id)).optimization,b.optimization);assert.ok((await reopened.readAsset(image.assetId)).equals(source));
  for(const optimization of [{topPercent:100,sidePixels:100},{topPercent:25,sidePixels:-1},'bad'])assert.throws(()=>store.save({...b,optimization}),/裁剪|设置/);
 });
+
+test('per-image multi-crop parameters and disabled selections survive independent projects and interrupted saves',async t=>{
+ const {root,store}=await setup(t),source=await fixture(),image=await store.import(source,'multi-options.png');delete image.preview;
+ const a={...project(image),id:'multi-settings-a',optimization:{specialCrops:{[image.id]:{enabled:true,topPercent:12.5,sidePixels:40}}}},b={...project(image),id:'multi-settings-b',optimization:{specialCrops:{[image.id]:{enabled:false,topPercent:8,sidePixels:10}}}};
+ assert.throws(()=>store.save({...a,optimization:{specialCrops:{[image.id]:{enabled:true,topPercent:100,sidePixels:40}}}}),/裁剪/);
+ await store.save(a);await store.save(b);await store.save({...a,optimization:{specialCrops:{}}});await fs.writeFile(store.file(a.id),'interrupted');
+ const reopened=new ProjectStore(root),restored=await reopened.load(a.id);assert.equal(restored.recovered,true);assert.deepEqual(restored.optimization,a.optimization);assert.deepEqual((await reopened.load(b.id)).optimization,b.optimization);assert.ok((await reopened.readAsset(image.assetId)).equals(source));
+});
 test('true import order survives reorder and crash recovery; invalid orders cannot replace a manifest',async t=>{
  const {root,store}=await setup(t),image=await store.import(await fixture(),'first.png');delete image.preview;
  const second={...image,id:'second'},p=recordImportOrder({...project(image),images:[second,image]},[image.id,second.id]);
