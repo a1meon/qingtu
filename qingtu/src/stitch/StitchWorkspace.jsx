@@ -34,6 +34,7 @@ export const StitchWorkspace=forwardRef(function StitchWorkspace({active,inspect
  const [editing,setEditing]=useState(null),[cropDraft,setCropDraft]=useState(null),[splitDraft,setSplitDraft]=useState(null),[transformCanvas,setTransformCanvas]=useState(null),editor=useRef();
  const [selected,setSelected]=useState(null),[error,setError]=useState(''),[notice,setNotice]=useState(''),[importing,setImporting]=useState(false),[batch,setBatch]=useState(null),[output,setOutput]=useState(null),[processing,setProcessing]=useState(false),[folder,setFolder]=useState(null);
  const [context,setContext]=useState(null),[confirmation,setConfirmation]=useState(null),[optimization,setOptimization]=useState(null),[optimizing,setOptimizing]=useState(false),[splitting,setSplitting]=useState(false);
+ const [exportSelection,setExportSelection]=useState(null);
  const unit=project?.export.unit||'MB',setUnit=unit=>setExport({unit});
  useEffect(()=>{setSelected(project?.images[0]?.id||null);setEditing(null);setCropDraft(null);setSplitDraft(null);},[project?.id]);
  const input=useRef(),cancel=useRef(false),exportTask=useRef(Promise.resolve()),importTask=useRef(Promise.resolve()),actionTask=useRef(Promise.resolve()),optimizeTask=useRef(Promise.resolve()),splitTask=useRef(Promise.resolve()),importLock=useRef(false),exportLock=useRef(false),lastPreview=useRef();
@@ -46,7 +47,8 @@ export const StitchWorkspace=forwardRef(function StitchWorkspace({active,inspect
  const calculation=useMemo(()=>{try{return {layout:calculateLayout(displayProject||{})};}catch(e){try{return {layout:calculateLayout(displayProject||{},{draft:true}),error:e.message};}catch{return {error:e.message};}}},[displayProject]);
  const {layout}=calculation;
  const busy=loading||importing||!!batch||optimizing||splitting||!!confirmation||!!optimization;
- const exportIds=exportProjectIds(projects,project);
+ const exportableIds=exportProjectIds(projects,project),exportIds=exportProjectIds(projects,project,exportSelection);
+ function selectExport(id,checked){setExportSelection(previous=>{const ids=exportProjectIds(projects,getCurrent(),previous);return checked?[...ids,id]:ids.filter(value=>value!==id);});}
  useEffect(()=>setContext(null),[active,project?.id,busy]);
  useEffect(()=>{onBusy(busy||saving||processing||!!saveError||!!cropDraft||!!splitDraft||!!transformCanvas);onCount(project?.images.length||0);},[busy,saving,processing,saveError,cropDraft,splitDraft,transformCanvas,project?.images.length]);
  const flushEditor=()=>editor.current?.flush()||Promise.resolve();
@@ -163,7 +165,7 @@ export const StitchWorkspace=forwardRef(function StitchWorkspace({active,inspect
      <div className="preview-info stitch-info" aria-live="polite"><span title={output?.autoResized?`设置 ${output.requestedWidth} × ${output.requestedHeight}；为满足体积上限已等比调整`:undefined}>{output?`${output.width} × ${output.height}${output.autoResized?' · 等比调整':''}`:visibleCanvas?`${visibleCanvas.width} × ${visibleCanvas.height}`:calculation.error}</span>{layout?.rects.some(r=>r.autoCrop)&&<span>9:16 居中裁切</span>}<span className="preview-status" title={output?`${output.bytes.toLocaleString()} 字节${output.difference?`；RGB 最大误差 ${output.difference.maxError}/255，RMSE ${output.difference.rmse.toFixed(4)}；透明度误差 ${output.difference.alphaMaxError}${output.autoResized?'（以实际尺寸的等比缩放图为基准）':''}`:''}`:undefined}>{cropDraft||transformCanvas?'编辑中…':processing?'计算中…':output?`${output.encoding||output.format.toUpperCase()} · ${megabytes(output.bytes)}`:error}</span></div></div></div>
     </>:<div className="canvas-area"><div className="canvas-content"><div className="stitch-editing-surface">{project&&<StitchCanvas project={project} layout={layout} disabled={busy}><div className="empty-state fixed-empty"><img className="empty-illustration" src="./assets/blue-file-empty.png" alt=""/><button className="primary import-button" aria-label="添加拼接图片" disabled={busy} onClick={add}><Plus size={28} weight="bold"/>{loading?'恢复中…':'添加图片'}</button></div></StitchCanvas>}{!project&&<div className="empty-state stitch-create-empty"><img className="empty-illustration" src="./assets/blue-file-empty.png" alt=""/><button className="primary import-button" aria-label="新建画布" disabled={busy} onClick={createCanvas}><Plus size={30} weight="bold"/>{loading?'恢复中…':'新建画布'}</button></div>}</div><div className="preview-info stitch-info"><span>{layout?`${layout.width} × ${layout.height}`:''}</span></div></div></div>}
    </div>
-   <CanvasCards projects={projects} currentId={project?.id} disabled={busy} onOpen={openCanvas} onCreate={createCanvas} onClear={requestClear} onContext={contextCanvas}/>
+   <CanvasCards projects={projects} currentId={project?.id} disabled={busy} onOpen={openCanvas} onCreate={createCanvas} onClear={requestClear} onContext={contextCanvas} exportableIds={exportableIds} exportIds={exportIds} onSelectExport={selectExport} onSelectAll={checked=>setExportSelection(checked?null:[])}/>
   </section>
   <div className="inspector-shell"><aside className="inspector" aria-label="拼接导出设置" aria-hidden={!inspectorOpen} inert={!inspectorOpen}>
    <div className="inspector-heading"><h1>拼接</h1><TooltipButton label="收起导出设置" placement="left" className="icon-button panel-toggle" onClick={()=>setInspectorOpen(false)}><SidebarSimple size={23}/></TooltipButton></div>
@@ -177,7 +179,7 @@ export const StitchWorkspace=forwardRef(function StitchWorkspace({active,inspect
    <div className="export-section">
     {(saveError||calculation.error&&project||error)&&<div className="inline-message error" role="alert"><WarningCircle size={18}/><span>{saveError||calculation.error||error}</span>{saveError&&<button onClick={retry}>重试</button>}</div>}
     <label>输出文件夹</label><button className="folder-control" disabled={busy} onClick={()=>chooseFolder().catch(e=>setNotice(e.message))}><FolderSimple size={23}/><span>{folder?.name||'选择文件夹'}</span></button>
-    <button className="primary export-button" disabled={busy||!!cropDraft||!!splitDraft||!!transformCanvas||!exportIds.length||!!saveError||!!project?.images.length&&(!layout||!!calculation.error||!!error)} onClick={()=>exportProjects(exportIds)}>{batch?<><SpinnerGap className="spin" size={23}/>导出 {batch.current} / {batch.total}</>:`导出 ${exportIds.length} 张图像`}</button>
+    <button className="primary export-button" disabled={busy||!!cropDraft||!!splitDraft||!!transformCanvas||!exportIds.length||!!saveError||exportIds.includes(project?.id)&&!!project?.images.length&&(!layout||!!calculation.error||!!error)} onClick={()=>exportProjects(exportIds)}>{batch?<><SpinnerGap className="spin" size={23}/>导出 {batch.current} / {batch.total}</>:`导出 ${exportIds.length} 张图像`}</button>
     <div className="export-secondary">{batch&&<button className="cancel-button" onClick={()=>{cancel.current=true;}}>取消后续</button>}</div>
    </div>
   </aside></div>

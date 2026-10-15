@@ -2,6 +2,17 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {performOptimization} from '../src/stitch/optimization.js';
 import {exportProjectIds} from '../src/stitch/project-export.js';
+
+test('explicit export selection can contain one, several or no canvases and never exports others',()=>{
+ const projects=[{id:'one',count:1},{id:'two',count:2},{id:'empty',count:0},{id:'three',count:1}],before=structuredClone(projects);
+ assert.deepEqual(exportProjectIds(projects,null,['two']),['two']);
+ assert.deepEqual(exportProjectIds(projects,null,['three','one','one','missing','empty']),['one','three']);
+ assert.deepEqual(exportProjectIds(projects,null,[]),[]);
+ assert.deepEqual(exportProjectIds(projects,{id:'empty',images:[{id:'new'}]},['empty']),['empty']);
+ assert.deepEqual(exportProjectIds(projects,{id:'one',images:[]},['one','two']),['two']);
+ assert.deepEqual(exportProjectIds(projects.filter(p=>p.id!=='two'),null,['two']),[]);
+ assert.deepEqual(projects,before,'choosing export scope never modifies project metadata');
+});
 import {optimizeHorizontal} from '../engine/stitch-optimize.mjs';
 const project=()=>({id:'one',layout:'horizontal',images:[{id:'a',width:300,height:400},{id:'b',width:300,height:400},{id:'c',width:900,height:1600},{id:'d',width:900,height:1600}],export:{longEdge:5999,targetBytes:10000000,format:'png'}});
 const deferred=()=>{let resolve;const promise=new Promise(r=>resolve=r);return {promise,resolve};};

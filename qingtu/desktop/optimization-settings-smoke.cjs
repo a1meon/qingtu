@@ -16,6 +16,7 @@ const {createSmoke}=require('./portrait-smoke-helpers.cjs');
   s.win.webContents.debugger.attach('1.3');try{await s.win.webContents.debugger.sendCommand('Input.dispatchMouseEvent',{type:'mousePressed',...point,button:'left',clickCount:1});await s.win.webContents.debugger.sendCommand('Input.dispatchMouseEvent',{type:'mouseReleased',...point,button:'left',clickCount:1});}finally{s.win.webContents.debugger.detach();}
   await s.wait("!!document.querySelector('.optimization-settings')&&!document.querySelector('#optimization-image-list')");assert.equal(await s.js("document.querySelector('#optimization-image').textContent"),label);await s.ready();
  }
+ async function reopen(){const loaded=new Promise(resolve=>s.win.webContents.once('did-finish-load',resolve));s.win.webContents.reload();await loaded;await s.wait("!!document.querySelector('[aria-label=\"图像拼接\"]')");await s.click('[aria-label="图像拼接"]');await s.ready();}
  assert.equal(await s.js("document.querySelector('#optimization-image').textContent"),'第 3 张');
  await chooseImage('第 4 张');
 
@@ -23,7 +24,7 @@ const {createSmoke}=require('./portrait-smoke-helpers.cjs');
  const configured=await s.load();assert.deepEqual(configured.optimization,{topPercent:20,sidePixels:150,imageNumber:4});assert.deepEqual(configured.edits,original.edits);assert.deepEqual(configured.positions,original.positions);assert.equal(s.calls(),beforeCalls,'editing ready optimization settings never encodes unchanged pixels');
  await s.capture('configured.png');await s.click('.canvas-optimize');await s.wait("!document.querySelector('.stitch-dialog')&&!document.querySelector('.project-name').disabled");await s.ready();
  const optimized=await s.load();assert.deepEqual(optimized.edits[optimized.images[3].id].edges,{left:150,right:150,top:768,bottom:0});assert.deepEqual(optimized.canvas,original.canvas);assert.equal(await s.js("document.querySelector('.canvas-optimize').disabled"),true);
- await s.win.webContents.reload();await s.wait("!!document.querySelector('[aria-label=\"图像拼接\"]')");await s.click('[aria-label="图像拼接"]');await s.ready();await s.click('[aria-label="设置优化裁剪"]');await s.wait("!!document.querySelector('.optimization-settings')");
+ await reopen();await s.click('[aria-label="设置优化裁剪"]');await s.wait("!!document.querySelector('.optimization-settings')");
  assert.deepEqual(await s.js("[document.querySelector('[aria-label=\"优化顶部裁剪比例\"]').value,document.querySelector('[aria-label=\"优化左右裁剪像素\"]').value]"),['20','150']);
  const calls=s.calls();await s.edit('[aria-label="优化顶部裁剪比例"]',100);await s.wait("document.querySelector('.optimization-settings [role=alert]')?.textContent.includes('小于 100')");assert.equal(await s.js("document.querySelector('.canvas-optimize').disabled"),true);assert.deepEqual((await s.load()).optimization,{topPercent:20,sidePixels:150,imageNumber:4});assert.equal(s.calls(),calls);
  await chooseImage('不选择');assert.deepEqual((await s.load()).optimization,{topPercent:20,sidePixels:150,imageNumber:null},'choosing no special crop recovers an invalid draft before disabling its fields');
@@ -31,7 +32,7 @@ const {createSmoke}=require('./portrait-smoke-helpers.cjs');
  await chooseImage('不选择');assert.equal((await s.load()).optimization.imageNumber,null);assert.equal(await s.js("document.querySelector('[aria-label=\"优化顶部裁剪比例\"]').disabled"),true);
  await s.capture('no-selected-image.png');await s.click('.canvas-optimize');await s.wait("!document.querySelector('.stitch-dialog')&&!document.querySelector('.project-name').disabled");await s.ready();
  const uniform=await s.load();assert.ok(uniform.images.every(image=>uniform.edits[image.id].edges===undefined));
- await s.win.webContents.reload();await s.wait("!!document.querySelector('[aria-label=\"图像拼接\"]')");await s.click('[aria-label="图像拼接"]');await s.ready();await s.click('[aria-label="设置优化裁剪"]');await s.wait("!!document.querySelector('.optimization-settings')");assert.equal(await s.js("document.querySelector('#optimization-image').textContent"),'不选择');
+ await reopen();await s.click('[aria-label="设置优化裁剪"]');await s.wait("!!document.querySelector('.optimization-settings')");assert.equal(await s.js("document.querySelector('#optimization-image').textContent"),'不选择');
  await chooseImage('第 3 张');await s.capture('default-15-third-image.png');await s.ready();await s.click('.canvas-optimize');await s.wait("!document.querySelector('.stitch-dialog')&&!document.querySelector('.project-name').disabled");await s.ready();
  const restored=await s.load();assert.deepEqual(restored.edits[restored.images[2].id].edges,{left:100,right:100,top:576,bottom:0});
  const transformations=[];
@@ -41,7 +42,7 @@ const {createSmoke}=require('./portrait-smoke-helpers.cjs');
   const width=await s.js("document.querySelector('.stitch-layer').getBoundingClientRect().width");await s.drag('[data-handle=e]',width*factor,0,shift);
   const resized=await s.load();assert.notDeepEqual(resized.positions,beforeTransform.positions);assert.deepEqual(resized.edits,beforeTransform.edits);assert.equal(await s.js("document.querySelector('.canvas-optimize').disabled"),false,'resize makes optimization available again');
   if(name==='enlarge'){
-   await s.capture('resized-ready-to-optimize.png');await s.win.webContents.reload();await s.wait("!!document.querySelector('[aria-label=\"图像拼接\"]')");await s.click('[aria-label="图像拼接"]');await s.ready();assert.equal(await s.js("document.querySelector('.canvas-optimize').disabled"),false,'resized project stays optimizable after reopen');
+   await s.capture('resized-ready-to-optimize.png');await reopen();assert.equal(await s.js("document.querySelector('.canvas-optimize').disabled"),false,'resized project stays optimizable after reopen');
   }
   await s.click('.canvas-optimize');await s.wait("!document.querySelector('.stitch-dialog')&&!document.querySelector('.project-name').disabled");await s.ready();
   const next=await s.load();assert.equal(await s.js("document.querySelector('.canvas-optimize').disabled"),true);assert.deepEqual(next.canvas,resized.canvas);assert.deepEqual(next.export,resized.export);assert.deepEqual(next.importSizes,restored.importSizes);
@@ -52,7 +53,7 @@ const {createSmoke}=require('./portrait-smoke-helpers.cjs');
  for(let n=0;n<original.images.length;n++)assert.ok((await s.store.readAsset(original.images[n].assetId)).equals(await fs.readFile(path.resolve('artifacts/stitch-fixtures',original.images[n].name))));
  const output=await s.save('default-100-optimization');
  const last=await s.load();await s.store.save({...last,optimization:{...last.optimization,imageNumber:100}});
- await s.win.webContents.reload();await s.wait("!!document.querySelector('[aria-label=\"图像拼接\"]')");await s.click('[aria-label="图像拼接"]');await s.ready();await s.click('[aria-label="设置优化裁剪"]');await s.wait("!!document.querySelector('#optimization-image')");assert.equal(await s.js("document.querySelector('#optimization-image').textContent"),'第 100 张');
+ await reopen();await s.click('[aria-label="设置优化裁剪"]');await s.wait("!!document.querySelector('#optimization-image')");assert.equal(await s.js("document.querySelector('#optimization-image').textContent"),'第 100 张');
  await s.click('#optimization-image');await s.wait("!!document.querySelector('#optimization-image-list')");assert.ok(await s.js("document.querySelector('#optimization-image-list').getBoundingClientRect().height<=280"));await s.js("document.querySelector('#optimization-image-list').scrollTop=0;new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)))");assert.equal(await s.js("!!document.querySelector('#optimization-image-list')"),true,'scrolling a long image list keeps the selector open');
  await s.js("document.querySelector('#optimization-image-list').dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true}))");assert.equal(await s.js("!!document.querySelector('.optimization-settings')&&!document.querySelector('#optimization-image-list')"),true,'Escape closes the image list while keeping crop settings open');await chooseImage('第 3 张');
  await s.finish({passed:true,defaults:{topPercent:15,sidePixels:100,imageNumber:3},custom:{topPercent:20,sidePixels:150,imageNumber:4},settingsOnlyNoCropOrEncode:true,autosaveAndReopen:true,invalidNotSavedOrApplied:true,invalidDraftCanSelectNone:true,customCutsExact:true,defaultCutsExact:true,selectableImage:true,noSelectionUniformCrop:true,noSelectionSurvivesReopen:true,absentSelectionSurvivesReopen:true,longSelectorScrollable:true,resizeReopensOptimization:true,resizedProjectReopen:true,transformations,originalsUnchanged:true,output});

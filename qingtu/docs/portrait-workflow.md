@@ -196,3 +196,15 @@ Chrome 独立测试项目使用可复现示意图：导入时为 **360×480**，
 本轮在 Apple Silicon Mac 上通过 **254 项测试**、构建及 `smoke:optimization-settings`、`smoke:ui`、`smoke:desktop`、`smoke:reset-zoom`、`smoke:crop`、`smoke:offscreen`、`smoke:canvas-resize`、`smoke:canvas-fit`、`smoke:canvas`、`smoke:split`、`smoke:recovery`、`smoke:optimization`、`smoke:png-budget`、`verify:quality`、`verify:png-budget`。新增原生检查实际选择第 4 张，确认顶部 20% 精确为 768 px、左右各 150 px；不选择时没有特殊顶部裁剪，重开仍保持；默认第 3 张顶部精确为 576 px。验证无效输入后切换“不选择”、缺失序号恢复、长列表滚动与 Escape，以及修改设置不裁剪、不重复编码。中央按钮实际创建画布，清空后及重开仍可见。
 
 照片样例经三种缩放再优化后，实际 [PNG 导出](portrait-workflow-validation/selectable-crop-export.png) 为 **598×240、334,178 B / 10,000,000 B**；源文件逐字节不变。见 [原生验证记录](portrait-workflow-validation/selectable-crop-report.json)。界面截图来自开发版 Electron；本轮未重新制作安装包或发布，已发布的 0.4.6 仍对应发布时的代码。
+
+## 指定图像与多选导出（2026-10-15）
+
+底部每张“图像”画布卡片左上角新增导出勾选框，点击缩略图继续切换编辑。可以只选一张，也可以同时选择多张，右侧“导出 X 张图像”只统计并导出勾选的非空画布，各自保留原有的尺寸、格式和体积上限。全选框支持部分勾选状态，再次点击可全选或取消全选；没有勾选时禁用导出，不会回退为导出全部。
+
+默认仍勾选全部非空画布。手动缩小范围后，新画布不会自动加入；空画布不可勾选，删除的画布不计入数量。导出勾选与当前编辑画布独立，切换画布或压缩/拼接模块保留选择，不触发项目保存或图片编码；重开应用恢复默认全选。导出期间锁定勾选范围，快捷键与主按钮使用同一选择，右键“导出此图像”仍直接导出该画布。未勾选画布的尺寸错误不会阻挡其他已勾选的合法画布；保存失败继续阻止导出。
+
+![只勾选图像 1 和图像 2，右侧导出数量为 2](portrait-workflow-validation/selected-export.png)
+
+本轮 Apple Silicon Mac 上 **255 项测试**、构建、14 项桌面检查（含新增 `smoke:selected-export` 和原有 UI、优化设置、重置、裁剪、越界找回、画布调整、拆分、恢复及 PNG 预算检查）与两项画质/预算验证通过。新增流程实际用空格键勾选一张，再用导出快捷键生成 **240×120、51,965 B** PNG；勾选两张后只生成对应的 240×120 与 **260×120、60,529 B** 文件，均小于各自 10,000,000 B 上限。还验证空画布跳过、全选/清空、部分勾选、切换模块、导出期间锁定、未勾选画布尺寸错误不阻塞，以及删除唯一勾选项后保持零导出。对已有正常预览切换勾选前后，项目文件未变、编码调用数未增加；原图逐字节不变。见 [验证记录](portrait-workflow-validation/selected-export-report.json)。
+
+桌面测试同步等待新建卡片保存与真实页面重载，确保选中预期图片后再检查边框像素；macOS 测试窗口主动激活，截图仅对 `UnknownVizError` 做最多三次帧间重试。本轮没有重新制作或发布安装包。
