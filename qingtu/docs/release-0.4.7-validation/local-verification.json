@@ -1,0 +1,155 @@
+{
+  "version": "0.4.7",
+  "sourceCommit": "debbfb899a51ab1b86a8bfbbdadf60211e5a680b",
+  "localIntegrity": true,
+  "sparkleSignatures": true,
+  "artifacts": [
+    {
+      "name": "Qingtu-0.4.7-win-x64.exe",
+      "bytes": 123025021,
+      "parts": 2,
+      "sha512": "zTe0+uTo1sPj6ZFj4WWarey0+FyF+/bvhSvAd73nQCRaqm+oPJoKGRqZe2EJkXRteldwr8ry5HYKTMZuHd34Nw=="
+    },
+    {
+      "name": "Qingtu-0.4.7-mac-arm64.zip",
+      "bytes": 138185745,
+      "parts": 3,
+      "sha512": "9tm92wKwqbISTH98eAHKcgOaziTe5ouC6xs0QRl4uX+0IJRfJiQgYKLpN4N9zqLFKbGb+XYVYMIpUAdDlm04hg=="
+    },
+    {
+      "name": "Qingtu-0.4.7-mac-x64.zip",
+      "bytes": 145939161,
+      "parts": 3,
+      "sha512": "svB7hLmRGfg9sR/yNAM1yecWxdwVJjde3BsuefjdP9+cn4qo3DCkCyGBjdc5M7X/cmZt4gQIr++NcaMDUQQPQQ=="
+    }
+  ],
+  "uploadFiles": [
+    "Install-Qingtu-0.4.7-Windows.cmd",
+    "Qingtu-0.4.7-Mac-arm64-Installer.dmg",
+    "Qingtu-0.4.7-Mac-x64-Installer.dmg",
+    "Qingtu-0.4.7-mac-arm64.zip.part01",
+    "Qingtu-0.4.7-mac-arm64.zip.part02",
+    "Qingtu-0.4.7-mac-arm64.zip.part03",
+    "Qingtu-0.4.7-mac-x64.zip.part01",
+    "Qingtu-0.4.7-mac-x64.zip.part02",
+    "Qingtu-0.4.7-mac-x64.zip.part03",
+    "Qingtu-0.4.7-win-x64.exe.part01",
+    "Qingtu-0.4.7-win-x64.exe.part02",
+    "SHA256SUMS-0.4.7.txt",
+    "latest.yml",
+    "mac-arm64.json",
+    "mac-x64.json"
+  ],
+  "tests": {
+    "passed": 262,
+    "failed": 0
+  },
+  "checksPassed": [
+    "build",
+    "smoke:drop-canvas",
+    "smoke:optimization-settings",
+    "smoke:ui",
+    "smoke:selected-export",
+    "smoke:desktop",
+    "smoke:reset-zoom",
+    "smoke:crop",
+    "smoke:offscreen",
+    "smoke:canvas-resize",
+    "smoke:canvas-fit",
+    "smoke:canvas",
+    "smoke:split",
+    "smoke:recovery",
+    "smoke:optimization",
+    "smoke:png-budget",
+    "smoke:update",
+    "verify:quality",
+    "verify:png-budget",
+    "packaged-source:desktop",
+    "packaged-source:ui",
+    "packaged-source:drop-canvas",
+    "local:real-nsis-download",
+    "codesign:arm64",
+    "codesign:x64"
+  ],
+  "sourceParity": [
+    {
+      "archive": "release/mac-arm64/轻图.app/Contents/Resources/app.asar",
+      "version": "0.4.7",
+      "sourceParity": true,
+      "privateMaterialExcluded": true,
+      "asarSHA256": "94bfd95592edf4631f8c2c51ba317dce925fc8c5f8dc73e80ce512c202f733f8"
+    },
+    {
+      "archive": "release/mac/轻图.app/Contents/Resources/app.asar",
+      "version": "0.4.7",
+      "sourceParity": true,
+      "privateMaterialExcluded": true,
+      "asarSHA256": "8ac592ca58fe5fb2935ccb154c303edb951eebe0b4405e4d560024bf99e75240"
+    },
+    {
+      "archive": "release/win-unpacked/resources/app.asar",
+      "version": "0.4.7",
+      "sourceParity": true,
+      "privateMaterialExcluded": true,
+      "asarSHA256": "90917443ab9efeae7710f94743e67b0fdfee9cccc3a7cc6313853956cfa4bb0c"
+    }
+  ],
+  "realPackagedMacRuntime": {
+    "passed": true,
+    "realPackagedExecutable": true,
+    "arch": "arm64",
+    "version": "0.4.7",
+    "sparkleNativeBridgeLoaded": true,
+    "nativeSharpLoaded": true,
+    "unchangedJpegByteIdentical": true,
+    "png": {
+      "bytes": 998430,
+      "width": 1001,
+      "height": 667,
+      "limit": 1000000
+    }
+  },
+  "macInitialInstallerDmgVerified": [
+    "arm64",
+    "x64"
+  ],
+  "quotaPlan": {
+    "authorizedByUser": true,
+    "quotaText": "每个仓库总附件不可超过 1G",
+    "conservativeLimitBytes": 1000000000,
+    "existingBytes": 936711894,
+    "newUploadBytes": 407197206,
+    "cleanupRequired": true,
+    "oldestFirstRequired": [
+      "v0.4.3",
+      "v0.4.5"
+    ],
+    "backups": [
+      {
+        "tag": "v0.4.3",
+        "localBackup": "release/archive-v043",
+        "bytes": 122512596,
+        "verifiedFiles": 7
+      },
+      {
+        "tag": "v0.4.5",
+        "localBackup": "release/archive-v045",
+        "bytes": 407009034,
+        "verifiedFiles": 15
+      }
+    ],
+    "afterCleanupAndUploadBytes": 814387470,
+    "preservedReleases": [
+      "v0.4.6"
+    ],
+    "deletionCompleted": false
+  },
+  "runtimeLimits": {
+    "macIntelNativeRun": false,
+    "windowsNativeInstallThisMac": false,
+    "userRunningAppPreserved": true
+  },
+  "packagedUpdateFeedsCorrect": true,
+  "published": false,
+  "releaseApiStatus": "403 Forbidden (Rate Limit Exceeded); anonymous artifact downloads are available"
+}

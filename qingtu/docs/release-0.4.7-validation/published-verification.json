@@ -1,0 +1,272 @@
+{
+  "version": "0.4.7",
+  "sourceCommit": "debbfb899a51ab1b86a8bfbbdadf60211e5a680b",
+  "localIntegrity": true,
+  "sparkleSignatures": true,
+  "artifacts": [
+    {
+      "name": "Qingtu-0.4.7-win-x64.exe",
+      "bytes": 123025021,
+      "parts": 2,
+      "sha512": "zTe0+uTo1sPj6ZFj4WWarey0+FyF+/bvhSvAd73nQCRaqm+oPJoKGRqZe2EJkXRteldwr8ry5HYKTMZuHd34Nw=="
+    },
+    {
+      "name": "Qingtu-0.4.7-mac-arm64.zip",
+      "bytes": 138185745,
+      "parts": 3,
+      "sha512": "9tm92wKwqbISTH98eAHKcgOaziTe5ouC6xs0QRl4uX+0IJRfJiQgYKLpN4N9zqLFKbGb+XYVYMIpUAdDlm04hg=="
+    },
+    {
+      "name": "Qingtu-0.4.7-mac-x64.zip",
+      "bytes": 145939161,
+      "parts": 3,
+      "sha512": "svB7hLmRGfg9sR/yNAM1yecWxdwVJjde3BsuefjdP9+cn4qo3DCkCyGBjdc5M7X/cmZt4gQIr++NcaMDUQQPQQ=="
+    }
+  ],
+  "uploadFiles": [
+    "Install-Qingtu-0.4.7-Windows.cmd",
+    "Qingtu-0.4.7-Mac-arm64-Installer.dmg",
+    "Qingtu-0.4.7-Mac-x64-Installer.dmg",
+    "Qingtu-0.4.7-mac-arm64.zip.part01",
+    "Qingtu-0.4.7-mac-arm64.zip.part02",
+    "Qingtu-0.4.7-mac-arm64.zip.part03",
+    "Qingtu-0.4.7-mac-x64.zip.part01",
+    "Qingtu-0.4.7-mac-x64.zip.part02",
+    "Qingtu-0.4.7-mac-x64.zip.part03",
+    "Qingtu-0.4.7-win-x64.exe.part01",
+    "Qingtu-0.4.7-win-x64.exe.part02",
+    "SHA256SUMS-0.4.7.txt",
+    "latest.yml",
+    "mac-arm64.json",
+    "mac-x64.json"
+  ],
+  "tests": {
+    "passed": 262,
+    "failed": 0
+  },
+  "checksPassed": [
+    "build",
+    "smoke:drop-canvas",
+    "smoke:optimization-settings",
+    "smoke:ui",
+    "smoke:selected-export",
+    "smoke:desktop",
+    "smoke:reset-zoom",
+    "smoke:crop",
+    "smoke:offscreen",
+    "smoke:canvas-resize",
+    "smoke:canvas-fit",
+    "smoke:canvas",
+    "smoke:split",
+    "smoke:recovery",
+    "smoke:optimization",
+    "smoke:png-budget",
+    "smoke:update",
+    "verify:quality",
+    "verify:png-budget",
+    "packaged-source:desktop",
+    "packaged-source:ui",
+    "packaged-source:drop-canvas",
+    "local:real-nsis-download",
+    "codesign:arm64",
+    "codesign:x64"
+  ],
+  "sourceParity": [
+    {
+      "archive": "release/mac-arm64/轻图.app/Contents/Resources/app.asar",
+      "version": "0.4.7",
+      "sourceParity": true,
+      "privateMaterialExcluded": true,
+      "asarSHA256": "94bfd95592edf4631f8c2c51ba317dce925fc8c5f8dc73e80ce512c202f733f8"
+    },
+    {
+      "archive": "release/mac/轻图.app/Contents/Resources/app.asar",
+      "version": "0.4.7",
+      "sourceParity": true,
+      "privateMaterialExcluded": true,
+      "asarSHA256": "8ac592ca58fe5fb2935ccb154c303edb951eebe0b4405e4d560024bf99e75240"
+    },
+    {
+      "archive": "release/win-unpacked/resources/app.asar",
+      "version": "0.4.7",
+      "sourceParity": true,
+      "privateMaterialExcluded": true,
+      "asarSHA256": "90917443ab9efeae7710f94743e67b0fdfee9cccc3a7cc6313853956cfa4bb0c"
+    }
+  ],
+  "realPackagedMacRuntime": {
+    "passed": true,
+    "realPackagedExecutable": true,
+    "arch": "arm64",
+    "version": "0.4.7",
+    "sparkleNativeBridgeLoaded": true,
+    "nativeSharpLoaded": true,
+    "unchangedJpegByteIdentical": true,
+    "png": {
+      "bytes": 998430,
+      "width": 1001,
+      "height": 667,
+      "limit": 1000000
+    }
+  },
+  "macInitialInstallerDmgVerified": [
+    "arm64",
+    "x64"
+  ],
+  "quotaPlan": {
+    "authorizedByUser": true,
+    "quotaText": "每个仓库总附件不可超过 1G",
+    "conservativeLimitBytes": 1000000000,
+    "existingBytes": 936711894,
+    "newUploadBytes": 407197206,
+    "cleanupRequired": true,
+    "oldestFirstRequired": [
+      "v0.4.3",
+      "v0.4.5"
+    ],
+    "backups": [
+      {
+        "tag": "v0.4.3",
+        "localBackup": "release/archive-v043",
+        "bytes": 122512596,
+        "verifiedFiles": 7
+      },
+      {
+        "tag": "v0.4.5",
+        "localBackup": "release/archive-v045",
+        "bytes": 407009034,
+        "verifiedFiles": 15
+      }
+    ],
+    "afterCleanupAndUploadBytes": 814387470,
+    "preservedReleases": [
+      "v0.4.6"
+    ],
+    "deletionCompleted": true,
+    "deletedReleases": [
+      "v0.4.3",
+      "v0.4.5"
+    ],
+    "verifiedUi": "Both deletion success notices and sole remaining v0.4.6 release",
+    "evidenceScreenshot": "artifacts/gitee-v047-cleanup.png",
+    "remainingBeforeUploadBytes": 407190264
+  },
+  "runtimeLimits": {
+    "macIntelNativeRun": false,
+    "windowsNativeInstallThisMac": false,
+    "userRunningAppPreserved": true
+  },
+  "packagedUpdateFeedsCorrect": true,
+  "published": true,
+  "releaseApiStatus": "403 Forbidden (Rate Limit Exceeded); anonymous artifact downloads are available",
+  "verifiedAt": "2026-10-15T15:03:06.834Z",
+  "releaseUrl": "https://gitee.com/a1meon_admin/halframe-releases/releases/tag/v0.4.7",
+  "formalUi": {
+    "verifiedAt": "2026-10-15T15:02:39.413Z",
+    "latestVersion": "0.4.7",
+    "prerelease": false,
+    "uploadedAssets": 15,
+    "releaseUrl": "https://gitee.com/a1meon_admin/halframe-releases/releases/tag/v0.4.7",
+    "evidence": "docs/release-0.4.7-validation/gitee-formal.png"
+  },
+  "uploadedAssets": 15,
+  "smallAssetRemoteParity": {
+    "passed": true,
+    "anonymousDownloads": true,
+    "files": [
+      {
+        "name": "Install-Qingtu-0.4.7-Windows.cmd",
+        "bytes": 1663,
+        "sha256": "5b9accd40ebed20c6143d672e133565360d3a67451f594e3d0f440bba9b22342"
+      },
+      {
+        "name": "Qingtu-0.4.7-Mac-arm64-Installer.dmg",
+        "bytes": 20589,
+        "sha256": "d025eb0ac99939b4f78c47051e228e1861ebee1911def64cc67e5c1af7135c82"
+      },
+      {
+        "name": "Qingtu-0.4.7-Mac-x64-Installer.dmg",
+        "bytes": 20586,
+        "sha256": "73ab1d846dbff782eb2b2ef02872367a6a9201ef06cb5093a738f70879b27233"
+      },
+      {
+        "name": "SHA256SUMS-0.4.7.txt",
+        "bytes": 1330,
+        "sha256": "e0cbde09f404a3d8256e5d3030672855e326e9f8a15986973d851b06ea1de701"
+      },
+      {
+        "name": "latest.yml",
+        "bytes": 767,
+        "sha256": "02afd9f5d91f9aaaa06eb060d68612e190f48741ce0569a6fa2bd8dc6cec557a"
+      },
+      {
+        "name": "mac-arm64.json",
+        "bytes": 1178,
+        "sha256": "70d04158db0a9f66d03ea9963d1e9e0b2542db2eb82eab9d78c51bbea0d0afc7"
+      },
+      {
+        "name": "mac-x64.json",
+        "bytes": 1166,
+        "sha256": "3ee7a66f774efa0075b976b4504792183f3553e87cc334c356911b756ffee7b2"
+      }
+    ]
+  },
+  "macRemote": [
+    {
+      "passed": true,
+      "arch": "arm64",
+      "anonymousDownload": true,
+      "authenticatedManifest": true,
+      "fullHashVerified": true,
+      "sparkleArchiveSignatureVerified": true,
+      "bytes": 138185745,
+      "sha512": "9tm92wKwqbISTH98eAHKcgOaziTe5ouC6xs0QRl4uX+0IJRfJiQgYKLpN4N9zqLFKbGb+XYVYMIpUAdDlm04hg=="
+    },
+    {
+      "passed": true,
+      "arch": "x64",
+      "anonymousDownload": true,
+      "authenticatedManifest": true,
+      "fullHashVerified": true,
+      "sparkleArchiveSignatureVerified": true,
+      "bytes": 145939161,
+      "sha512": "svB7hLmRGfg9sR/yNAM1yecWxdwVJjde3BsuefjdP9+cn4qo3DCkCyGBjdc5M7X/cmZt4gQIr++NcaMDUQQPQQ=="
+    }
+  ],
+  "windowsRemoteSdk": {
+    "passed": true,
+    "realNsisSdk": true,
+    "version": "0.4.7",
+    "bytes": 123025021,
+    "sha512": "zTe0+uTo1sPj6ZFj4WWarey0+FyF+/bvhSvAd73nQCRaqm+oPJoKGRqZe2EJkXRteldwr8ry5HYKTMZuHd34Nw==",
+    "installationTriggered": false,
+    "source": "https://gitee.com/a1meon_admin/halframe-releases/releases/download/v0.4.7/"
+  },
+  "currentMac": {
+    "passed": true,
+    "directFeed": true,
+    "proof": [
+      {
+        "arch": "arm64",
+        "noDownload": true,
+        "manifestRequests": 1
+      },
+      {
+        "arch": "x64",
+        "noDownload": true,
+        "manifestRequests": 1
+      }
+    ]
+  },
+  "currentWindows": {
+    "passed": true,
+    "currentVersion": "0.4.7",
+    "noAutomaticDownload": true,
+    "source": "https://gitee.com/a1meon_admin/halframe-releases/releases/download/v0.4.7/"
+  },
+  "releaseApi": {
+    "status": 403,
+    "checkedAt": "2026-10-15T15:00:13.835Z",
+    "limitation": "Gitee API rate limited; automatic latest-release discovery could not be verified from this network. Direct version feeds and actual updater downloads verified."
+  }
+}
