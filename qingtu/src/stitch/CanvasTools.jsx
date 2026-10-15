@@ -16,7 +16,7 @@ export function CanvasTools({project,busy,onReset,onOptimize,onSettings}){
  },[open]);
  const optimization=optimizationAvailability(project);
  return <div className="canvas-actions" role="group" aria-label="画布工具">
-  <TooltipButton label="重置裁剪与顺序" placement="left" className="canvas-reset" disabled={busy||!project?.images.length} onClick={onReset}><ArrowCounterClockwise size={19}/></TooltipButton>
+  <TooltipButton label="重置裁剪、缩放与顺序" placement="left" className="canvas-reset" disabled={busy||!project?.images.length} onClick={onReset}><ArrowCounterClockwise size={19}/></TooltipButton>
   <div className="canvas-optimize-group" ref={root}>
    <button className="canvas-optimize" aria-label="一键优化" title={optimization.hint} disabled={busy||!optimization.enabled||!!invalid} onClick={()=>{close();onOptimize();}}><span className="optimizer-glyph"><OptimizeIcon size={20}/></span><span>一键优化</span></button>
    <button className="canvas-optimize-settings" aria-label="设置优化裁剪" title="优化裁剪设置" aria-expanded={open} disabled={busy||!project} ref={toggle} onClick={()=>{if(open)close();else setOpen(true);}}><CaretDown size={14} weight="bold"/></button>

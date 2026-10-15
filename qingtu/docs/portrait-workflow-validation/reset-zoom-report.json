@@ -1,0 +1,84 @@
+{
+  "passed": true,
+  "fixture": "reproducible diagrams, not user originals",
+  "actualResize": true,
+  "cancelUnchanged": true,
+  "restoresImportedSize": true,
+  "freeCentreRetained": true,
+  "indexedDBReopen": true,
+  "baseline": {
+    "width": 360,
+    "height": 480
+  },
+  "before": {
+    "x": 0,
+    "y": 0,
+    "width": 558.000048027664,
+    "height": 744.0000640368853
+  },
+  "after": {
+    "x": 99.00002401383199,
+    "y": 132.00003201844265,
+    "width": 360,
+    "height": 480
+  },
+  "date": "2026-10-15",
+  "tests": 249,
+  "platform": "Windows Electron + Chrome",
+  "native": {
+    "passed": true,
+    "actualResizeAndMove": true,
+    "cancelUnchanged": true,
+    "restoresImportedSize": true,
+    "freeCentreRetained": true,
+    "manualCanvasRetained": true,
+    "structuredReflow": true,
+    "layoutSwitchNoOldZoom": true,
+    "autosaveReopen": true,
+    "originalsUnchanged": true,
+    "baseline": {
+      "width": 180,
+      "height": 240
+    },
+    "before": {
+      "x": -46.39315378806947,
+      "y": 34.021646111250945,
+      "width": 287.9945845393909,
+      "height": 383.99277938585453
+    },
+    "after": {
+      "x": 7.604138481625995,
+      "y": 106.01803580417823,
+      "width": 180,
+      "height": 240
+    },
+    "output": {
+      "file": "artifacts/reset-zoom/reset-import-size-qingtu.png",
+      "width": 600,
+      "height": 480,
+      "bytes": 6483,
+      "limit": 10000000
+    }
+  },
+  "export": {
+    "file": "reset-zoom-export.png",
+    "width": 1200,
+    "height": 800,
+    "bytes": 43241,
+    "limitBytes": 10000000,
+    "fullColour": true,
+    "transparentPixels": 648852,
+    "sha256": "56c09bade32d560be5658aeaa68c009e901d0273d1596c9c994434d3ea638489",
+    "difference": {
+      "reference": "independent full-source resize and composition using saved reset positions",
+      "rgbMax": 0,
+      "rmse": 0,
+      "alphaMax": 0
+    }
+  },
+  "notVerified": [
+    "Mac native runtime",
+    "Packaged installers",
+    "User personal original image"
+  ]
+}

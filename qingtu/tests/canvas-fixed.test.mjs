@@ -45,10 +45,10 @@ test('canvas edge and ratio limits block actual rendering while invalid settings
  }
  for(const canvas of [{width:5999,height:2400},{width:2400,height:5999},{width:1,height:1}])assert.doesNotThrow(()=>calculateLayout({...project(),canvas}));
 });
-test('manual crop and reset preserve nonuniform source scale, centre, canvas and original order',()=>{
+test('manual crop preserves nonuniform scale; legacy free reset restores aspect at canvas height and retains centre',()=>{
  const a=image('a',200,100),b=image('b',100,100),p=appendProjectImages(project(),[a,b]);p.positions.a={x:-10,y:30,width:400,height:300};
  const cropped=setImageEdit(p,'a',{axis:'horizontal',amount:20});assert.deepEqual(cropped.positions.a,{x:30,y:30,width:320,height:300});
- const reset=resetProject({...cropped,images:[b,a]});assert.deepEqual(reset.positions.a,p.positions.a);assert.deepEqual(reset.canvas,p.canvas);assert.deepEqual(reset.images,[a,b]);assert.deepEqual(reset.edits,{});
+ const reset=resetProject({...cropped,images:[b,a],layout:'free'});assert.deepEqual(reset.positions.a,{x:190-2398,y:180-1199,width:4796,height:2398});assert.deepEqual(reset.canvas,p.canvas);assert.deepEqual(reset.images,[a,b]);assert.deepEqual(reset.edits,{});
 });
 test('one-click follows the current canvas ratio without changing its dimensions',()=>{
  const p=appendFixedImages({...project(),canvas:{width:2000,height:1000},export:{longEdge:2000}},[image('a',3072,4096),image('b',3072,4096),image('c',2160,3840),image('d',2160,3840)]),next=optimizeHorizontal(p);

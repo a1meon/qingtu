@@ -86,12 +86,12 @@ export const StitchWorkspace=forwardRef(function StitchWorkspace({active,inspect
   const task=(async()=>{await flushEditor();const ids=[crypto.randomUUID(),crypto.randomUUID()];await update(p=>splitProjectImage(p,id,axis,at,ids));setEditing(null);setCropDraft(null);setSplitDraft(null);setSelected(ids[0]);})().catch(e=>{setNotice(e.message);throw e;}).finally(()=>{splitLock.current=false;setSplitting(false);});
   splitTask.current=task.catch(()=>{});return task;
  }
- function requestReset(){setConfirmation({kind:'reset',id:project.id,title:'重置当前画布？',description:'恢复裁剪和导入顺序，保留布局与导出设置。',label:'重置'});}
+ function requestReset(){setConfirmation({kind:'reset',id:project.id,title:'重置当前画布？',description:'恢复导入大小、裁剪和顺序。自动布局重新排列，自由布局保留图片中心。',label:'重置'});}
  function requestRemoveCanvas(id){const value=projects.find(p=>p.id===id);if(value)setConfirmation({kind:'remove',id,title:'删除这个画布？',description:canvasName(value.name),danger:true,label:'删除'});}
  function requestClear(){setConfirmation({kind:'clear',title:'删除全部画布？',description:`删除 ${projects.length} 个画布项目，原始文件保留。`,danger:true,label:'全部删除'});}
  async function runConfirmed(){
   const request=confirmation;await settleEditor();
-  if(request.kind==='reset'){if(getCurrent().id!==request.id)throw new Error('当前画布已切换，请重新确认');await update(resetProject(getCurrent()));setNotice('已重置裁剪和顺序');}
+  if(request.kind==='reset'){if(getCurrent().id!==request.id)throw new Error('当前画布已切换，请重新确认');await update(resetProject(getCurrent()));setNotice('已重置裁剪、缩放和顺序');}
   else if(request.kind==='remove')await remove(request.id);
   else await clear();
   setConfirmation(null);

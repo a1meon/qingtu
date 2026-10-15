@@ -2,6 +2,7 @@ import {imageGeometry} from './stitch-edits.mjs';
 import {sourceWindow} from './image-source.mjs';
 import {knownImportOrder} from './stitch-reset.mjs';
 import {splitLayoutStates} from './canvas-layout-state.mjs';
+import {splitImportSize} from './import-sizes.mjs';
 
 export function fullSourcePosition(project,id){
  const image=project.images.find(image=>image.id===id);
@@ -29,5 +30,5 @@ export function splitProjectImage(project,id,axis,at,ids){
  positions[ids[0]]={x,y,width:axis==='x'?width*fraction:width,height:axis==='y'?height*fraction:height};
  positions[ids[1]]={x:x+(axis==='x'?positions[ids[0]].width:0),y:y+(axis==='y'?positions[ids[0]].height:0),width:axis==='x'?width-positions[ids[0]].width:width,height:axis==='y'?height-positions[ids[0]].height:height};
  const images=[...project.images.slice(0,index),...pieces,...project.images.slice(index+1)],order=knownImportOrder(project);
- return {...project,images,positions,edits,...(project.layoutStates?{layoutStates:splitLayoutStates(project.layoutStates,id,ids,axis,fraction)}:{}),...(order?{initialOrder:order.flatMap(value=>value===id?ids:[value])}:{})};
+ return {...project,images,positions,edits,...(project.importSizes?{importSizes:splitImportSize(project.importSizes,id,ids,axis,fraction)}:{}),...(project.layoutStates?{layoutStates:splitLayoutStates(project.layoutStates,id,ids,axis,fraction)}:{}),...(order?{initialOrder:order.flatMap(value=>value===id?ids:[value])}:{})};
 }

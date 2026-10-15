@@ -4,6 +4,7 @@ import {DEFAULT_CANVAS} from '../../engine/canvas-limits.mjs';
 import {migrateFixedCanvas} from '../../engine/canvas-migrate.mjs';
 import {enableHeightCanvas} from '../../engine/canvas-height.mjs';
 import {optimizationSettings} from '../../engine/optimization-settings.mjs';
+import {validateImportSizes} from '../../engine/import-sizes.mjs';
 
 let database;
 const request=req=>new Promise((resolve,reject)=>{req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error);});
@@ -16,7 +17,7 @@ async function db(){
  });return database;
 }
 const storageError=error=>new Error(error?.name==='QuotaExceededError'?'本地空间不足，项目尚未保存。请释放空间后重试':`项目保存失败：${error?.message||'本地存储不可用'}`);
-function clean(project){return {...project,optimization:optimizationSettings(project.optimization),images:project.images.map(({preview,...image})=>image),updatedAt:Date.now()};}
+function clean(project){validateImportSizes(project);return {...project,optimization:optimizationSettings(project.optimization),images:project.images.map(({preview,...image})=>image),updatedAt:Date.now()};}
 export const repository={
  async list(){
   if(desktop)return api.stitchList();

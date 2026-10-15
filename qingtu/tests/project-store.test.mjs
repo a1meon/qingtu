@@ -9,9 +9,19 @@ import {optimizeHorizontal} from '../engine/stitch-optimize.mjs';
 import {recordImportOrder,resetProject} from '../engine/stitch-reset.mjs';
 import {rememberCanvasLayout,switchCanvasLayout} from '../engine/canvas-layout-state.mjs';
 import {setImageEdit} from '../engine/stitch-edits.mjs';
+import {importCanvasImages} from '../engine/canvas-import.mjs';
 const fixture=()=>sharp({create:{width:80,height:60,channels:4,background:'#7799aa80'}}).png().toBuffer();
 async function setup(t){const root=await fs.mkdtemp(path.join(os.tmpdir(),'qingtu-project-'));t.after(()=>fs.rm(root,{recursive:true,force:true}));return {root,store:new ProjectStore(root)};}
 const project=image=>({id:'test-project',name:'测试',images:[image],layout:'horizontal',positions:{},grid:{rows:1,columns:1},export:{longEdge:5999,format:'png',targetBytes:10000000}});
+
+test('import-size baselines survive reopen and atomic backup recovery without capturing enlarged poses',async t=>{
+ const {root,store}=await setup(t),bytes=await fixture(),image=await store.import(bytes,'initial.png');delete image.preview;
+ let p=importCanvasImages({...project(image),images:[],initialOrder:[],canvasMode:'fixed',heightLocked:true,canvasSizing:'content',canvas:{width:600,height:240},positions:{},edits:{}},[image]);
+ p={...p,layout:'free',canvasSizing:'manual',canvas:{width:600,height:480},positions:{[image.id]:{x:100,y:20,width:480,height:600}}};await store.save(p);
+ const reopened=await new ProjectStore(root).load(p.id);assert.deepEqual(reopened.importSizes,{[image.id]:{width:320,height:240}});assert.deepEqual(resetProject(reopened).positions[image.id],{x:180,y:200,width:320,height:240});
+ assert.throws(()=>store.save({...p,importSizes:{[image.id]:{width:0,height:240}}}),/导入尺寸/);assert.deepEqual((await store.load(p.id)).positions,p.positions);
+ await store.save({...p,name:'later'});await fs.writeFile(store.file(p.id),'interrupted');const recovered=await new ProjectStore(root).load(p.id);assert.equal(recovered.recovered,true);assert.deepEqual(recovered.importSizes,p.importSizes);assert.deepEqual(resetProject(recovered).positions,resetProject(reopened).positions);assert.ok((await store.readAsset(image.assetId)).equals(bytes));
+});
 
 test('height policy, all four crop edges and association choices survive normal and interrupted saves',async t=>{
  const {store}=await setup(t),buffer=await fixture(),image=await store.import(buffer,'portrait.png');delete image.preview;

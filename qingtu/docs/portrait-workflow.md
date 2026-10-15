@@ -148,3 +148,21 @@ Windows 新增 `smoke:optimization-settings`：实际修改为顶部 20%、左�
 Chrome 独立测试项目采用可复现示意图，也验证了改参数不重排、点击才应用、刷新恢复与默认值。实际 [PNG 导出](portrait-workflow-validation/optimization-settings-export.png) 为 **1200×480、82,471 B / 10,000,000 B**，全彩 PNG，RGB 最大误差、RMSE、alpha 最大误差均为 **0**（对原始图片按保存的裁剪与位置合成参考）。详见 [optimization-settings-report.json](portrait-workflow-validation/optimization-settings-report.json)。没有测试用户个人原图。
 
 本轮 **241 项测试**、构建及 Windows `smoke:optimization-settings`、`smoke:ui`、`smoke:desktop`、`smoke:crop`、`smoke:offscreen`、`smoke:canvas-resize`、`smoke:canvas-fit`、`smoke:canvas`、`smoke:split`、`smoke:recovery`、`smoke:optimization`、`smoke:png-budget`、`verify:quality`、`verify:png-budget` 全部通过。Mac 原生窗口及安装包未验证，未发布。
+
+## 重置恢复导入大小（2026-10-15）
+
+修复重置只清除裁剪和顺序、却保留拖动放大的问题。新导入图片持久记录当时的显示宽高，后续改变画布高度、缩放、Shift 拉伸和裁剪都不会覆盖这份基准。自由布局恢复该宽高并保持当前可见图片的中心；横排、宫格、竖排按原始顺序重新衔接排列。同步重置各个已访问布局的记忆，避免切回后出现旧放大状态。保留手动画布与导出设置，自动画布宽度仍按内容及上限更新。
+
+旧图没有尺寸记录时，按用户确认的当前画布高度等比恢复，不把当前放大状态当成原始值。拆分图片按源窗口比例继承导入基准，连续拆分与单图删除也维护对应记录；旧拆分图以完整源高度为尺度恢复，避免每个片段都被放大到整幅高度。原始文件不变。重置继续使用确认弹窗，取消不作修改。
+
+![浏览器实际拖大后](portrait-workflow-validation/reset-zoom-before.png)
+
+![重置为导入尺寸，保留自由布局中心](portrait-workflow-validation/reset-zoom-after.png)
+
+Windows 原生 `smoke:reset-zoom` 实际拖大并移动一张图，由约 288×384 恢复为导入时的 **180×240**；中心、手动画布和导出设置保留。取消、布局切换与保存重开检查均通过。实际导出 **600×480、6,483 B / 10,000,000 B**。
+
+Chrome 独立测试项目使用可复现示意图：导入时为 **360×480**，将画布高度改到 800，再拖大至约 **558×744**，确认重置恢复 360×480 并保留当前中心，IndexedDB 刷新后保持。实际 [PNG 导出](portrait-workflow-validation/reset-zoom-export.png) 为 **1200×800、43,241 B / 10,000,000 B**。按原图独立缩放并合成参考逐像素比较，RGB 最大误差、RMSE 和 alpha 最大误差均为 **0**，全彩透明 PNG，未包含显示白底或选框。详见 [验证记录](portrait-workflow-validation/reset-zoom-report.json)。
+
+新增测试覆盖导入基准不被后续导入覆盖、四边裁剪及拉伸后恢复、自由布局中心、自动横排衔接及宽度收缩、手动画布保持、旧图和旧拆分回退、连续拆分与删除、各布局记忆，以及正常保存和异常备份恢复。没有使用用户个人原图；Mac 原生窗口及安装包未验证，未发布。
+
+本轮 **249 项测试**、构建及 Windows `smoke:reset-zoom`、`smoke:ui`、`smoke:desktop`、`smoke:recovery`、`smoke:optimization`、`smoke:optimization-settings`、`smoke:crop`、`smoke:offscreen`、`smoke:canvas-resize`、`smoke:canvas-fit`、`smoke:canvas`、`smoke:split`、`smoke:png-budget`、`verify:quality`、`verify:png-budget` 全部通过。分割导出曾因磁盘空间不足失败；清理工作区内重复生成的测试导出后重跑通过，未删除用户原文件或项目。质量检查继续覆盖照片、纹理、渐变、文字和透明图片，本次没有修改压缩算法。

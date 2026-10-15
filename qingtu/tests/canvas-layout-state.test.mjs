@@ -20,10 +20,10 @@ test('visiting an empty layout does not invent remembered positions for later im
  let p={...project(),images:[],initialOrder:[],positions:{}};p=switchCanvasLayout(p,'grid');p=switchCanvasLayout(p,'horizontal');assert.deepEqual(p.layoutStates,{});
  p=rememberCanvasLayout(appendProjectImages(p,['a','b','c','d'].map(image)));p=switchCanvasLayout(p,'grid');assert.ok(p.positions.c.y>p.positions.a.y,'first populated grid visit arranges rows');
 });
-test('global crop and reset preserve each remembered layout source scale and centre without restoring obsolete edits',()=>{
+test('global crop preserves remembered source poses; reset removes obsolete crops and zooms across layouts',()=>{
  let p=project();p.positions.a={x:-80,y:10,width:300,height:500};p=switchCanvasLayout(p,'grid');const gridFull=fullSourcePosition(p,'a');
  p=rememberCanvasLayout(setImageEdit(p,'a',{axis:'horizontal',amount:40}));p=switchCanvasLayout(p,'horizontal');assert.deepEqual(p.edits.a,{axis:'horizontal',amount:40});near(fullSourcePosition(p,'a'),{x:-80,y:10,width:300,height:500});
- p=resetProject(p);p=switchCanvasLayout(p,'grid');assert.deepEqual(p.edits,{});near(p.positions.a,gridFull);
+ p=resetProject(p);assert.equal(p.positions.a.height,480);assert.equal(p.positions.a.x,0);p=switchCanvasLayout(p,'grid');assert.deepEqual(p.edits,{});near(p.positions.a,gridFull);
 });
 test('new imports append in remembered layouts and deleted images never reappear on switches',()=>{
  let p=switchCanvasLayout(project(),'grid'),gridA={...p.positions.a};p=switchCanvasLayout(p,'horizontal');
