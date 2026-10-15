@@ -2,16 +2,16 @@ import {useEffect,useRef,useState} from 'react';
 import {createPortal} from 'react-dom';
 import {CaretDown,Check} from '@phosphor-icons/react';
 
-export function Dropdown({id,label,value,options,onChange,disabled=false,className=''}){
+export function Dropdown({id,label,value,options,onChange,disabled=false,className='',maxHeight=Infinity}){
  const [open,setOpen]=useState(false),[position,setPosition]=useState(null),[active,setActive]=useState(0);
  const trigger=useRef(),menu=useRef(),optionRefs=useRef([]);
  useEffect(()=>{if(disabled)setOpen(false);},[disabled]);
  const selected=options.find(o=>o.value===value)||options[0];
  function show(){
   if(disabled)return;
-  const rect=trigger.current.getBoundingClientRect(),height=options.length*42+16;
+  const rect=trigger.current.getBoundingClientRect(),height=Math.min(options.length*42+16,maxHeight,window.innerHeight-16);
   const up=rect.bottom+height+8>window.innerHeight;
-  setPosition({left:Math.max(8,Math.min(rect.left,window.innerWidth-Math.max(rect.width,200)-8)),top:up?rect.top-height-6:rect.bottom+6,width:Math.max(rect.width,200)});
+  setPosition({left:Math.max(8,Math.min(rect.left,window.innerWidth-Math.max(rect.width,200)-8)),top:Math.max(8,up?rect.top-height-6:rect.bottom+6),width:Math.max(rect.width,200),maxHeight:height,overflowY:'auto'});
   setActive(Math.max(0,options.findIndex(o=>o.value===value)));setOpen(true);
  }
  function choose(option){onChange(option.value);setOpen(false);trigger.current.focus();}
@@ -19,7 +19,7 @@ export function Dropdown({id,label,value,options,onChange,disabled=false,classNa
   if(!open)return;
   optionRefs.current[active]?.focus();
   const close=e=>{if(!trigger.current.contains(e.target)&&!menu.current?.contains(e.target))setOpen(false);};
-  const reposition=()=>setOpen(false);
+  const reposition=event=>{if(event.type==='scroll'&&menu.current?.contains(event.target))return;setOpen(false);};
   document.addEventListener('pointerdown',close);window.addEventListener('resize',reposition);window.addEventListener('scroll',reposition,true);
   return()=>{document.removeEventListener('pointerdown',close);window.removeEventListener('resize',reposition);window.removeEventListener('scroll',reposition,true);};
  },[open]);

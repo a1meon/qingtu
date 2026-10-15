@@ -12,7 +12,7 @@
 
 双击、右键编辑打开同一套图片旁控件，移除了拖动弹窗、完成按钮与重复模式切换。未改动的左右各 50 px 预填不应用，直接拖动从实际裁剪开始；首次切到上下边只清除尚未应用的左右预填。拖动中固定视图缩放、画布原点和控件位置，只更新低分辨率预览，实时衔接横排并更新自动宽度，松手才自动保存和编码。向外拖可恢复已裁内容，Escape 或指针取消恢复本次拖动前的状态；正常关闭会完成未松手的最新裁剪。平时点击外部或 Escape 收起控件。隐藏模块的零尺寸通知不会再把画布压成一个点。关联开关仅变更设置时，复用已有编码结果，不重新读取原图。
 
-两张图按已合成的“正脸＋侧脸”和“正面全身＋背面全身”导入。若只想裁正面全身，可先将全身合成图垂直分为两张，再单独裁正面那张的上边；测试验证两个身体片段共用原始合成图，背面片段不接收正面的裁剪。一键优化仅横排启用，按完整原图重新计算并替换已有裁剪，因此应在单图细调前使用；第三张的顶部及两侧默认裁剪以文末 2026-10-15 的规则为准。
+两张图按已合成的“正脸＋侧脸”和“正面全身＋背面全身”导入。若只想裁正面全身，可先将全身合成图垂直分为两张，再单独裁正面那张的上边；测试验证两个身体片段共用原始合成图，背面片段不接收正面的裁剪。一键优化仅横排启用，按完整原图重新计算并替换已有裁剪，因此应在单图细调前使用；所选图片和默认裁剪以文末最新规则为准。
 
 ![两张合成输入的横排](portrait-workflow-validation/two.png)
 
@@ -180,3 +180,19 @@ Chrome 独立测试项目使用可复现示意图：导入时为 **360×480**，
 浏览器使用可复现示意图执行同样的三次缩放与重新优化，输出画布依次为 1200×480、1152×480、1197×480；每次优化使用操作前当前尺寸。最终 [PNG 导出](portrait-workflow-validation/resize-reoptimized-export.png) 为 **1197×480、82,368 B / 10,000,000 B**，全彩 PNG；与原图合成参考的 RGB 最大差、RMSE、alpha 最大差均为 **0**。Windows 照片导出为 **597×240、336,945 B / 10,000,000 B**。详见 [验证记录](portrait-workflow-validation/resize-optimize-report.json)。本轮未验证用户个人原图、Mac 原生窗口或安装包，未发布。
 
 本轮 **250 项测试**、构建及 Windows `smoke:optimization-settings`、`smoke:ui`、`smoke:desktop`、`smoke:reset-zoom`、`smoke:crop`、`smoke:offscreen`、`smoke:canvas-resize`、`smoke:canvas-fit`、`smoke:recovery`、`smoke:optimization`、`smoke:png-budget`、`smoke:canvas`、`smoke:split`、`verify:quality`、`verify:png-budget` 全部通过。4K 拼接、拆分与原图副本检查保持通过；本次没有修改编码算法或发布流程。
+
+## 中央新建画布与可选优化图片（2026-10-15）
+
+本节取代前文的“无画布只保留底部卡片”和“默认顶部 25%”规则。没有画布时，中央显示与添加图片相同风格的蓝色“新建画布”按钮，底部新建卡片继续可用；点击才创建。清空画布后及重新打开时仍显示中央新建入口。已经创建的空画布继续显示“添加图片”。
+
+一键优化的“特殊裁剪”默认选择当前第 3 张，顶部 15%、左右各 100 原图像素、底部 0。下拉可以选择任一当前图片，也可以“不选择”；不选择或该序号尚未添加时，每张图都使用统一左右裁剪，不应用特殊顶部裁剪。序号随当前顺序解释。其他图片按共享比例左右裁剪，保持等高铺满当前画布；无法实现时显示原因。
+
+序号和裁剪数值随每个画布独立保存，重新打开继续保留，包括“不选择”。老项目已保存的百分比继续有效，缺失的序号默认第 3 张；本轮不自动改写已有裁剪。改设置只保存参数，点击一键优化才应用。选择“不选择”会禁用对应裁剪字段；若先前填写了无效数值，恢复最后保存的有效值后再切换，避免留下无法编辑的错误。
+
+![没有画布时的中央新建入口](portrait-workflow-validation/no-canvas-create.png)
+
+![默认第 3 张、顶部 15% 的特殊裁剪设置](portrait-workflow-validation/selectable-crop-default.png)
+
+本轮在 Apple Silicon Mac 上通过 **254 项测试**、构建及 `smoke:optimization-settings`、`smoke:ui`、`smoke:desktop`、`smoke:reset-zoom`、`smoke:crop`、`smoke:offscreen`、`smoke:canvas-resize`、`smoke:canvas-fit`、`smoke:canvas`、`smoke:split`、`smoke:recovery`、`smoke:optimization`、`smoke:png-budget`、`verify:quality`、`verify:png-budget`。新增原生检查实际选择第 4 张，确认顶部 20% 精确为 768 px、左右各 150 px；不选择时没有特殊顶部裁剪，重开仍保持；默认第 3 张顶部精确为 576 px。验证无效输入后切换“不选择”、缺失序号恢复、长列表滚动与 Escape，以及修改设置不裁剪、不重复编码。中央按钮实际创建画布，清空后及重开仍可见。
+
+照片样例经三种缩放再优化后，实际 [PNG 导出](portrait-workflow-validation/selectable-crop-export.png) 为 **598×240、334,178 B / 10,000,000 B**；源文件逐字节不变。见 [原生验证记录](portrait-workflow-validation/selectable-crop-report.json)。界面截图来自开发版 Electron；本轮未重新制作安装包或发布，已发布的 0.4.6 仍对应发布时的代码。

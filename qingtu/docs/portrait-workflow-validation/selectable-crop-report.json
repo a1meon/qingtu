@@ -1,0 +1,67 @@
+{
+  "passed": true,
+  "defaults": {
+    "topPercent": 15,
+    "sidePixels": 100,
+    "imageNumber": 3
+  },
+  "custom": {
+    "topPercent": 20,
+    "sidePixels": 150,
+    "imageNumber": 4
+  },
+  "settingsOnlyNoCropOrEncode": true,
+  "autosaveAndReopen": true,
+  "invalidNotSavedOrApplied": true,
+  "invalidDraftCanSelectNone": true,
+  "customCutsExact": true,
+  "defaultCutsExact": true,
+  "selectableImage": true,
+  "noSelectionUniformCrop": true,
+  "noSelectionSurvivesReopen": true,
+  "absentSelectionSurvivesReopen": true,
+  "longSelectorScrollable": true,
+  "resizeReopensOptimization": true,
+  "resizedProjectReopen": true,
+  "transformations": [
+    {
+      "name": "enlarge",
+      "buttonReenabled": true,
+      "reoptimized": true,
+      "canvas": {
+        "width": 600,
+        "height": 240
+      }
+    },
+    {
+      "name": "shrink",
+      "buttonReenabled": true,
+      "reoptimized": true,
+      "canvas": {
+        "width": 567,
+        "height": 240
+      }
+    },
+    {
+      "name": "stretch",
+      "buttonReenabled": true,
+      "reoptimized": true,
+      "canvas": {
+        "width": 598,
+        "height": 240
+      }
+    }
+  ],
+  "originalsUnchanged": true,
+  "output": {
+    "file": "selectable-crop-export.png",
+    "width": 598,
+    "height": 240,
+    "bytes": 334178,
+    "limit": 10000000
+  },
+  "platform": "darwin",
+  "arch": "arm64",
+  "installerTested": false,
+  "published": false
+}
