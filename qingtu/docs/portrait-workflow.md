@@ -122,3 +122,17 @@ Chrome 独立测试存储使用可复现角色示意图，逐一真实拖动八�
 本轮 **235 项测试**、构建及所有现有 Windows 桌面检查通过：`smoke:desktop`、`smoke:ui`、`smoke:crop`、`smoke:canvas-resize`、`smoke:canvas-fit`、`smoke:canvas`、`smoke:split`、`smoke:recovery`、`smoke:optimization`、`smoke:png-budget`、`verify:quality`、`verify:png-budget`。更新原有“每张裁剪相同百分比”断言为第三张精确源裁剪、其余相同比例及铺满断言，保留尺寸、来源、幂等、保存恢复和透明 PNG 检查。实际 Windows 滑块从 0 拖到大裁剪后再回 0，画布及四边恢复，握住期间没有保存或编码；原来的四角拖动与边缘吸附仍通过。
 
 浏览器独立测试项目采用可复现角色示意图，验证第三张裁剪、上下独立、滑块恢复及刷新恢复；右键单画布真正导出 [PNG 文件](portrait-workflow-validation/third-optimized-export.png)。尺寸 **1200×480**、实际 **81,905 B / 10,000,000 B**，全彩 PNG，RGB 最大误差、RMSE、alpha 最大误差均为 **0**（对原图提取缩放合成参考）。文件无边框、手柄、显示白底或填充。本轮实测示意图及仓库照片，未验证用户个人原图；Mac 实机和安装包未验证，未发布。记录见 [slider-third-report.json](portrait-workflow-validation/slider-third-report.json)。
+
+## 自由画布越界图片找回（2026-10-15）
+
+已复现图片在自由布局中移到右侧，再将画布由 1200×480 调成 240×240 后完全消失：项目保留原始坐标，预览却只按新画布缩放，图片落到工作区之外。现在遇到屏外图片时，工作区右下提供“显示全部”，将实际画布与所有图片外接范围纳入预览；点击“聚焦画布”恢复日常的大画布视图。越界图片仍淡显，可直接拖回并吸附到画布边缘。这两个查看操作不修改项目、图片坐标、裁剪、尺寸或导出设置，也不触发保存或编码。
+
+![显示全部后，空画布及原位置的淡显图片同时可见](portrait-workflow-validation/offscreen-all-visible.png)
+
+![拖回后聚焦原画布；画布之外仍淡显，导出只取画布内](portrait-workflow-validation/offscreen-dragged-back.png)
+
+新增 `smoke:offscreen` 在 Windows 原生窗口实际完成：拖图到 x≈450、将画布由 600×240 改成 120×120、确认图片不可达、显示全部、恢复普通视图、重新打开后再次找回，并从淡显图层拖回 x=0。期间视图切换的保存和编码次数均为 0；按住拖动时也不保存或编码，选框与图层一致，松手才保存。图片仍为原 180×240 显示尺寸，原始图片副本字节不变，实际导出为 **120×120、30,127 B / 10,000,000 B**。
+
+Chrome 独立测试存储以可复现示意图执行同样流程，240×240 的 [实际 PNG 导出](portrait-workflow-validation/offscreen-recovered-export.png) 为 **7,964 B / 10,000,000 B**。按完整原图独立缩放、提取画布交集后逐像素比较，RGB 最大误差、RMSE、alpha 最大误差均为 **0**，没有把越界淡显、选框或“显示全部”的预览范围写入导出。完整记录见 [offscreen-report.json](portrait-workflow-validation/offscreen-report.json)。
+
+新增单元检查覆盖左右上下越界、负坐标、多图同时纳入视野、小窗口及普通视图保持原有显示大小。本轮 237 项测试及构建通过；Windows 依次运行 `smoke:offscreen`、`smoke:ui`、`smoke:desktop`、`smoke:crop`、`smoke:canvas-resize`、`smoke:canvas-fit`、`smoke:canvas`、`smoke:split`、`smoke:recovery`、`smoke:optimization`、`smoke:png-budget`、`verify:quality`、`verify:png-budget`。本轮样片来自仓库照片和可复现示意图，Mac 实机及安装包未验证，未发布。

@@ -1,0 +1,99 @@
+{
+  "passed": true,
+  "fixture": "reproducible face diagram, not user original",
+  "viewChangesSaveAndEncodeCount": 0,
+  "heldDragSaveAndEncodeCount": 0,
+  "actualDragBack": true,
+  "sourceAndCanvasPreserved": true,
+  "before": {
+    "canvas": {
+      "width": 240,
+      "height": 240
+    },
+    "positions": {
+      "acc92a64-5c59-41f7-a2fb-933375d145d8": {
+        "x": 899.990192265706,
+        "y": 0,
+        "width": 360,
+        "height": 480
+      }
+    },
+    "edits": {},
+    "images": [
+      {
+        "id": "acc92a64-5c59-41f7-a2fb-933375d145d8",
+        "assetId": "449fa5a638101c039ba4efbcd7d3cfb04386ae4f67e7b54f5fb0bc10a2674a51",
+        "width": 3072,
+        "height": 4096,
+        "bytes": 537784
+      }
+    ],
+    "updatedAt": 1792034853516
+  },
+  "after": {
+    "canvas": {
+      "width": 240,
+      "height": 240
+    },
+    "positions": {
+      "acc92a64-5c59-41f7-a2fb-933375d145d8": {
+        "x": 0,
+        "y": 0,
+        "width": 360,
+        "height": 480
+      }
+    },
+    "edits": {},
+    "images": [
+      {
+        "id": "acc92a64-5c59-41f7-a2fb-933375d145d8",
+        "assetId": "449fa5a638101c039ba4efbcd7d3cfb04386ae4f67e7b54f5fb0bc10a2674a51",
+        "width": 3072,
+        "height": 4096,
+        "bytes": 537784
+      }
+    ],
+    "updatedAt": 1792035222183
+  },
+  "revealed": {
+    "area": {
+      "x": 138.60000610351562,
+      "y": 155.60000610351562,
+      "width": 890.7999877929688,
+      "height": 556,
+      "right": 1029.3999938964844,
+      "bottom": 711.6000061035156
+    },
+    "canvas": {
+      "x": 154.60488891601562,
+      "y": 288.0216979980469,
+      "width": 163.5749969482422,
+      "height": 163.5749969482422,
+      "right": 318.1798858642578,
+      "bottom": 451.59669494628906
+    },
+    "image": {
+      "x": 768.0173950195312,
+      "y": 288.0216979980469,
+      "width": 245.3625030517578,
+      "height": 327.1625061035156,
+      "right": 1013.3798980712891,
+      "bottom": 615.1842041015625
+    }
+  },
+  "export": {
+    "width": 240,
+    "height": 240,
+    "bytes": 7964,
+    "limit": 10000000,
+    "format": "png",
+    "palette": false,
+    "differenceAgainstOriginalIntersection": {
+      "maxError": 0,
+      "alphaMaxError": 0,
+      "mae": 0,
+      "rmse": 0,
+      "psnr": null
+    }
+  }
+}

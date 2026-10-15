@@ -82,7 +82,10 @@ label,h2 { display:block; font-size:16px; font-weight:700; margin-bottom:14px; l
 .canvas-optimize:disabled { opacity:.5; }
 .canvas-card-open { color:#86b2cc; }
 .canvas-cards .canvas-card-open img { object-fit:contain; }
-.stitch-canvas-area { flex:1; min-height:0; width:100%; display:flex; align-items:center; justify-content:center; overflow:hidden; }
+.stitch-canvas-area { position:relative; flex:1; min-height:0; width:100%; display:flex; align-items:center; justify-content:center; overflow:hidden; }
+.canvas-view-fit { position:absolute; right:8px; bottom:8px; z-index:12; display:flex; align-items:center; gap:5px; height:30px; padding:0 10px; border:1px solid #cce6f6; border-radius:10px; background:#fffffff2; color:#2589bb; box-shadow:0 2px 5px #174d6b12; font-size:12px; }
+.canvas-view-fit:hover:not(:disabled) { background:#e9f7ff; border-color:#88cff1; }
+.canvas-view-fit:disabled { opacity:.55; }
 .stitch-canvas { position:relative; flex-shrink:0; background:#fff; box-shadow:0 4px 18px #2a43551a; }
 .stitch-content { position:absolute; inset:0; overflow:hidden; }
 .stitch-ghosts { position:absolute; inset:0; opacity:.22; pointer-events:none; clip-path:polygon(evenodd,-100000px -100000px,100000px -100000px,100000px 100000px,-100000px 100000px,-100000px -100000px,0 0,0 100%,100% 100%,100% 0,0 0); }
