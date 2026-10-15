@@ -1,0 +1,224 @@
+{
+  "version": "0.4.6",
+  "sourceCommit": "190f8a1851aa28d22bf3b5988e99efc28f23bed2",
+  "localIntegrity": true,
+  "sparkleSignatures": true,
+  "artifacts": [
+    {
+      "name": "Qingtu-0.4.6-win-x64.exe",
+      "bytes": 123023663,
+      "parts": 2,
+      "sha512": "jcosNYm4d0boVg/hGYgTKeSvyh47csoHknO5Mo6VBaVIr0/lGCr4jwCOkAlj8qHI8Pnm8oma7KdlNQ2Bri7vHg=="
+    },
+    {
+      "name": "Qingtu-0.4.6-mac-arm64.zip",
+      "bytes": 138182940,
+      "parts": 3,
+      "sha512": "YTkwb/2lCLo9uH7XPNYqFUhVDKGr/y0As6uvIfYxxntxAxfCkc8czgSORpQL03ljRJ+WU9fngf6AkZ4lQzbAIg=="
+    },
+    {
+      "name": "Qingtu-0.4.6-mac-x64.zip",
+      "bytes": 145936380,
+      "parts": 3,
+      "sha512": "VFfEsPZtpdwShtsX3apeezwTmzWtvXqcO0/QTb93uv4O0n4FlE1BzTTiFa/hvrTM4NsS5C6BHaiVZY1Ws9sJhQ=="
+    }
+  ],
+  "uploadFiles": [
+    "Install-Qingtu-0.4.6-Windows.cmd",
+    "Qingtu-0.4.6-Mac-arm64-Installer.dmg",
+    "Qingtu-0.4.6-Mac-x64-Installer.dmg",
+    "Qingtu-0.4.6-mac-arm64.zip.part01",
+    "Qingtu-0.4.6-mac-arm64.zip.part02",
+    "Qingtu-0.4.6-mac-arm64.zip.part03",
+    "Qingtu-0.4.6-mac-x64.zip.part01",
+    "Qingtu-0.4.6-mac-x64.zip.part02",
+    "Qingtu-0.4.6-mac-x64.zip.part03",
+    "Qingtu-0.4.6-win-x64.exe.part01",
+    "Qingtu-0.4.6-win-x64.exe.part02",
+    "SHA256SUMS-0.4.6.txt",
+    "latest.yml",
+    "mac-arm64.json",
+    "mac-x64.json"
+  ],
+  "sourceParity": [
+    {
+      "archive": "release/mac-arm64/轻图.app/Contents/Resources/app.asar",
+      "version": "0.4.6",
+      "sourceParity": true,
+      "privateMaterialExcluded": true,
+      "asarSHA256": "dc88d2cabd56f91f3c479073c7c678f7619e7147d29c6eae2e2d3d31cc741f07"
+    },
+    {
+      "archive": "release/mac/轻图.app/Contents/Resources/app.asar",
+      "version": "0.4.6",
+      "sourceParity": true,
+      "privateMaterialExcluded": true,
+      "asarSHA256": "245ce95ee3e4f6e8e45753737d20ca401fb6441ae4526cbec835d100649d6598"
+    },
+    {
+      "archive": "release/win-unpacked/resources/app.asar",
+      "version": "0.4.6",
+      "sourceParity": true,
+      "privateMaterialExcluded": true,
+      "asarSHA256": "62f4a4648e131ed0bcb194c821fdfbf9ecd7d61e3d4ae543cdb08b7e138c8e6d"
+    }
+  ],
+  "tests": {
+    "passed": 250,
+    "failed": 0
+  },
+  "checksPassed": [
+    "build",
+    "smoke:desktop",
+    "smoke:ui",
+    "smoke:canvas",
+    "smoke:canvas-fit",
+    "smoke:canvas-resize",
+    "smoke:crop",
+    "smoke:split",
+    "smoke:recovery",
+    "smoke:optimization",
+    "smoke:optimization-settings",
+    "verify:quality",
+    "smoke:png-budget",
+    "verify:png-budget",
+    "smoke:update",
+    "packaged-source:desktop",
+    "packaged-source:ui",
+    "local:real-nsis-download",
+    "codesign:arm64",
+    "codesign:x64"
+  ],
+  "runtimeLimits": {
+    "macIntelNativeRun": false,
+    "windowsNativeInstallThisMac": false,
+    "existingWindowsSourceValidation": "docs/release-0.4.6-validation/report.json",
+    "userRunningAppPreserved": true
+  },
+  "realPackagedMacRuntime": {
+    "passed": true,
+    "realPackagedExecutable": true,
+    "arch": "arm64",
+    "version": "0.4.6",
+    "sparkleNativeBridgeLoaded": true,
+    "nativeSharpLoaded": true,
+    "unchangedJpegByteIdentical": true,
+    "png": {
+      "bytes": 986833,
+      "width": 1001,
+      "height": 667,
+      "limit": 1000000
+    }
+  },
+  "macInitialInstallerDmgVerified": [
+    "arm64",
+    "x64"
+  ],
+  "publishedAt": "2026-10-15T14:58:20+08:00",
+  "formalRelease": "v0.4.6",
+  "prerelease": false,
+  "releaseId": 1207179,
+  "releaseUrl": "https://gitee.com/a1meon_admin/halframe-releases/releases/tag/v0.4.6",
+  "uploadedAssets": 15,
+  "macRemote": [
+    {
+      "passed": true,
+      "arch": "arm64",
+      "anonymousDownload": true,
+      "authenticatedManifest": true,
+      "fullHashVerified": true,
+      "sparkleArchiveSignatureVerified": true,
+      "bytes": 138182940,
+      "sha512": "YTkwb/2lCLo9uH7XPNYqFUhVDKGr/y0As6uvIfYxxntxAxfCkc8czgSORpQL03ljRJ+WU9fngf6AkZ4lQzbAIg=="
+    },
+    {
+      "passed": true,
+      "arch": "x64",
+      "anonymousDownload": true,
+      "authenticatedManifest": true,
+      "fullHashVerified": true,
+      "sparkleArchiveSignatureVerified": true,
+      "bytes": 145936380,
+      "sha512": "VFfEsPZtpdwShtsX3apeezwTmzWtvXqcO0/QTb93uv4O0n4FlE1BzTTiFa/hvrTM4NsS5C6BHaiVZY1Ws9sJhQ=="
+    }
+  ],
+  "windowsRemoteSdk": {
+    "passed": true,
+    "realNsisSdk": true,
+    "version": "0.4.6",
+    "bytes": 123023663,
+    "sha512": "jcosNYm4d0boVg/hGYgTKeSvyh47csoHknO5Mo6VBaVIr0/lGCr4jwCOkAlj8qHI8Pnm8oma7KdlNQ2Bri7vHg==",
+    "installationTriggered": false,
+    "source": "https://gitee.com/a1meon_admin/halframe-releases/releases/download/v0.4.6/"
+  },
+  "smallAssetRemoteParity": {
+    "releaseId": 1207179,
+    "prerelease": true,
+    "anonymousSmallAssets": [
+      {
+        "name": "Install-Qingtu-0.4.6-Windows.cmd",
+        "bytes": 1663,
+        "sha256": "b82e737d221b4f27e7abe4f7182e76f4262e0ad581efc7f2d4de02720e4167e5"
+      },
+      {
+        "name": "Qingtu-0.4.6-Mac-arm64-Installer.dmg",
+        "bytes": 20590,
+        "sha256": "1aec1cb343113ac66856e58a0f9cd4f08363ff076306b4cbf43f29ac8c2840ba"
+      },
+      {
+        "name": "Qingtu-0.4.6-Mac-x64-Installer.dmg",
+        "bytes": 20587,
+        "sha256": "40df0c556717eef4cc518a28c3c88feeb03948397139949b37a97ed73a83dc84"
+      },
+      {
+        "name": "SHA256SUMS-0.4.6.txt",
+        "bytes": 1330,
+        "sha256": "3e14d1e3443009ad6756a3c1b5f5295d7559200c7318c4ae7ff0909fedce2ec4"
+      },
+      {
+        "name": "latest.yml",
+        "bytes": 767,
+        "sha256": "b3303891b64ae4facf9bc2ad2dde996a9e61d999ca5efb530afef85460e3ecd1"
+      },
+      {
+        "name": "mac-arm64.json",
+        "bytes": 1178,
+        "sha256": "d895922e73195f80b8e9f0d5ecc54349f3dea149db8077d2efcecec4eb51ecd6"
+      },
+      {
+        "name": "mac-x64.json",
+        "bytes": 1166,
+        "sha256": "8568e350ead9b833ae09a95ca16e151d5d662c8c37ea988a3d4d58759d38e37d"
+      }
+    ]
+  },
+  "currentMac": [
+    {
+      "arch": "arm64",
+      "noDownload": true
+    },
+    {
+      "arch": "x64",
+      "noDownload": true
+    }
+  ],
+  "quotaCleanup": {
+    "authorizedByUser": true,
+    "removedRelease": "v0.4.4",
+    "releaseId": 1202814,
+    "localBackup": "release/archive-v044",
+    "backupBytes": 406398311,
+    "verifiedFiles": 15,
+    "preservedReleases": [
+      "v0.4.3",
+      "v0.4.5"
+    ],
+    "purpose": "Free Gitee attachment quota for the joint 0.4.6 release"
+  },
+  "currentWindows": {
+    "passed": true,
+    "currentVersion": "0.4.6",
+    "noAutomaticDownload": true,
+    "source": "https://gitee.com/a1meon_admin/halframe-releases/releases/download/v0.4.6/"
+  }
+}

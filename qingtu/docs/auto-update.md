@@ -1,16 +1,16 @@
-# 自动更新（0.4.4）
+# 自动更新（0.4.6）
 
-0.4.4 已于 2026-10-13 正式发布至 Gitee，latest API、各平台匿名下载和当前版本不下载检查已通过。用户批准 Mac 采用 Sparkle 和免费 ad-hoc 签名，无需付费 Apple Developer Program。Windows 保留 NSIS 与 electron-updater。
+0.4.6 已于 2026-10-15 联合正式发布至 Gitee，Windows x64、Mac arm64/x64 的匿名下载、签名及哈希、latest API 和当前版本不下载检查已通过。用户批准 Mac 采用 Sparkle 和免费 ad-hoc 签名，无需付费 Apple Developer Program。Windows 保留 NSIS 与 electron-updater。
 
 启动只检查一次；发现新版先询问，确认后下载。下载完成后等待「重启并更新」，不因为普通退出自动安装。离线启动安静；版本号用于手动检查和重试。图片处理和导出期间不能重启；安装启动后不接受新的处理或保存任务。浏览器预览提示在桌面版更新。
 
 ## 首次安装
 
-旧 Mac 版不含 Sparkle，需要安装 0.4.4 基线一次。下载对应架构的 Qingtu-0.4.4-Mac-arm64-Installer.dmg 或 Qingtu-0.4.4-Mac-x64-Installer.dmg，打开后双击「安装轻图.command」。它自动下载 Gitee 分片、校验各片和完整 ZIP、解压，在 Finder 中显示轻图及 Applications 快捷方式；拖入 Applications，再打开应用。
+旧 Mac 版不含 Sparkle，需要安装当前版本基线一次。下载对应架构的 Qingtu-0.4.6-Mac-arm64-Installer.dmg 或 Qingtu-0.4.6-Mac-x64-Installer.dmg，打开后双击「安装轻图.command」。它自动下载 Gitee 分片、校验各片和完整 ZIP、解压，在 Finder 中显示轻图及 Applications 快捷方式；拖入 Applications，再打开应用。
 
 首次下载仍受 macOS 安全检查约束，必要时按系统「隐私与安全性 → 仍要打开」流程操作。免费签名不提供 Apple 开发者身份认证、公证或对受管 Mac 的兼容保证。安装器不要求用户复制终端命令，不修改 Gatekeeper，不用 sudo 或 xattr。
 
-Windows 新安装可运行 Install-Qingtu-0.4.4-Windows.cmd，自动下载和合并、核对 SHA-512，再打开 NSIS 向导。已接入更新源和分片协议的 0.4.3 Windows 可以在应用内升级。
+Windows 新安装可运行 Install-Qingtu-0.4.6-Windows.cmd，自动下载和合并、核对 SHA-512，再打开 NSIS 向导。已接入更新源和分片协议的 0.4.3 Windows 可以在应用内升级。
 
 发行仓库：[a1meon_admin/halframe-releases](https://gitee.com/a1meon_admin/halframe-releases)。各版使用与 package.json 一致的 vX.Y.Z 标签。当前配置为 desktop/update-source.json 的公开 Gitee 源，客户端不带令牌。
 
@@ -47,3 +47,7 @@ Apple Silicon 真实两个 ad-hoc 签名 app：0.4.3 检查和确认下载，等
 npm test 包含真实 HTTP、签名篡改、架构、版本、取消/中断/重试、私钥恢复和更新状态测试。npm run smoke:desktop / smoke:update 验证图片工作流、实际 Electron IPC/界面、离线与确认流程。真实 SDK 下载与实际 Sparkle 替换不能用适配器测试代替。
 
 依据：[Sparkle 官方文档](https://sparkle-project.org/documentation/)、[Electron Sparkle 的 ad-hoc 模式](https://github.com/biw/electron-sparkle#adhoc-distributions)、[Apple 首次打开要求](https://support.apple.com/zh-cn/102445)。
+
+## 发行归档（2026-10-15）
+
+0.4.6 上传时触及 Gitee 单仓库附件总量限制。用户明确授权删除旧版 v0.4.4 的发行版及 15 个附件，删除前已完整备份元数据和附件并对照线上 SHA-256 清单校验，备份保存在原 Mac 的 `release/archive-v044/`。保留 v0.4.3 与 v0.4.5。不要未经确认继续清理其他线上旧版。
