@@ -105,11 +105,11 @@ export const StitchWorkspace=forwardRef(function StitchWorkspace({active,inspect
   if(items.length){await update(p=>{if(p.id!==owner)throw new Error('当前画布已切换，请重新导入');if(p.images.length+items.length>100||originalBytes([...p.images,...items])>500*1024*1024)throw new Error('每个项目最多 100 张、500 MB');return importCanvasImages(p,items);});setSelected(items[0].id);}
  }
  async function runImportFiles(files){
-  if(busy||importLock.current||!project)return;const list=Array.from(files);if(!list.length)return;const owner=project.id;importLock.current=true;setImporting(true);setNotice('');
-  try{await settleEditor();for(const file of list){const item=await repository.import(file);await accept([item],owner);}}
+  if(busy||importLock.current)return;const list=Array.from(files);if(!list.length)return;importLock.current=true;setImporting(true);setNotice('');
+  try{await settleEditor();const owner=(getCurrent()||await create()).id;for(const file of list){const item=await repository.import(file);await accept([item],owner);}}
   catch(e){setNotice(e.message);}finally{importLock.current=false;setImporting(false);if(input.current)input.current.value='';}
  }
- function importFiles(files){if(!project&&!busy){setNotice('请先新建画布');return importTask.current;}if(busy||importLock.current||!files.length)return importTask.current;const task=runImportFiles(files);importTask.current=task;return task;}
+ function importFiles(files){if(busy||importLock.current||!files.length)return importTask.current;const task=runImportFiles(files);importTask.current=task;return task;}
  async function runAdd(){
   if(busy||importLock.current||!project)return;const owner=project.id;importLock.current=true;setImporting(true);
   try{await settleEditor();if(!desktop){input.current.click();return;}const result=await api.stitchChooseFiles();await accept(result.items,owner);if(result.errors.length)setNotice(result.errors.join('；'));}catch(e){setNotice(e.message);}finally{importLock.current=false;setImporting(false);}

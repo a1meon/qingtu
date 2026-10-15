@@ -1,0 +1,22 @@
+{
+  "passed": true,
+  "noCanvasDropCreatesOne": true,
+  "multipleDroppedOriginals": true,
+  "overlappingDropDoesNotDuplicate": true,
+  "laterDropAppends": true,
+  "internalAndEmptyIgnored": true,
+  "numberOnlyButtons": true,
+  "defaultThirdRetained": true,
+  "autosaveReopen": true,
+  "originalsUnchanged": true,
+  "output": {
+    "file": "artifacts/drop-canvas/automatic-drop-canvas-qingtu.png",
+    "width": 300,
+    "height": 120,
+    "bytes": 396,
+    "limit": 10000000
+  },
+  "platform": "darwin",
+  "arch": "arm64",
+  "unitTests": 262
+}

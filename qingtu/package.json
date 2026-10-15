@@ -1,6 +1,6 @@
 {
   "name": "qingtu",
-  "version": "0.4.6",
+  "version": "0.4.7",
   "private": true,
   "type": "module",
   "scripts": {
@@ -21,6 +21,7 @@
     "smoke:recovery": "node scripts/smoke-stitch-recovery.cjs",
     "smoke:optimization": "node scripts/smoke-optimization-close.cjs",
     "smoke:optimization-settings": "electron desktop/optimization-settings-smoke.cjs",
+    "smoke:drop-canvas": "electron desktop/drop-canvas-smoke.cjs",
     "smoke:selected-export": "electron desktop/selected-export-smoke.cjs",
     "smoke:png-budget": "electron desktop/png-budget-smoke.cjs",
     "smoke:canvas": "electron desktop/fixed-canvas-smoke.cjs",
@@ -74,6 +75,7 @@
       "!desktop/optimization-close-smoke.cjs",
       "!desktop/optimization-settings-smoke.cjs",
       "!desktop/selected-export-smoke.cjs",
+      "!desktop/drop-canvas-smoke.cjs",
       "!desktop/png-budget-smoke.cjs",
       "!desktop/fixed-canvas-smoke.cjs",
       "!desktop/content-canvas-smoke.cjs",

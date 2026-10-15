@@ -5,7 +5,7 @@ const os=require('node:os');
 const assert=require('node:assert/strict');
 const {start}=require('./main.cjs');
 const pause=ms=>new Promise(resolve=>setTimeout(resolve,ms));
-async function createSmoke(prefix,artifactName){
+async function createSmoke(prefix,artifactName,{createCanvas=true}={}){
  const root=await fs.mkdtemp(path.join(os.tmpdir(),prefix)),artifact=path.resolve('artifacts',artifactName);await fs.mkdir(artifact,{recursive:true});
  const selection=[],context=await start({hidden:true,projectRoot:path.join(root,'projects'),testFiles:selection,testFolder:artifact}),{win,store,stitching,service}=context;
  win.webContents.setBackgroundThrottling(false);win.show();if(process.platform==='darwin')app.focus({steal:true});win.focus();
@@ -28,7 +28,7 @@ async function createSmoke(prefix,artifactName){
  async function importFiles(files){selection.splice(0,selection.length,...files);const count=Number(await js("document.querySelectorAll('.stitch-layer').length"));if(!count)await click('[aria-label="添加拼接图片"]');else await js("window.dispatchEvent(new KeyboardEvent('keydown',{key:'o',ctrlKey:true,bubbles:true}))");await wait(`document.querySelectorAll('.stitch-layer').length===${count+files.length}`);await ready();}
  async function capture(name){await js('new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)))');await fs.writeFile(path.join(artifact,name),(await win.webContents.capturePage()).toPNG());}
  async function save(name){const p=await load(),r=await stitching.render({...p,name}),saved=await service.save(r.token,artifact),buffer=await fs.readFile(saved.path),meta=await (await import('sharp')).default(buffer).metadata();assert.equal(saved.bytes,buffer.length);assert.ok(buffer.length<=p.export.targetBytes);assert.equal(meta.isPalette,false);return {file:saved.path,width:meta.width,height:meta.height,bytes:buffer.length,limit:p.export.targetBytes};}
- await wait("!!document.querySelector('[aria-label=\"图像拼接\"]')");await click('[aria-label="图像拼接"]');await wait("!!document.querySelector('[aria-label=\"新建画布\"]')&&!document.querySelector('[aria-label=\"新建画布\"]').disabled");assert.equal((await store.list()).length,0);await click('[aria-label="新建画布"]');await wait("!!document.querySelector('[aria-label=\"添加拼接图片\"]')");
+ await wait("!!document.querySelector('[aria-label=\"图像拼接\"]')");await click('[aria-label="图像拼接"]');await wait("!!document.querySelector('[aria-label=\"新建画布\"]')&&!document.querySelector('[aria-label=\"新建画布\"]').disabled");assert.equal((await store.list()).length,0);if(createCanvas){await click('[aria-label="新建画布"]');await wait("!!document.querySelector('[aria-label=\"添加拼接图片\"]')");}
  async function finish(report){await fs.writeFile(path.join(artifact,'report.json'),JSON.stringify(report,null,2));console.log(JSON.stringify(report));win.destroy();app.quit();const absolute=path.resolve(root);if(path.dirname(absolute)!==path.resolve(os.tmpdir())||!path.basename(absolute).startsWith(prefix))throw new Error('Unsafe cleanup');await fs.rm(absolute,{recursive:true,force:true});}
  return {...context,root,artifact,js,wait,ready,click,edit,load,drag,importFiles,capture,save,finish,calls:()=>calls};
 }

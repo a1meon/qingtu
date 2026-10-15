@@ -28,7 +28,7 @@ export function OptimizationSettings({value,onChange,onValidityChange,hint,image
  function change(id,key,raw){save({...latest.current,[id]:{...latest.current[id],[key]:raw}});}
  return <section className="optimization-settings" aria-label="优化裁剪设置">
   <h3>特殊裁剪</h3>
-  {images.length>0&&<div className="optimization-image-buttons" role="group" aria-label="特殊裁剪图片">{images.map((image,index)=><button type="button" key={image.id} aria-label={`第 ${index+1} 张特殊裁剪`} aria-pressed={!!draft[image.id]?.enabled} title={image.name} onClick={()=>toggle(image,index)}>第 {index+1} 张</button>)}</div>}
+  {images.length>0&&<div className="optimization-image-buttons" role="group" aria-label="特殊裁剪图片">{images.map((image,index)=><button type="button" key={image.id} aria-label={`第 ${index+1} 张特殊裁剪`} aria-pressed={!!draft[image.id]?.enabled} title={image.name} onClick={()=>toggle(image,index)}>{index+1}</button>)}</div>}
   {images.map((image,index)=>draft[image.id]?.enabled&&<section className="optimization-image-crop" key={image.id} aria-label={`第 ${index+1} 张裁剪参数`} data-image-id={image.id}>
    <h4>第 {index+1} 张</h4>
    <label className="optimization-setting-row"><span>顶部</span><div className="number-with-unit"><input aria-label={`第 ${index+1} 张优化顶部裁剪比例`} type="number" min="0" max="99.9" step="0.1" value={draft[image.id].topPercent} onFocus={event=>event.target.select()} onChange={event=>change(image.id,'topPercent',event.target.value)}/><span>%</span></div></label>
