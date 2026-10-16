@@ -35,6 +35,7 @@ export const StitchWorkspace=forwardRef(function StitchWorkspace({active,inspect
  const [selected,setSelected]=useState(null),[error,setError]=useState(''),[notice,setNotice]=useState(''),[importing,setImporting]=useState(false),[batch,setBatch]=useState(null),[output,setOutput]=useState(null),[processing,setProcessing]=useState(false),[folder,setFolder]=useState(null);
  const [context,setContext]=useState(null),[confirmation,setConfirmation]=useState(null),[optimization,setOptimization]=useState(null),[optimizing,setOptimizing]=useState(false),[splitting,setSplitting]=useState(false);
  const [exportSelection,setExportSelection]=useState(null);
+ const [renaming,setRenaming]=useState(null);
  const unit=project?.export.unit||'MB',setUnit=unit=>setExport({unit});
  useEffect(()=>{setSelected(project?.images[0]?.id||null);setEditing(null);setCropDraft(null);setSplitDraft(null);},[project?.id]);
  const input=useRef(),cancel=useRef(false),exportTask=useRef(Promise.resolve()),importTask=useRef(Promise.resolve()),actionTask=useRef(Promise.resolve()),optimizeTask=useRef(Promise.resolve()),splitTask=useRef(Promise.resolve()),importLock=useRef(false),exportLock=useRef(false),lastPreview=useRef();
@@ -141,6 +142,12 @@ export const StitchWorkspace=forwardRef(function StitchWorkspace({active,inspect
  async function removeImage(id){try{await settleEditor();await update(p=>removeProjectImage(p,id));if(selected===id)setSelected(null);}catch(e){setNotice(e.message);}}
  async function reorder(from,to){try{await settleEditor();await update(p=>reorderCanvas(p,from,to));}catch(e){setNotice(e.message);}}
  async function openCanvas(id){if(busy||importLock.current)return;try{await settleEditor();await open(id);}catch(e){setNotice(e.message);}}
+ async function startRename(id){if(busy||importLock.current)return;try{await settleEditor();if(getCurrent()?.id!==id)await open(id);setRenaming(id);}catch(e){setNotice(e.message);}}
+ function renameCanvas(id,name){
+  const task=Promise.resolve().then(()=>{if(getCurrent()?.id!==id)throw new Error('画布已切换，请重新命名');return update({name});});
+  actionTask.current=task.catch(()=>{});return task;
+ }
+ const endRename=id=>setRenaming(current=>current===id?null:current);
  async function createCanvas(){if(busy||importLock.current)return;try{await settleEditor();await create();}catch(e){setNotice(e.message);}}
  const editingImage=project?.images.find(image=>image.id===selected);
  const editingValue=project?.edits?.[selected];
@@ -160,12 +167,12 @@ export const StitchWorkspace=forwardRef(function StitchWorkspace({active,inspect
     </div>
     {project?.images.length?<>
      <div className="canvas-area"><div className="canvas-content"><div className="stitch-editing-surface">
-      <StitchCanvas project={displayProject} layout={layout} preview={!cropDraft&&!splitDraft&&output?output.preview:null} selected={selected} onSelect={selectImage} onEdit={editImage} onContext={contextImage} onRemove={removeImage} onReorder={reorder} onChange={(positions,operation)=>update(p=>applyCanvasTransform(p,positions,operation))} onResizePreview={setTransformCanvas} renderControls={imageControls} cropping={editing===selected&&!splitDraft} cropGesture={!!cropDraft?.gesture} guides={cropDraft?.guides} split={splitDraft} onSplitChange={value=>setSplitDraft({...value,id:editing})} disabled={busy||!!cropDraft||!!splitDraft} splitDisabled={busy}/>
+      <StitchCanvas project={displayProject} layout={layout} preview={!cropDraft&&!splitDraft&&output?output.preview:null} selected={selected} onSelect={selectImage} onEdit={editImage} onContext={contextImage} onRemove={removeImage} onReorder={reorder} onChange={(positions,operation)=>update(p=>applyCanvasTransform(p,positions,operation))} onResizePreview={setTransformCanvas} renderControls={imageControls} cropping={!!selected&&editing===selected&&!splitDraft} cropGesture={!!cropDraft?.gesture} guides={cropDraft?.guides} split={splitDraft} onSplitChange={value=>setSplitDraft({...value,id:editing})} disabled={busy||!!cropDraft||!!splitDraft} splitDisabled={busy}/>
      </div>
      <div className="preview-info stitch-info" aria-live="polite"><span title={output?.autoResized?`设置 ${output.requestedWidth} × ${output.requestedHeight}；为满足体积上限已等比调整`:undefined}>{output?`${output.width} × ${output.height}${output.autoResized?' · 等比调整':''}`:visibleCanvas?`${visibleCanvas.width} × ${visibleCanvas.height}`:calculation.error}</span>{layout?.rects.some(r=>r.autoCrop)&&<span>9:16 居中裁切</span>}<span className="preview-status" title={output?`${output.bytes.toLocaleString()} 字节${output.difference?`；RGB 最大误差 ${output.difference.maxError}/255，RMSE ${output.difference.rmse.toFixed(4)}；透明度误差 ${output.difference.alphaMaxError}${output.autoResized?'（以实际尺寸的等比缩放图为基准）':''}`:''}`:undefined}>{cropDraft||transformCanvas?'编辑中…':processing?'计算中…':output?`${output.encoding||output.format.toUpperCase()} · ${megabytes(output.bytes)}`:error}</span></div></div></div>
     </>:<div className="canvas-area"><div className="canvas-content"><div className="stitch-editing-surface">{project&&<StitchCanvas project={project} layout={layout} disabled={busy}><div className="empty-state fixed-empty"><img className="empty-illustration" src="./assets/blue-file-empty.png" alt=""/><button className="primary import-button" aria-label="添加拼接图片" disabled={busy} onClick={add}><Plus size={28} weight="bold"/>{loading?'恢复中…':'添加图片'}</button></div></StitchCanvas>}{!project&&<div className="empty-state stitch-create-empty"><img className="empty-illustration" src="./assets/blue-file-empty.png" alt=""/><button className="primary import-button" aria-label="新建画布" disabled={busy} onClick={createCanvas}><Plus size={30} weight="bold"/>{loading?'恢复中…':'新建画布'}</button></div>}</div><div className="preview-info stitch-info"><span>{layout?`${layout.width} × ${layout.height}`:''}</span></div></div></div>}
    </div>
-   <CanvasCards projects={projects} currentId={project?.id} disabled={busy} onOpen={openCanvas} onCreate={createCanvas} onClear={requestClear} onContext={contextCanvas} exportableIds={exportableIds} exportIds={exportIds} onSelectExport={selectExport} onSelectAll={checked=>setExportSelection(checked?null:[])}/>
+   <CanvasCards projects={projects} currentId={project?.id} disabled={busy} onOpen={openCanvas} onCreate={createCanvas} onClear={requestClear} onContext={contextCanvas} exportableIds={exportableIds} exportIds={exportIds} onSelectExport={selectExport} onSelectAll={checked=>setExportSelection(checked?null:[])} renamingId={renaming} onRenameStart={startRename} onRename={renameCanvas} onRenameEnd={endRename}/>
   </section>
   <div className="inspector-shell"><aside className="inspector" aria-label="拼接导出设置" aria-hidden={!inspectorOpen} inert={!inspectorOpen}>
    <div className="inspector-heading"><h1>拼接</h1><TooltipButton label="收起导出设置" placement="left" className="icon-button panel-toggle" onClick={()=>setInspectorOpen(false)}><SidebarSimple size={23}/></TooltipButton></div>
@@ -188,6 +195,7 @@ export const StitchWorkspace=forwardRef(function StitchWorkspace({active,inspect
    {label:'删除图片',icon:Trash,danger:true,action:()=>removeImage(context.id)}
   ]:[
    {label:'导出此图像',icon:Export,action:()=>exportProjects([context.id])},
+   {label:'重命名',icon:PencilSimple,action:()=>startRename(context.id)},
    {label:'删除画布',icon:Trash,danger:true,action:()=>requestRemoveCanvas(context.id)}
   ]}/>}
   {confirmation&&<ConfirmDialog request={confirmation} onCancel={()=>setConfirmation(null)} onConfirm={confirm}/>}

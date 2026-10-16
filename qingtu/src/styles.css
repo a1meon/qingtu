@@ -310,6 +310,9 @@ label,h2 { display:block; font-size:16px; font-weight:700; margin-bottom:14px; l
 .add-tile:hover:not(:disabled) { background:#e4f6ff; }
 .film-select:active:not(:disabled),.add-tile:active:not(:disabled) { transform:translateY(3px); box-shadow:0 1px 0 var(--blue-edge); }
 .filename { font-size:12px; line-height:17px; color:#687b98; margin-top:11px; max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex-shrink:0; }
+.canvas-name { width:100%; padding:0; cursor:text; }
+.canvas-name-input { width:100%; min-width:0; padding:0 5px; border:1px solid #87cff2; border-radius:5px; background:white; text-align:center; outline:none; }
+.canvas-name-input[aria-invalid="true"] { border-color:#c74665; }
 .film-remove { position:absolute; top:6px; right:6px; width:22px; height:22px; display:grid; place-items:center; border-radius:7px; background:#ffffffee; color:#647998; opacity:0; transition:opacity 130ms,transform 130ms; }
 .film-item:hover .film-remove,.film-remove:focus-visible { opacity:1; }
 .file-status { font-size:10px; line-height:12px; max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex-shrink:0; }

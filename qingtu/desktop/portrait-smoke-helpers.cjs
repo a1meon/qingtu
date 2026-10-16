@@ -9,8 +9,8 @@ async function createSmoke(prefix,artifactName,{createCanvas=true}={}){
  const root=await fs.mkdtemp(path.join(os.tmpdir(),prefix)),artifact=path.resolve('artifacts',artifactName);await fs.mkdir(artifact,{recursive:true});
  const selection=[],context=await start({hidden:true,projectRoot:path.join(root,'projects'),testFiles:selection,testFolder:artifact}),{win,store,stitching,service}=context;
  win.webContents.setBackgroundThrottling(false);win.show();if(process.platform==='darwin')app.focus({steal:true});win.focus();
- const js=async expression=>{try{return await win.webContents.executeJavaScript(expression);}catch(error){console.error('Renderer expression failed:',expression);throw error;}};
- const wait=async expression=>{for(let n=0;n<600;n++){if(await js(expression))return;await pause(50);}throw new Error('Timed out: '+expression);};
+ const js=async expression=>{if(win.isMinimized())win.restore();try{return await win.webContents.executeJavaScript(expression);}catch(error){console.error('Renderer expression failed:',expression);throw error;}};
+ const wait=async expression=>{for(let n=0;n<600;n++){if(await js(expression))return;await pause(50);}console.error('Timed out UI:',await js('document.body.innerText'));throw new Error('Timed out: '+expression);};
  const ready=async()=>{await js('new Promise(resolve=>{setTimeout(resolve,50);requestAnimationFrame(()=>requestAnimationFrame(resolve));})');await wait("!!document.querySelector('.stitch-output-preview')&&document.querySelector('.save-status').textContent==='已自动保存'&&!document.querySelector('.project-name').disabled");};
  const click=selector=>js(`document.querySelector(${JSON.stringify(selector)}).click()`);
  const edit=(selector,value)=>js(`(()=>{const e=document.querySelector(${JSON.stringify(selector)});Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(e,${JSON.stringify(String(value))});e.dispatchEvent(new Event('input',{bubbles:true}));})()`);

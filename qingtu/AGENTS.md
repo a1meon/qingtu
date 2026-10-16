@@ -10,6 +10,8 @@ Build app UI in `src/`. Keep `.openai/hosting.json`, `worker/index.js`, `scripts
 
 ## User-approved product constraints (latest feedback overrides earlier designs)
 
+- Stable canvas and card names (2026-10-16): deselecting an enlarged image must leave the actual canvas's displayed bounds, scale and position unchanged; only selection controls and outside-canvas pixels disappear. Nullable selected/editing IDs must not count as an open crop panel. Double-click the text under a canvas card or choose 重命名 from its context menu to edit the name inline. Enter/blur saves, Escape cancels, and normal window close flushes a typed name. Renaming a different card activates its canvas before editing and uses the existing save queue and literal-name export path.
+
 - Canvas naming (2026-10-16): preserve literal user-entered canvas names in the title, cards, export choices and dialogs, including names such as 画布 12 or 拼图3. Both browser and desktop stitching exports use that current name plus the actual format extension, retain dots inside titles, and add no -qingtu suffix. Rename after cached previews must use the latest name. Keep safe filesystem characters and exclusive same-name numbering; compression naming remains unchanged.
 
 - Menu order (2026-10-16): 图像拼接 is the first navigation item and default startup module; 压缩调整 is second. Keep both modules' editing state when switching and keep the browser preview available for user testing.

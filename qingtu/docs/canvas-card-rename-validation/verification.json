@@ -1,0 +1,127 @@
+{
+  "date": "2026-10-16",
+  "unitTests": {
+    "passed": 264,
+    "failed": 0
+  },
+  "checks": [
+    {
+      "name": "npm test",
+      "passed": true,
+      "log": "artifacts/card-rename-unit.log"
+    },
+    {
+      "name": "npm run build",
+      "passed": true,
+      "log": "artifacts/card-rename-build.log"
+    },
+    {
+      "name": "smoke:window-close",
+      "passed": true,
+      "log": "artifacts/card-rename-close.log"
+    },
+    {
+      "name": "smoke:canvas-selection",
+      "passed": true,
+      "log": "artifacts/viewport-deselect-green.log"
+    },
+    {
+      "name": "smoke:ui",
+      "passed": true,
+      "log": "artifacts/card-rename-full-ui.log"
+    },
+    {
+      "name": "smoke:desktop",
+      "passed": true,
+      "log": "artifacts/card-rename-smoke-desktop.log"
+    },
+    {
+      "name": "smoke:canvas",
+      "passed": true,
+      "log": "artifacts/card-rename-smoke-canvas.log"
+    },
+    {
+      "name": "smoke:canvas-fit",
+      "passed": true,
+      "log": "artifacts/card-rename-smoke-canvas-fit.log"
+    },
+    {
+      "name": "smoke:canvas-resize",
+      "passed": true,
+      "log": "artifacts/card-rename-smoke-canvas-resize.log"
+    },
+    {
+      "name": "smoke:crop",
+      "passed": true,
+      "log": "artifacts/card-rename-smoke-crop.log"
+    },
+    {
+      "name": "smoke:offscreen",
+      "passed": true,
+      "retry": "Restored the minimized isolated test window before renderer operations; artifacts/card-rename-smoke-offscreen.log",
+      "log": "artifacts/card-rename-smoke-offscreen.log"
+    },
+    {
+      "name": "smoke:selected-export",
+      "passed": true,
+      "log": "artifacts/card-rename-smoke-selected-export.log"
+    },
+    {
+      "name": "smoke:reset-zoom",
+      "passed": true,
+      "log": "artifacts/card-rename-smoke-reset-zoom.log"
+    },
+    {
+      "name": "smoke:split",
+      "passed": true,
+      "log": "artifacts/card-rename-smoke-split.log"
+    },
+    {
+      "name": "smoke:recovery",
+      "passed": true,
+      "log": "artifacts/card-rename-smoke-recovery.log"
+    },
+    {
+      "name": "smoke:optimization",
+      "passed": true,
+      "log": "artifacts/card-rename-smoke-optimization.log"
+    },
+    {
+      "name": "smoke:optimization-settings",
+      "passed": true,
+      "log": "artifacts/card-rename-smoke-optimization-settings.log"
+    },
+    {
+      "name": "smoke:drop-canvas",
+      "passed": true,
+      "log": "artifacts/card-rename-smoke-drop-canvas.log"
+    },
+    {
+      "name": "smoke:png-budget",
+      "passed": true,
+      "log": "artifacts/card-rename-smoke-png-budget.log"
+    },
+    {
+      "name": "smoke:update",
+      "passed": true,
+      "log": "artifacts/card-rename-smoke-update.log"
+    },
+    {
+      "name": "verify:quality",
+      "passed": true,
+      "log": "artifacts/card-rename-verify-quality.log"
+    },
+    {
+      "name": "verify:png-budget",
+      "passed": true,
+      "log": "artifacts/card-rename-verify-png-budget.log"
+    }
+  ],
+  "testHarnessNotes": [
+    "An isolated minimized native window stopped requestAnimationFrame. The helper now restores only its own test window before renderer operations.",
+    "The blur regression explicitly focuses the name input before blurring it.",
+    "The first optimization-settings run timed out; a sequential retry passed without product changes."
+  ],
+  "userState": "No existing browser project, running user app or signing seed was changed.",
+  "distribution": "Source/browser update only; no new installer publication."
+}

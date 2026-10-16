@@ -1,0 +1,44 @@
+{
+  "passed": true,
+  "singleAndMultipleExactFiles": true,
+  "keyboardSelectionAndExport": true,
+  "selectionDoesNotOpenOrEncode": true,
+  "emptySkipped": true,
+  "selectAllAndNone": true,
+  "mixedState": true,
+  "moduleSwitchPreservesSelection": true,
+  "unselectedInvalidCanvasDoesNotBlock": true,
+  "selectionLockedDuringExport": true,
+  "deletedSelectionDoesNotExportOthers": true,
+  "sourceBytesUnchanged": true,
+  "renamedTitlesCardsAndExportChoices": true,
+  "cardDoubleClickRename": true,
+  "cardContextRename": true,
+  "enterAndBlurSave": true,
+  "escapeCancels": true,
+  "reloadRestoresNames": true,
+  "renamedExports": [
+    "我的成片.v1.2.png",
+    "画布 12.png"
+  ],
+  "outputs": [
+    {
+      "file": "图像 1-13.png",
+      "width": 240,
+      "height": 120,
+      "bytes": 51965
+    },
+    {
+      "file": "图像 2-7.png",
+      "width": 260,
+      "height": 120,
+      "bytes": 60529
+    },
+    {
+      "file": "图像 1-14.png",
+      "width": 240,
+      "height": 120,
+      "bytes": 51965
+    }
+  ]
+}

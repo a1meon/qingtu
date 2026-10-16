@@ -1,0 +1,15 @@
+{
+  "passed": true,
+  "blankClickDeselects": true,
+  "deselectionKeepsCanvasBounds": true,
+  "canvasBounds": [
+    282.281,
+    208,
+    443.438,
+    307
+  ],
+  "onlySelectedOverflowVisible": true,
+  "cropFormRemainsUsable": true,
+  "noSelectionSaveOrEncode": true,
+  "originalGeometryPreserved": true
+}

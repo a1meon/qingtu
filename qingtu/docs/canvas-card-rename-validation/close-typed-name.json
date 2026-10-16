@@ -1,0 +1,13 @@
+{
+  "passed": true,
+  "mode": "card-name",
+  "nativeWindowClose": true,
+  "projectAndOriginalSaved": true,
+  "saveFailureBlocksClose": false,
+  "uncommittedCardNameSaved": true,
+  "traces": [
+    "waiting renderer",
+    "renderer flushed",
+    "closing"
+  ]
+}
