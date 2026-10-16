@@ -1,0 +1,235 @@
+{
+  "version": "0.4.8",
+  "sourceCommit": "27cf26bfcb65c9a11ae677e00904a4442c549bd7",
+  "localIntegrity": true,
+  "sparkleSignatures": true,
+  "artifacts": [
+    {
+      "name": "Qingtu-0.4.8-win-x64.exe",
+      "bytes": 123026973,
+      "parts": 2,
+      "sha512": "9bTUIccgtS5KpegOr5jeRxbJtCHS6KoBL7EEtyg1yyK51fa8INlFwDI5+PFiQ2tkpkUo/NiST+clwt0gT24VnQ=="
+    },
+    {
+      "name": "Qingtu-0.4.8-mac-arm64.zip",
+      "bytes": 138186587,
+      "parts": 3,
+      "sha512": "vyB4tlhA/UbBJnzSGxZe92/ym59v5Igx6ZG19sEsq94GgL9LPvtV14TG8JfkPM47pJku/ZEyJ0F/zGsg3BPgfw=="
+    },
+    {
+      "name": "Qingtu-0.4.8-mac-x64.zip",
+      "bytes": 145939999,
+      "parts": 3,
+      "sha512": "oFa97yjIE7vASO9DLMlBnQYkPjUuqMRxQ599wKbpDx8hxZWjOfu/Mf0hwWPOsG+6c/qIHmbM7tASkg+lwcxSYA=="
+    }
+  ],
+  "uploadFiles": [
+    "Install-Qingtu-0.4.8-Windows.cmd",
+    "Qingtu-0.4.8-Mac-arm64-Installer.dmg",
+    "Qingtu-0.4.8-Mac-x64-Installer.dmg",
+    "Qingtu-0.4.8-mac-arm64.zip.part01",
+    "Qingtu-0.4.8-mac-arm64.zip.part02",
+    "Qingtu-0.4.8-mac-arm64.zip.part03",
+    "Qingtu-0.4.8-mac-x64.zip.part01",
+    "Qingtu-0.4.8-mac-x64.zip.part02",
+    "Qingtu-0.4.8-mac-x64.zip.part03",
+    "Qingtu-0.4.8-win-x64.exe.part01",
+    "Qingtu-0.4.8-win-x64.exe.part02",
+    "SHA256SUMS-0.4.8.txt",
+    "latest.yml",
+    "mac-arm64.json",
+    "mac-x64.json"
+  ],
+  "tests": {
+    "passed": 264,
+    "failed": 0
+  },
+  "checksPassed": [
+    "npm test",
+    "build",
+    "smoke:window-close",
+    "smoke:canvas-selection",
+    "smoke:ui",
+    "smoke:selected-export",
+    "smoke:desktop",
+    "smoke:canvas",
+    "smoke:canvas-fit",
+    "smoke:canvas-resize",
+    "smoke:crop",
+    "smoke:offscreen",
+    "smoke:reset-zoom",
+    "smoke:split",
+    "smoke:recovery",
+    "smoke:optimization",
+    "smoke:optimization-settings",
+    "smoke:drop-canvas",
+    "smoke:png-budget",
+    "smoke:update",
+    "verify:quality",
+    "verify:png-budget"
+  ],
+  "sourceParity": [
+    {
+      "archive": "release/mac-arm64/轻图.app/Contents/Resources/app.asar",
+      "version": "0.4.8",
+      "sourceParity": true,
+      "privateMaterialExcluded": true,
+      "asarSHA256": "14c98805ad8088dc560c65f04b230b9cc936a03a6e6964c506f2982241b51803"
+    },
+    {
+      "archive": "release/mac/轻图.app/Contents/Resources/app.asar",
+      "version": "0.4.8",
+      "sourceParity": true,
+      "privateMaterialExcluded": true,
+      "asarSHA256": "b49540a94f0c1b9c73e8b5766ca49b39c7a94c0755910d1adb1e56c17cd9feae"
+    },
+    {
+      "archive": "release/win-unpacked/resources/app.asar",
+      "version": "0.4.8",
+      "sourceParity": true,
+      "privateMaterialExcluded": true,
+      "asarSHA256": "ed0247c5f288aab90ff1a1e394376323f93c10e8856bbc034dde3aee223ca4f8"
+    }
+  ],
+  "realPackagedMacRuntime": {
+    "passed": true,
+    "realPackagedExecutable": true,
+    "arch": "arm64",
+    "version": "0.4.8",
+    "sparkleNativeBridgeLoaded": true,
+    "nativeSharpLoaded": true,
+    "unchangedJpegByteIdentical": true,
+    "png": {
+      "bytes": 998430,
+      "width": 1001,
+      "height": 667,
+      "limit": 1000000
+    }
+  },
+  "macInitialInstallerDmgVerified": [
+    "arm64",
+    "x64"
+  ],
+  "quotaPlan": {
+    "authorizedByUser": true,
+    "quotaText": "每个仓库总附件不可超过 1G",
+    "conservativeLimitBytes": 1000000000,
+    "existingBytes": 814387470,
+    "newUploadBytes": 407200859,
+    "cleanupRequired": true,
+    "oldestFirstRequired": [
+      "v0.4.6"
+    ],
+    "backups": [
+      {
+        "tag": "v0.4.6",
+        "localBackup": "release/archive-v046",
+        "bytes": 407190264,
+        "verifiedFiles": 15
+      }
+    ],
+    "afterCleanupAndUploadBytes": 814398065,
+    "preservedReleases": [
+      "v0.4.7"
+    ],
+    "deletionCompleted": false
+  },
+  "runtimeLimits": {
+    "macIntelNativeRun": false,
+    "windowsNativeInstallThisMac": false,
+    "userRunningAppPreserved": true
+  },
+  "published": false,
+  "packageChecks": [
+    {
+      "name": "source-parity",
+      "passed": true
+    },
+    {
+      "name": "local-integrity",
+      "passed": true
+    },
+    {
+      "name": "codesign-arm64",
+      "passed": true
+    },
+    {
+      "name": "codesign-x64",
+      "passed": true
+    },
+    {
+      "name": "installers",
+      "passed": true
+    },
+    {
+      "name": "real-mac-runtime",
+      "passed": true
+    },
+    {
+      "name": "packaged-desktop",
+      "passed": true
+    },
+    {
+      "name": "packaged-ui",
+      "passed": true
+    },
+    {
+      "name": "packaged-selected-export",
+      "passed": true
+    },
+    {
+      "name": "packaged-canvas-selection",
+      "passed": true
+    },
+    {
+      "name": "local-sdk",
+      "passed": true
+    },
+    {
+      "name": "packaged-close-empty",
+      "passed": true
+    },
+    {
+      "name": "packaged-close-thumbnail",
+      "passed": true
+    },
+    {
+      "name": "packaged-close-optimization",
+      "passed": true
+    },
+    {
+      "name": "packaged-close-save-error",
+      "passed": true
+    },
+    {
+      "name": "packaged-close-card-name",
+      "passed": true
+    }
+  ],
+  "packagedUpdateFeeds": [
+    {
+      "platform": "arm64",
+      "feedVersion": "0.4.8",
+      "dynamicGiteeSourceCorrect": true,
+      "trustedMacKeyMatches": true
+    },
+    {
+      "platform": "x64",
+      "feedVersion": "0.4.8",
+      "dynamicGiteeSourceCorrect": true,
+      "trustedMacKeyMatches": true
+    },
+    {
+      "platform": "win",
+      "feedVersion": "0.4.8",
+      "dynamicGiteeSourceCorrect": true
+    }
+  ],
+  "sourceUiAfterFocusHarnessChange": "artifacts/release-v048-ui-focus-check.log",
+  "testHarnessNote": "The isolated UI test keeps one CDP session with focus emulation through reloads and waits for painted state before evaluating save/geometry assertions. Production package contents are unchanged.",
+  "releaseApiStatus": {
+    "status": 200,
+    "checkedAt": "2026-10-16T10:46:58.035Z",
+    "source": "https://gitee.com/api/v5/repos/a1meon_admin/halframe-releases/releases/latest"
+  }
+}
