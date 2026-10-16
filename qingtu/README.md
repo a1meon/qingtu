@@ -2,7 +2,7 @@
 
 Mac / Windows 本地图片压缩与拼接工具。拖入图片，设置大小或分辨率，预览并导出。压缩模块底部是图片队列，拼接模块底部是整个画布的项目卡片。
 
-本分支实现固定高度的人物拼接工作流、直接拖动换序、四边及四角关联裁剪、画布上分割、独立布局记忆、多项目自动保存恢复和全彩高保真 PNG。最新规则、真实截图与导出验证见 [docs/portrait-workflow.md](docs/portrait-workflow.md)，提速与原图分割基础见 [docs/split-and-speed.md](docs/split-and-speed.md)。最新源码增加空画布隐藏导出复选框、右侧无底框复选框、拼接默认 30 MB、空白取消选择及选中图越界显示，并修复 Mac 图片解码等待导致的关闭阻塞；见 [修改与验证记录](docs/canvas-selection-and-mac-close.md)。0.4.7 已联合发布 Windows x64、Mac Apple Silicon 和 Mac Intel；见 [发行与验证记录](docs/release-0.4.7.md)。
+本分支实现固定高度的人物拼接工作流、直接拖动换序、四边及四角关联裁剪、画布上分割、独立布局记忆、多项目自动保存恢复和全彩高保真 PNG。最新规则、真实截图与导出验证见 [docs/portrait-workflow.md](docs/portrait-workflow.md)，提速与原图分割基础见 [docs/split-and-speed.md](docs/split-and-speed.md)。最新源码增加空画布隐藏导出复选框、右侧无底框复选框、拼接默认 30 MB、空白取消选择及选中图越界显示，并修复 Mac 图片解码等待导致的关闭阻塞。底部画布支持双击或右键重命名，导出沿用修改后的名称，取消选择时画布显示大小和位置保持不变；见 [修改与验证记录](docs/canvas-selection-and-mac-close.md)。0.4.8 已联合发布 Windows x64、Mac Apple Silicon 和 Mac Intel；见 [发行与验证记录](docs/release-0.4.8.md)。
 
 ## 使用
 
@@ -65,7 +65,7 @@ PNG 的编码误差以实际导出尺寸下的等比缩放像素为基准；降�
 
 ## 自动更新
 
-0.4.7 已通过 Gitee 的 a1meon_admin/halframe-releases 发布。桌面启动检查新版，先询问，再下载并确认重启；离线启动安静，点击版本号可手动检查。Mac 使用 Sparkle、Ed25519 签名更新包及免费 ad-hoc 应用签名，无需 Apple Developer Program；Windows 使用 NSIS。Gitee 大安装包采用经过校验的分片传输。本轮匿名下载与更新器校验通过，最新版本 API 当前限流，详见发行记录。首次安装和发布步骤见 [docs/auto-update.md](docs/auto-update.md)。
+0.4.8 已通过 Gitee 的 a1meon_admin/halframe-releases 发布。桌面启动检查新版，先询问，再下载并确认重启；离线启动安静，点击版本号可手动检查。Mac 使用 Sparkle、Ed25519 签名更新包及免费 ad-hoc 应用签名，无需 Apple Developer Program；Windows 使用 NSIS。Gitee 大安装包采用经过校验的分片传输。本轮三个平台的匿名下载与更新器校验通过，最新版本 API 已恢复；API 发现和当前版本不重复下载检查通过，详见发行记录。首次安装和发布步骤见 [docs/auto-update.md](docs/auto-update.md)。
 
 ## 开发环境
 
@@ -108,7 +108,7 @@ npm run pack:win        # Windows NSIS 安装程序
 npm run pack:win:zip    # Windows 完整应用目录 ZIP
 ```
 
-Windows ZIP 解压后运行「轻图.exe」，保留同目录资源和 DLL。本轮已获授权构建并发布 0.4.7，保留当前开发分支，不合并 main。沿用原有更新签名材料，缺失时停止发布，不旋转公钥。
+Windows ZIP 解压后运行「轻图.exe」，保留同目录资源和 DLL。本轮已构建并发布 0.4.8，保留当前开发分支，不合并 main。沿用原有更新签名材料，缺失时停止发布，不旋转公钥。
 
 桌面分发产物在 `release/`。本轮在 Apple Silicon Mac 执行开发版原生检查与交叉构建。Windows 安装器原生安装、Intel Mac 原生运行仍需对应实机验证；发布与签名验证状态见各版本发行记录。
 

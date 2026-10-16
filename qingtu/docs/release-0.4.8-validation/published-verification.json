@@ -1,0 +1,372 @@
+{
+  "version": "0.4.8",
+  "sourceCommit": "27cf26bfcb65c9a11ae677e00904a4442c549bd7",
+  "localIntegrity": true,
+  "sparkleSignatures": true,
+  "artifacts": [
+    {
+      "name": "Qingtu-0.4.8-win-x64.exe",
+      "bytes": 123026973,
+      "parts": 2,
+      "sha512": "9bTUIccgtS5KpegOr5jeRxbJtCHS6KoBL7EEtyg1yyK51fa8INlFwDI5+PFiQ2tkpkUo/NiST+clwt0gT24VnQ=="
+    },
+    {
+      "name": "Qingtu-0.4.8-mac-arm64.zip",
+      "bytes": 138186587,
+      "parts": 3,
+      "sha512": "vyB4tlhA/UbBJnzSGxZe92/ym59v5Igx6ZG19sEsq94GgL9LPvtV14TG8JfkPM47pJku/ZEyJ0F/zGsg3BPgfw=="
+    },
+    {
+      "name": "Qingtu-0.4.8-mac-x64.zip",
+      "bytes": 145939999,
+      "parts": 3,
+      "sha512": "oFa97yjIE7vASO9DLMlBnQYkPjUuqMRxQ599wKbpDx8hxZWjOfu/Mf0hwWPOsG+6c/qIHmbM7tASkg+lwcxSYA=="
+    }
+  ],
+  "uploadFiles": [
+    "Install-Qingtu-0.4.8-Windows.cmd",
+    "Qingtu-0.4.8-Mac-arm64-Installer.dmg",
+    "Qingtu-0.4.8-Mac-x64-Installer.dmg",
+    "Qingtu-0.4.8-mac-arm64.zip.part01",
+    "Qingtu-0.4.8-mac-arm64.zip.part02",
+    "Qingtu-0.4.8-mac-arm64.zip.part03",
+    "Qingtu-0.4.8-mac-x64.zip.part01",
+    "Qingtu-0.4.8-mac-x64.zip.part02",
+    "Qingtu-0.4.8-mac-x64.zip.part03",
+    "Qingtu-0.4.8-win-x64.exe.part01",
+    "Qingtu-0.4.8-win-x64.exe.part02",
+    "SHA256SUMS-0.4.8.txt",
+    "latest.yml",
+    "mac-arm64.json",
+    "mac-x64.json"
+  ],
+  "tests": {
+    "passed": 264,
+    "failed": 0
+  },
+  "checksPassed": [
+    "npm test",
+    "build",
+    "smoke:window-close",
+    "smoke:canvas-selection",
+    "smoke:ui",
+    "smoke:selected-export",
+    "smoke:desktop",
+    "smoke:canvas",
+    "smoke:canvas-fit",
+    "smoke:canvas-resize",
+    "smoke:crop",
+    "smoke:offscreen",
+    "smoke:reset-zoom",
+    "smoke:split",
+    "smoke:recovery",
+    "smoke:optimization",
+    "smoke:optimization-settings",
+    "smoke:drop-canvas",
+    "smoke:png-budget",
+    "smoke:update",
+    "verify:quality",
+    "verify:png-budget"
+  ],
+  "sourceParity": [
+    {
+      "archive": "release/mac-arm64/轻图.app/Contents/Resources/app.asar",
+      "version": "0.4.8",
+      "sourceParity": true,
+      "privateMaterialExcluded": true,
+      "asarSHA256": "14c98805ad8088dc560c65f04b230b9cc936a03a6e6964c506f2982241b51803"
+    },
+    {
+      "archive": "release/mac/轻图.app/Contents/Resources/app.asar",
+      "version": "0.4.8",
+      "sourceParity": true,
+      "privateMaterialExcluded": true,
+      "asarSHA256": "b49540a94f0c1b9c73e8b5766ca49b39c7a94c0755910d1adb1e56c17cd9feae"
+    },
+    {
+      "archive": "release/win-unpacked/resources/app.asar",
+      "version": "0.4.8",
+      "sourceParity": true,
+      "privateMaterialExcluded": true,
+      "asarSHA256": "ed0247c5f288aab90ff1a1e394376323f93c10e8856bbc034dde3aee223ca4f8"
+    }
+  ],
+  "realPackagedMacRuntime": {
+    "passed": true,
+    "realPackagedExecutable": true,
+    "arch": "arm64",
+    "version": "0.4.8",
+    "sparkleNativeBridgeLoaded": true,
+    "nativeSharpLoaded": true,
+    "unchangedJpegByteIdentical": true,
+    "png": {
+      "bytes": 998430,
+      "width": 1001,
+      "height": 667,
+      "limit": 1000000
+    }
+  },
+  "macInitialInstallerDmgVerified": [
+    "arm64",
+    "x64"
+  ],
+  "quotaPlan": {
+    "authorizedByUser": true,
+    "quotaText": "每个仓库总附件不可超过 1G",
+    "conservativeLimitBytes": 1000000000,
+    "existingBytes": 814387470,
+    "newUploadBytes": 407200859,
+    "cleanupRequired": true,
+    "oldestFirstRequired": [
+      "v0.4.6"
+    ],
+    "backups": [
+      {
+        "tag": "v0.4.6",
+        "localBackup": "release/archive-v046",
+        "bytes": 407190264,
+        "verifiedFiles": 15
+      }
+    ],
+    "afterCleanupAndUploadBytes": 814398065,
+    "preservedReleases": [
+      "v0.4.7"
+    ],
+    "deletionCompleted": true,
+    "deletedReleases": [
+      "v0.4.6"
+    ],
+    "verifiedAt": "2026-10-16T11:07:56.531Z",
+    "remainingBeforeUploadBytes": 407197206,
+    "verifiedVia": "Logged-in delete confirmation and live releases API shows only v0.4.7"
+  },
+  "runtimeLimits": {
+    "macIntelNativeRun": false,
+    "windowsNativeInstallThisMac": false,
+    "userRunningAppPreserved": true
+  },
+  "published": true,
+  "packageChecks": [
+    {
+      "name": "source-parity",
+      "passed": true
+    },
+    {
+      "name": "local-integrity",
+      "passed": true
+    },
+    {
+      "name": "codesign-arm64",
+      "passed": true
+    },
+    {
+      "name": "codesign-x64",
+      "passed": true
+    },
+    {
+      "name": "installers",
+      "passed": true
+    },
+    {
+      "name": "real-mac-runtime",
+      "passed": true
+    },
+    {
+      "name": "packaged-desktop",
+      "passed": true
+    },
+    {
+      "name": "packaged-ui",
+      "passed": true
+    },
+    {
+      "name": "packaged-selected-export",
+      "passed": true
+    },
+    {
+      "name": "packaged-canvas-selection",
+      "passed": true
+    },
+    {
+      "name": "local-sdk",
+      "passed": true
+    },
+    {
+      "name": "packaged-close-empty",
+      "passed": true
+    },
+    {
+      "name": "packaged-close-thumbnail",
+      "passed": true
+    },
+    {
+      "name": "packaged-close-optimization",
+      "passed": true
+    },
+    {
+      "name": "packaged-close-save-error",
+      "passed": true
+    },
+    {
+      "name": "packaged-close-card-name",
+      "passed": true
+    }
+  ],
+  "packagedUpdateFeeds": [
+    {
+      "platform": "arm64",
+      "feedVersion": "0.4.8",
+      "dynamicGiteeSourceCorrect": true,
+      "trustedMacKeyMatches": true
+    },
+    {
+      "platform": "x64",
+      "feedVersion": "0.4.8",
+      "dynamicGiteeSourceCorrect": true,
+      "trustedMacKeyMatches": true
+    },
+    {
+      "platform": "win",
+      "feedVersion": "0.4.8",
+      "dynamicGiteeSourceCorrect": true
+    }
+  ],
+  "sourceUiAfterFocusHarnessChange": "artifacts/release-v048-ui-focus-check.log",
+  "testHarnessNote": "The isolated UI test keeps one CDP session with focus emulation through reloads and waits for painted state before evaluating save/geometry assertions. Production package contents are unchanged.",
+  "releaseApiStatus": {
+    "status": 200,
+    "apiDiscoveryVerified": true,
+    "previousRateLimitRecovered": true
+  },
+  "verifiedAt": "2026-10-16T11:21:16.194Z",
+  "releaseUrl": "https://gitee.com/a1meon_admin/halframe-releases/releases/tag/v0.4.8",
+  "uploadedAssets": 15,
+  "formal": {
+    "passed": true,
+    "verifiedAt": "2026-10-16T11:21:16.194Z",
+    "formalRelease": "v0.4.8",
+    "prerelease": false,
+    "releaseId": 1210646,
+    "releaseUrl": "https://gitee.com/a1meon_admin/halframe-releases/releases/tag/v0.4.8",
+    "uploadedAssets": 15,
+    "retainedReleases": [
+      "v0.4.7",
+      "v0.4.8"
+    ],
+    "macChecks": [
+      {
+        "arch": "arm64",
+        "currentVersion": "0.4.7",
+        "latestVersion": "0.4.8",
+        "updateAvailable": true,
+        "noAutomaticDownload": true,
+        "apiDiscovery": true
+      },
+      {
+        "arch": "arm64",
+        "currentVersion": "0.4.8",
+        "latestVersion": "0.4.8",
+        "updateAvailable": false,
+        "noAutomaticDownload": true,
+        "apiDiscovery": true
+      },
+      {
+        "arch": "x64",
+        "currentVersion": "0.4.7",
+        "latestVersion": "0.4.8",
+        "updateAvailable": true,
+        "noAutomaticDownload": true,
+        "apiDiscovery": true
+      },
+      {
+        "arch": "x64",
+        "currentVersion": "0.4.8",
+        "latestVersion": "0.4.8",
+        "updateAvailable": false,
+        "noAutomaticDownload": true,
+        "apiDiscovery": true
+      }
+    ],
+    "winApiFeed": "https://gitee.com/a1meon_admin/halframe-releases/releases/download/v0.4.8/",
+    "latestReleaseApiStatus": 200
+  },
+  "smallAssetRemoteParity": {
+    "passed": true,
+    "anonymousDownloads": true,
+    "files": [
+      {
+        "name": "Install-Qingtu-0.4.8-Windows.cmd",
+        "bytes": 1663,
+        "sha256": "c67cd99c658cc9b32f801f8fa831a7a104b6b11c88b7b652115c6b9974d6fdc2"
+      },
+      {
+        "name": "Qingtu-0.4.8-Mac-arm64-Installer.dmg",
+        "bytes": 20593,
+        "sha256": "e9775d45c1f837d5656d55f0ccb38ddbb6491226e499269967a8ff8b7c6ab90c"
+      },
+      {
+        "name": "Qingtu-0.4.8-Mac-x64-Installer.dmg",
+        "bytes": 20603,
+        "sha256": "737130179c82a74dc6bb01447c439bbaaa95d0e61b46ffc5fd024768d79ec1a7"
+      },
+      {
+        "name": "SHA256SUMS-0.4.8.txt",
+        "bytes": 1330,
+        "sha256": "f9ac6899b0b0494ebb8a74f6840d471145184868cc440ec298cf15e47b543f05"
+      },
+      {
+        "name": "latest.yml",
+        "bytes": 767,
+        "sha256": "346ee73122aa2d3014e7b8510903aa056402763af1087ee6a27cbcebea767b45"
+      },
+      {
+        "name": "mac-arm64.json",
+        "bytes": 1178,
+        "sha256": "c50f66c08b801a9d7ab68690490dba163e32f2337e463ed3637a089400dfa8e4"
+      },
+      {
+        "name": "mac-x64.json",
+        "bytes": 1166,
+        "sha256": "0205636e4296896273af4bf4ce8acd050bb3b0b8d87cfc7fb50e423ccd0e4d2b"
+      }
+    ]
+  },
+  "macRemote": [
+    {
+      "passed": true,
+      "arch": "arm64",
+      "anonymousDownload": true,
+      "authenticatedManifest": true,
+      "fullHashVerified": true,
+      "sparkleArchiveSignatureVerified": true,
+      "bytes": 138186587,
+      "sha512": "vyB4tlhA/UbBJnzSGxZe92/ym59v5Igx6ZG19sEsq94GgL9LPvtV14TG8JfkPM47pJku/ZEyJ0F/zGsg3BPgfw=="
+    },
+    {
+      "passed": true,
+      "arch": "x64",
+      "anonymousDownload": true,
+      "authenticatedManifest": true,
+      "fullHashVerified": true,
+      "sparkleArchiveSignatureVerified": true,
+      "bytes": 145939999,
+      "sha512": "oFa97yjIE7vASO9DLMlBnQYkPjUuqMRxQ599wKbpDx8hxZWjOfu/Mf0hwWPOsG+6c/qIHmbM7tASkg+lwcxSYA=="
+    }
+  ],
+  "windowsRemoteSdk": {
+    "passed": true,
+    "realNsisSdk": true,
+    "version": "0.4.8",
+    "bytes": 123026973,
+    "sha512": "9bTUIccgtS5KpegOr5jeRxbJtCHS6KoBL7EEtyg1yyK51fa8INlFwDI5+PFiQ2tkpkUo/NiST+clwt0gT24VnQ==",
+    "installationTriggered": false,
+    "source": "https://gitee.com/a1meon_admin/halframe-releases/releases/download/v0.4.8/"
+  },
+  "currentWindows": {
+    "passed": true,
+    "currentVersion": "0.4.8",
+    "noAutomaticDownload": true,
+    "source": "https://gitee.com/a1meon_admin/halframe-releases/releases/download/v0.4.8/"
+  },
+  "evidenceScreenshot": "docs/release-0.4.8-validation/gitee-formal.png"
+}
