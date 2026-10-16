@@ -14,6 +14,7 @@ async function waitFor(win,expr){for(let n=0;n<100;n++){if(await win.webContents
   const errors=[];
   win.webContents.on('console-message',(_e,level,message)=>{if(level>=3)errors.push(message);});
   await waitFor(win,"!!document.querySelector('.export-button') && !document.querySelector('.add-tile').disabled");
+  await win.webContents.executeJavaScript("document.querySelector('[aria-label=\"压缩调整\"]').click()");
   if(process.platform==='darwin'){
    assert.deepEqual(win.getWindowButtonPosition(),{x:14,y:18});
    assert.equal(await win.webContents.executeJavaScript("document.querySelector('.brand').getBoundingClientRect().left >= 90 && !document.querySelector('.mac-controls')"),true);

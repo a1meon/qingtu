@@ -33,6 +33,9 @@ async function waitFor(win,expr){for(let n=0;n<160;n++){if(await win.webContents
   async function confirmDialog(){await waitFor(win,"!!document.querySelector('.stitch-dialog[open]')");await js("document.querySelector('.dialog-confirm').click()");await waitFor(win,"!document.querySelector('.stitch-dialog')");}
 
   await waitFor(win,"!!document.querySelector('#width')");
+  assert.deepEqual(await js("[...document.querySelectorAll('.tool-nav button')].map(e=>e.getAttribute('aria-label'))"),['图像拼接','压缩调整']);
+  assert.equal(await js("document.querySelector('.tool-nav [aria-current=page]').getAttribute('aria-label')"),'图像拼接','launch opens the first menu');
+  await js("document.querySelector('[aria-label=\"压缩调整\"]').click()");
   assert.equal(await js("document.querySelector('#width').value"),'3840','empty dimensions use 4K');
   assert.equal(await js("document.querySelector('#height').value"),'2160');
   assert.equal(await js("document.querySelector('#format').textContent"),'PNG');

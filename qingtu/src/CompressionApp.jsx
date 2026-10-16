@@ -15,7 +15,7 @@ const bytesText=b=>b<1000?`${b} B`:b<1000000?`${Math.ceil(b/1000)} KB`:`${Math.c
 const defaults={type:'scale',percent:100,locked:true,anchor:'width',width:3840,height:2160};
 const isMac=desktop&&window.qingtu.platform==='darwin';
 export function CompressionApp(){
- const [module,setModule]=useState('compress'),[stitchBusy,setStitchBusy]=useState(false),[stitchCount,setStitchCount]=useState(0);
+ const [module,setModule]=useState('stitch'),[stitchBusy,setStitchBusy]=useState(false),[stitchCount,setStitchCount]=useState(0);
  const stitch=useRef(),exportTask=useRef(Promise.resolve());
  const [items,setItems]=useState([]),[selectedId,setSelectedId]=useState(null),[loading,setLoading]=useState(false);
  const [target,setTarget]=useState(10),[unit,setUnit]=useState('MB'),[format,setFormat]=useState('png'),[resize,setResize]=useState(defaults);

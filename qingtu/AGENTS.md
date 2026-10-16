@@ -10,6 +10,8 @@ Build app UI in `src/`. Keep `.openai/hosting.json`, `worker/index.js`, `scripts
 
 ## User-approved product constraints (latest feedback overrides earlier designs)
 
+- Menu order (2026-10-16): 图像拼接 is the first navigation item and default startup module; 压缩调整 is second. Keep both modules' editing state when switching and keep the browser preview available for user testing.
+
 - Use a light, restrained desktop interface with short labels. Avoid explanatory paragraphs, marketing copy, decorative badges, and extra status bars.
 - Use one automatic workflow, with no target/lossless mode tabs. Prefer pixel-preserving optimization; if it cannot meet the requested byte budget, search encoding quality instead of refusing solely because lossless encoding is too large. Do not label every export as lossless. Pixel dimensions and percentage scale remain editable.
 - Latest size rule (2026-10-13): MB defaults and accepts integers; 1 MB = 1,000,000 bytes, 1 KB = 1,000 bytes. Smart exports must never exceed the entered byte ceiling. Keep fitting unchanged originals. Resized or converted outputs may use the full requested budget; prioritize full-colour pixels, otherwise choose the highest fitting quality as close as possible to the ceiling. Never add neutral padding to inflate an export. Report mathematically infeasible budgets clearly.
