@@ -180,3 +180,16 @@ test('fixed percentage crop remains centred and clipped correctly after nonunifo
  const p={id:'fraction-clipped',canvasMode:'fixed',canvas:{width:100,height:100},images:[item],positions:{[item.id]:{x:-10,y:-5,width:120,height:105}},edits:{[item.id]:{axis:'horizontal',fraction:.1}},layout:'free',export:settings};
  const r=await service.render(p),actual=await sharp(images.result(r.token).output.buffer).ensureAlpha().raw().toBuffer(),expected=await sharp(source).resize(150,105,{fit:'fill'}).extract({left:25,top:5,width:100,height:100}).ensureAlpha().raw().toBuffer();assert.ok(actual.equals(expected));
 });
+
+test('renamed canvas exports use its complete current name for web and desktop even with cached pixels',async t=>{
+ const {root,store,images,service}=await setup(t),item=await solid(store,'original.png',80,60,'#336699');
+ const first={id:'renamed',name:'旧名称',images:[item],layout:'horizontal',export:settings};
+ const preview=await service.render(first,{latest:true}),before=images.result(preview.token).output.buffer;
+ for(const [name,expected] of [['画布 12','画布 12.png'],['我的成片.v1.2','我的成片.v1.2.png'],['批次二','批次二.png'],['成片.png','成片.png'],['海报/终稿:一','海报_终稿_一.png'],['CON.final','_CON.final.png']]){
+  const p={...first,name};await store.save(p);const result=await service.render(await store.load(p.id));
+  const download=images.download(result.token);assert.equal(download.name,expected);assert.ok(Buffer.from(download.base64,'base64').equals(before));
+  const saved=await images.save(result.token,root);assert.equal(path.basename(saved.path),expected);assert.ok((await fs.readFile(saved.path)).equals(before));
+ }
+ const next=await service.render({...first,name:'画布 12'}),saved=await images.save(next.token,root);assert.equal(path.basename(saved.path),'画布 12-2.png');
+ assert.ok((await fs.readFile(path.join(root,'画布 12.png'))).equals(before),'a duplicate name never overwrites an existing export');
+});

@@ -43,5 +43,14 @@ const {createSmoke}=require('./portrait-smoke-helpers.cjs');
  for(const before of original)for(const image of before.images)assert.ok((await s.store.readAsset(image.assetId)).equals(await fs.readFile(path.resolve('public/samples',image.name))));
  await s.click('[aria-label="选择导出 图像 2"]');await s.js("document.querySelector('[aria-label=\"打开画布 图像 2\"]').dispatchEvent(new MouseEvent('contextmenu',{bubbles:true,cancelable:true,clientX:400,clientY:600}))");await s.wait("!!document.querySelector('.canvas-context-menu')");await s.click('.canvas-context-menu button:last-child');await s.wait("!!document.querySelector('.stitch-dialog')");await s.click('.dialog-confirm');await s.wait("!document.querySelector('.stitch-dialog')&&document.querySelectorAll('.canvas-card').length===3&&!document.querySelector('.project-name').disabled");
  assert.equal(await s.js("document.querySelector('.stitch-stage').parentElement.querySelector('.export-button').textContent"),'导出 0 张图像');assert.equal(await s.js("document.querySelector('.stitch-stage').parentElement.querySelector('.export-button').disabled"),true,'deleting the only selected canvas never falls back to exporting other canvases');
- await s.finish({passed:true,singleAndMultipleExactFiles:true,keyboardSelectionAndExport:true,selectionDoesNotOpenOrEncode:true,emptySkipped:true,selectAllAndNone:true,mixedState:true,moduleSwitchPreservesSelection:true,unselectedInvalidCanvasDoesNotBlock:true,selectionLockedDuringExport:true,deletedSelectionDoesNotExportOthers:true,sourceBytesUnchanged:true,outputs});
+ const renamedFolder=path.join(s.root,'renamed');await fs.mkdir(renamedFolder);s.service.save=async token=>{const result=await save(token,renamedFolder);saved.push(result);return result;};
+ for(const [oldName,name] of [['图像 1','画布 12'],['图像 3','我的成片.v1.2']]){
+  await s.click(`[aria-label="打开画布 ${oldName}"]`);await s.ready();await s.edit('.project-name',name);await s.ready();
+  assert.equal(await s.js("document.querySelector('.project-name').value"),name);assert.equal((await s.load()).name,name);
+  assert.ok(await s.js(`!!document.querySelector('[aria-label="打开画布 ${name}"]')&&!!document.querySelector('[aria-label="选择导出 ${name}"]')`));
+  await s.click(`[aria-label="选择导出 ${name}"]`);
+ }
+ await s.capture('renamed-canvases.png');await s.click('.stitch-stage + .inspector-shell .export-button');await s.wait("document.querySelector('.notice')?.textContent.includes('已导出 2 张图像')&&!document.querySelector('.project-name').disabled");
+ const renamedExports=saved.slice(3).map(item=>path.basename(item.path)).sort();assert.deepEqual(renamedExports,['我的成片.v1.2.png','画布 12.png'].sort());
+ await s.finish({passed:true,singleAndMultipleExactFiles:true,keyboardSelectionAndExport:true,selectionDoesNotOpenOrEncode:true,emptySkipped:true,selectAllAndNone:true,mixedState:true,moduleSwitchPreservesSelection:true,unselectedInvalidCanvasDoesNotBlock:true,selectionLockedDuringExport:true,deletedSelectionDoesNotExportOthers:true,sourceBytesUnchanged:true,renamedTitlesCardsAndExportChoices:true,renamedExports,outputs});
 })().catch(error=>{console.error(error);app.exit(1);});

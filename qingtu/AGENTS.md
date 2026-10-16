@@ -10,6 +10,8 @@ Build app UI in `src/`. Keep `.openai/hosting.json`, `worker/index.js`, `scripts
 
 ## User-approved product constraints (latest feedback overrides earlier designs)
 
+- Canvas naming (2026-10-16): preserve literal user-entered canvas names in the title, cards, export choices and dialogs, including names such as 画布 12 or 拼图3. Both browser and desktop stitching exports use that current name plus the actual format extension, retain dots inside titles, and add no -qingtu suffix. Rename after cached previews must use the latest name. Keep safe filesystem characters and exclusive same-name numbering; compression naming remains unchanged.
+
 - Menu order (2026-10-16): 图像拼接 is the first navigation item and default startup module; 压缩调整 is second. Keep both modules' editing state when switching and keep the browser preview available for user testing.
 
 - Use a light, restrained desktop interface with short labels. Avoid explanatory paragraphs, marketing copy, decorative badges, and extra status bars.

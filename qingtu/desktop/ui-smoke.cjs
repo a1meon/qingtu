@@ -13,7 +13,7 @@ async function waitFor(win,expr){for(let n=0;n<160;n++){if(await win.webContents
   const {win,service,store,stitching}=await start({testFolder:temp,projectRoot,testFiles:[path.join(__dirname,'../public/samples/alpine-lake.jpg')],hidden:true});
   let stitchCalls=0,saveDelay=0,saveFailure=false;const render=stitching.render.bind(stitching);stitching.render=async(...args)=>{stitchCalls++;return render(...args);};const persistProject=store.save.bind(store);store.save=async value=>{if(saveFailure){saveFailure=false;throw new Error('测试：保存失败');}if(saveDelay)await pause(saveDelay);return persistProject(value);};
   win.webContents.setBackgroundThrottling(false);
-  win.show();win.focus();
+  win.show();if(process.platform==='darwin')app.focus({steal:true});win.focus();
   const js=async expr=>{try{return await win.webContents.executeJavaScript(expr);}catch(error){console.error('Renderer expression failed:',expr);throw error;}};
   async function capturePage(rect){
    for(let attempt=0;attempt<3;attempt++)try{return await win.webContents.capturePage(rect);}catch(error){

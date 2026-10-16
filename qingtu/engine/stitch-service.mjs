@@ -77,7 +77,7 @@ export class StitchService{
    const preview=await sharp(output.buffer).resize({width:1200,height:800,fit:'inside',withoutEnlargement:true}).png().toBuffer();
    if(revision!==null){const previous=this.previews.get(copy.id);if(previous)this.images.results.delete(previous);this.previews.set(copy.id,token);}
    if(revision===null||output.buffer.length<=64*1024*1024){
-    this.images.results.set(token,{id:copy.id,name:copy.name||'拼图',output,exportTask:revision===null});
+    this.images.results.set(token,{id:copy.id,name:copy.name||'图像',canvas:true,output,exportTask:revision===null});
     this.images.trimPreviews();
    }
    const result={token,width:output.width,height:output.height,requestedWidth:output.requestedWidth,requestedHeight:output.requestedHeight,autoResized:output.autoResized,scalePercent:output.scalePercent,differenceReference:output.differenceReference,bytes:output.buffer.length,limitBytes:output.limitBytes,format:output.format,lossless:output.lossless,encoding:output.encoding,difference:output.difference,layout,preview:'data:image/png;base64,'+preview.toString('base64')};

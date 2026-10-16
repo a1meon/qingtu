@@ -10,6 +10,14 @@ const preview=async(buffer,bounds={width:1600,height:1200})=>{
     .png().toBuffer({resolveWithObject:true});
   return {url:'data:image/png;base64,'+data.toString('base64'),width:info.width,height:info.height};
 };
+function exportStem({name,canvas,output}){
+  const ext=output.format==='jpeg'?'jpg':output.format;
+  let value=canvas?String(name||'图像'):path.parse(name).name;
+  if(canvas&&value.toLowerCase().endsWith('.'+ext))value=value.slice(0,-ext.length-1);
+  let stem=value.replace(/[<>:"/\\|?*\x00-\x1f]/g,'_').slice(0,120).replace(/[. ]+$/g,'')||(canvas?'图像':'image');
+  if(canvas&&/^(con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\.|$)/i.test(stem))stem='_'+stem;
+  return canvas?stem:stem+'-qingtu';
+}
 export class ImageService {
   files=new Map(); results=new Map(); totalBytes=0;
   async add(buffer, name, sample=false) {
@@ -68,11 +76,11 @@ export class ImageService {
     return result;
   }
   async save(token,folder) {
-    const {name,output,exportTask}=this.result(token);
+    const result=this.result(token),{output,exportTask}=result;
     const ext=output.format==='jpeg'?'jpg':output.format;
-    const stem=path.parse(name).name.replace(/[<>:"/\\|?*\x00-\x1f]/g,'_').slice(0,120)||'image';
+    const stem=exportStem(result);
     try{for(let n=1;n<=10000;n++) {
-      const destination=path.join(folder,`${stem}-qingtu${n===1?'':`-${n}`}.${ext}`);
+      const destination=path.join(folder,`${stem}${n===1?'':`-${n}`}.${ext}`);
       try {await fs.writeFile(destination,output.buffer,{flag:'wx'});const bytes=(await fs.stat(destination)).size;if(output.limitBytes&&bytes>output.limitBytes)throw new Error('保存文件超过体积上限');return {path:destination,bytes};}
       catch(error){if(error.code!=='EEXIST') throw error;}
     }
@@ -80,7 +88,7 @@ export class ImageService {
     }finally{if(exportTask)this.results.delete(token);}
   }
   download(token) {
-    const {name,output}=this.result(token);
-    return {name:path.parse(name).name+'-qingtu.'+(output.format==='jpeg'?'jpg':output.format),base64:output.buffer.toString('base64'),mime:'image/'+output.format};
+    const result=this.result(token),{output}=result;
+    return {name:exportStem(result)+'.'+(output.format==='jpeg'?'jpg':output.format),base64:output.buffer.toString('base64'),mime:'image/'+output.format};
   }
 }
