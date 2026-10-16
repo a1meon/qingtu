@@ -37,7 +37,9 @@
     "smoke:update": "electron desktop/update-smoke.cjs",
     "smoke:chunks": "electron desktop/chunk-smoke.cjs",
     "release:chunks": "node scripts/prepare-chunk-release.cjs release/latest.yml release/gitee-publish",
-    "icons": "node scripts/prepare-icons.mjs"
+    "icons": "node scripts/prepare-icons.mjs",
+    "smoke:canvas-selection": "electron desktop/canvas-selection-smoke.cjs",
+    "smoke:window-close": "node scripts/smoke-window-close.cjs"
   },
   "dependencies": {
     "@phosphor-icons/react": "2.1.10",
@@ -75,6 +77,8 @@
       "!desktop/optimization-close-smoke.cjs",
       "!desktop/optimization-settings-smoke.cjs",
       "!desktop/selected-export-smoke.cjs",
+      "!desktop/canvas-selection-smoke.cjs",
+      "!desktop/window-close-smoke.cjs",
       "!desktop/drop-canvas-smoke.cjs",
       "!desktop/png-budget-smoke.cjs",
       "!desktop/fixed-canvas-smoke.cjs",

@@ -104,12 +104,12 @@ label,h2 { display:block; font-size:16px; font-weight:700; margin-bottom:14px; l
 .canvas-cards .canvas-card-open img { object-fit:contain; }
 .canvas-queue-actions { display:flex; align-items:center; gap:14px; }
 .canvas-export-all { display:flex; align-items:center; gap:7px; margin:0; min-height:28px; font-size:12px; cursor:pointer; }
-.canvas-export-select { position:absolute; left:6px; top:6px; width:30px; height:30px; display:grid; place-items:center; margin:0; border-radius:9px; background:#fffffff2; box-shadow:0 1px 4px #19395820; cursor:pointer; }
+.canvas-export-select { position:absolute; right:6px; top:6px; width:24px; height:24px; display:grid; place-items:center; margin:0; border:0; border-radius:0; background:transparent; box-shadow:none; cursor:pointer; }
 .canvas-export-all input,.canvas-export-select input { width:19px; height:19px; margin:0; accent-color:#079bdc; cursor:pointer; }
 .canvas-export-all:has(input:disabled),.canvas-export-select:has(input:disabled) { opacity:.5; cursor:default; }
 .canvas-export-all input:disabled,.canvas-export-select input:disabled { cursor:default; }
 .canvas-export-all:focus-within,.canvas-export-select:focus-within { outline:2px solid #1b87c4; outline-offset:2px; }
-.stitch-canvas-area { position:relative; flex:1; min-height:0; width:100%; display:flex; align-items:center; justify-content:center; overflow:hidden; }
+.stitch-canvas-area { position:relative; flex:1; min-height:0; width:100%; display:flex; align-items:center; justify-content:center; overflow:hidden; outline:none; }
 .canvas-view-fit { position:absolute; right:8px; bottom:8px; z-index:12; display:flex; align-items:center; gap:5px; height:30px; padding:0 10px; border:1px solid #cce6f6; border-radius:10px; background:#fffffff2; color:#2589bb; box-shadow:0 2px 5px #174d6b12; font-size:12px; }
 .canvas-view-fit:hover:not(:disabled) { background:#e9f7ff; border-color:#88cff1; }
 .canvas-view-fit:disabled { opacity:.55; }

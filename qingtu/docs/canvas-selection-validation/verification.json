@@ -1,0 +1,183 @@
+{
+  "unitTests": {
+    "passed": 262,
+    "failed": 0
+  },
+  "checks": [
+    {
+      "name": "test",
+      "passed": true,
+      "status": 0
+    },
+    {
+      "name": "build",
+      "passed": true,
+      "status": 0
+    },
+    {
+      "name": "smoke:window-close",
+      "passed": true,
+      "status": 0
+    },
+    {
+      "name": "smoke:canvas-selection",
+      "passed": true,
+      "status": 0
+    },
+    {
+      "name": "smoke:desktop",
+      "passed": true,
+      "status": 0
+    },
+    {
+      "name": "smoke:ui",
+      "passed": true,
+      "status": 0
+    },
+    {
+      "name": "smoke:canvas",
+      "passed": true,
+      "status": 0
+    },
+    {
+      "name": "smoke:canvas-fit",
+      "passed": true,
+      "status": 0
+    },
+    {
+      "name": "smoke:canvas-resize",
+      "passed": true,
+      "status": 0
+    },
+    {
+      "name": "smoke:crop",
+      "passed": true,
+      "status": 0
+    },
+    {
+      "name": "smoke:offscreen",
+      "passed": true,
+      "status": 0
+    },
+    {
+      "name": "smoke:reset-zoom",
+      "passed": true,
+      "status": 0
+    },
+    {
+      "name": "smoke:split",
+      "passed": true,
+      "status": 0
+    },
+    {
+      "name": "smoke:recovery",
+      "passed": true,
+      "status": 0
+    },
+    {
+      "name": "smoke:optimization",
+      "passed": true,
+      "status": 0
+    },
+    {
+      "name": "smoke:optimization-settings",
+      "passed": true,
+      "status": 0
+    },
+    {
+      "name": "smoke:drop-canvas",
+      "passed": true,
+      "status": 0
+    },
+    {
+      "name": "smoke:selected-export",
+      "passed": true,
+      "status": 0
+    },
+    {
+      "name": "smoke:png-budget",
+      "passed": true,
+      "status": 0
+    },
+    {
+      "name": "smoke:update",
+      "passed": true,
+      "status": 0
+    },
+    {
+      "name": "verify:quality",
+      "passed": true,
+      "status": 0
+    },
+    {
+      "name": "verify:png-budget",
+      "passed": true,
+      "status": 0
+    }
+  ],
+  "macCloseCases": [
+    {
+      "passed": true,
+      "mode": "empty",
+      "nativeWindowClose": true,
+      "projectAndOriginalSaved": true,
+      "saveFailureBlocksClose": false,
+      "traces": [
+        "waiting renderer",
+        "renderer flushed",
+        "closing"
+      ]
+    },
+    {
+      "passed": true,
+      "mode": "thumbnail",
+      "nativeWindowClose": true,
+      "projectAndOriginalSaved": true,
+      "saveFailureBlocksClose": false,
+      "traces": [
+        "waiting renderer",
+        "renderer flushed",
+        "closing"
+      ]
+    },
+    {
+      "passed": true,
+      "mode": "optimization",
+      "nativeWindowClose": true,
+      "projectAndOriginalSaved": true,
+      "saveFailureBlocksClose": false,
+      "traces": [
+        "waiting renderer",
+        "renderer flushed",
+        "closing"
+      ]
+    },
+    {
+      "passed": true,
+      "mode": "save-error",
+      "nativeWindowClose": true,
+      "projectAndOriginalSaved": true,
+      "saveFailureBlocksClose": true,
+      "traces": [
+        "waiting renderer",
+        "waiting renderer",
+        "renderer flushed",
+        "closing"
+      ]
+    },
+    {
+      "passed": true,
+      "mode": "traffic-light",
+      "nativeWindowClose": true,
+      "projectAndOriginalSaved": true,
+      "saveFailureBlocksClose": false,
+      "traces": [
+        "waiting renderer",
+        "renderer flushed",
+        "closing"
+      ]
+    }
+  ],
+  "publishedInstaller": false,
+  "userRunningAppReplaced": false
+}

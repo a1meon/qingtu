@@ -76,7 +76,7 @@ async function waitFor(win,expr){for(let n=0;n<160;n++){if(await win.webContents
   assert.deepEqual(await js("Array.from(document.querySelectorAll('.canvas-actions button'),e=>e.getAttribute('aria-label'))"),['重置裁剪、缩放与顺序','一键优化','设置优化裁剪'],'reset and one optimization group, with its configurable crop dropdown');
   assert.equal(await js("getComputedStyle(document.querySelector('.canvas-reset')).backgroundColor"),'rgb(255, 255, 255)');
   assert.ok((await js("getComputedStyle(document.querySelector('.canvas-optimize')).backgroundImage")).includes('linear-gradient'),'optimization has its own designed background');
-  await waitFor(win,"document.querySelectorAll('.canvas-card').length===1");assert.equal(await js("document.querySelectorAll('.canvas-card input[type=checkbox]').length"),1);assert.equal(await js("document.querySelector('.canvas-card input[type=checkbox]').disabled"),true,'an empty canvas is excluded from export selection');
+  await waitFor(win,"document.querySelectorAll('.canvas-card').length===1");assert.equal(await js("document.querySelectorAll('.canvas-card input[type=checkbox]').length"),0,'an empty canvas has no export checkbox');
   await js("document.querySelector('#stitch-format').click()");await waitFor(win,"document.querySelectorAll('[role=option]').length===2");
   assert.deepEqual(await js("Array.from(document.querySelectorAll('[role=option]'),e=>e.textContent)"),['JPG','PNG']);
   await js("document.querySelector('[role=listbox]').dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true}))");
@@ -309,14 +309,15 @@ async function waitFor(win,expr){for(let n=0;n<160;n++){if(await win.webContents
   assert.equal(await js("document.querySelector('.compare-image').src"),before,'sidebar toggle retains the decoded output');
   assert.equal(await js("document.querySelector('.comparator').getAttribute('style')"),split);
   assert.deepEqual([...service.results.keys()],tokens,'sidebar toggle does not start a new encoding job');
+  let compressionExport;const saveCompression=service.save.bind(service);service.save=(token,...args)=>{compressionExport=service.results.get(token).output;return saveCompression(token,...args);};
   await js("document.querySelector('.export-button').click()");
   await waitFor(win,"document.querySelector('.notice')?.textContent.includes('已导出 1 张')");
   const saved=path.join(temp,'alpine-lake-qingtu.png');
   const sharp=(await import('sharp')).default;
   assert.equal((await sharp(saved).metadata()).format,'png');
   assert.ok((await fs.stat(saved)).size<=10000000);
-  assert.equal([...service.results.values()][0].output.limitBytes,10000000,'10 MB uses decimal filesystem bytes');
-  assert.equal([...service.results.values()][0].output.paddedBytes,0);
+  assert.equal(compressionExport.limitBytes,10000000,'compression retains its decimal 10 MB default independently of stitching');
+  assert.equal(compressionExport.paddedBytes,0);
   await js("document.querySelector('[aria-label=\"清空图片\"]').click(); document.querySelector('[aria-label=\"重置设置\"]').click()");
   await waitFor(win,"document.querySelectorAll('.module-content:not([hidden]) .film-select').length===0");
   assert.equal(await js("document.querySelectorAll('.stitch-layer').length"),2,'clearing compression must retain the independent stitch project');

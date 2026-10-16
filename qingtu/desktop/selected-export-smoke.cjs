@@ -5,15 +5,18 @@ const path=require('node:path');
 const {createSmoke}=require('./portrait-smoke-helpers.cjs');
 (async()=>{
  const s=await createSmoke('qingtu-selected-export-','selected-export');
+ assert.equal(await s.js("document.querySelector('#stitch-target').value"),'30','new stitching canvases start with a 30 MB export budget');
+ assert.equal(await s.js("document.querySelectorAll('.canvas-card input[type=checkbox],.canvas-export-all input').length"),0,'an empty workspace offers no export checkboxes');
  const samples=['alpine-lake.jpg','forest-cabin.jpg','coastline.jpg'];
  for(let n=0;n<3;n++){
   if(n){await s.click('[aria-label="新建画布"]');await s.wait("!!document.querySelector('[aria-label=\"添加拼接图片\"]')&&!document.querySelector('.project-name').disabled");}
   await s.edit('#stitch-height',120);await s.importFiles([path.resolve('public/samples',samples[n])]);await s.edit('#stitch-width',240+n*20);await s.ready();
  }
  assert.equal(await s.js("document.querySelectorAll('.canvas-card input[type=checkbox]').length"),3,'each canvas offers an independent export choice');
+ assert.ok(await s.js("[...document.querySelectorAll('.canvas-export-select')].every(e=>{const r=e.getBoundingClientRect(),c=e.closest('.canvas-card').getBoundingClientRect(),s=getComputedStyle(e);return r.left>c.left+c.width/2&&r.right<=c.right&&s.boxShadow==='none'&&s.backgroundColor==='rgba(0, 0, 0, 0)'&&s.borderWidth==='0px'})"),'checkboxes sit on the right without a surrounding badge');
  const original=await Promise.all((await s.store.list()).map(p=>s.store.load(p.id)));
  await s.click('[aria-label="新建画布"]');await s.wait("document.querySelectorAll('.canvas-card').length===4&&document.querySelector('.project-name').value==='图像 4'&&document.querySelector('.save-status').textContent==='已自动保存'&&!document.querySelector('.project-name').disabled");
- assert.equal(await s.js("document.querySelector('[aria-label=\"选择导出 图像 4\"]').disabled"),true,'empty canvases cannot be selected');
+ assert.equal(await s.js("document.querySelector('[aria-label=\"选择导出 图像 4\"]')"),null,'empty canvases have no export checkbox');
  assert.equal(await s.js("document.querySelector('.stitch-stage').parentElement.querySelector('.export-button').textContent"),'导出 3 张图像');
  await s.click('[aria-label="全选导出图像"]');assert.equal(await s.js("document.querySelector('.stitch-stage').parentElement.querySelector('.export-button').disabled"),true);
  const calls=s.calls();await s.js("document.querySelector('[aria-label=\"选择导出 图像 1\"]').focus()");

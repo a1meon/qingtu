@@ -89,9 +89,12 @@ export function StitchCanvas({project:sourceProject,layout:sourceLayout,onChange
       <img src={image.preview} alt="" draggable={false} style={rect.crop?{position:'absolute',maxWidth:'none',width:`${100/(1-rect.crop.left-rect.crop.right)}%`,height:`${100/(1-(rect.crop.top||0)-(rect.crop.bottom||0))}%`,left:`${-100*rect.crop.left/(1-rect.crop.left-rect.crop.right)}%`,top:`${-100*(rect.crop.top||0)/(1-(rect.crop.top||0)-(rect.crop.bottom||0))}%`}:undefined}/>
      </div>;
  }
- return <div className="stitch-canvas-area" ref={area}>
+ return <div className="stitch-canvas-area" ref={area} tabIndex={-1} onPointerDown={event=>{
+  if(disabled||event.button!==0||event.target.closest('.stitch-layer,.stitch-ghost,.stitch-selection,.inline-image-controls,[data-canvas-split],.canvas-view-fit'))return;
+  onSelect?.(null);event.currentTarget.focus({preventScroll:true});
+ }}>
   {layout?<div ref={canvas} className={`stitch-canvas ${preview?'has-output-preview':''}`} data-interacting={resizeDraft?'true':undefined} data-crop-gesture={cropGesture?'true':undefined} data-canvas-width={layout.width} data-canvas-height={layout.height} style={{width:layout.width*scale,height:layout.height*scale,transform:`translate(${offsetX}px,${offsetY}px)`}}>
-   <div className="stitch-ghosts" aria-hidden>{layout.rects.map(rect=>renderLayer(rect,true))}</div>
+   <div className="stitch-ghosts" aria-hidden>{layout.rects.filter(rect=>rect.id===selected).map(rect=>renderLayer(rect,true))}</div>
    <div className="stitch-content">
     {children}
     {preview&&<img className="stitch-output-preview" src={preview} alt="实际导出预览" draggable={false}/>}
