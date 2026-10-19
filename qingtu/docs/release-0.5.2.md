@@ -25,3 +25,5 @@ Neutralino 6.10.0 的 Windows webview `init` 调用 `AddScriptToExecuteOnDocumen
 发行附件18个，共312,729,720字节。清理前已用772,082,321字节，超过新包所需空间。经用户执行前确认，删除最早v0.4.8的15个附件407,200,859字节；删除前匿名重新下载到release/archive-v048，通过全部SHA256并与原upload-v048逐字节一致。保留v0.5.0、v0.5.1，上传后预计677,611,182字节，低于1GB。
 
 根因参考：[微软异步注入接口说明](https://learn.microsoft.com/en-us/microsoft-edge/webview2/reference/win32/icorewebview2#addscripttoexecuteondocumentcreated)、[Neutralino 6.10.0 Windows实现](https://github.com/neutralinojs/neutralinojs/blob/v6.10.0/lib/webview/webview.h)、[官方globals端点](https://github.com/neutralinojs/neutralinojs/blob/v6.10.0/server/router.cpp)。
+
+正式发行版：https://gitee.com/a1meon_admin/halframe-releases/releases/tag/v0.5.2 （ID1219083，prerelease=false，真实latest指向0.5.2）。18个附件匿名下载与本地逐字节一致，四份Mac归档验签通过。Windows真实NsisUpdater从Gitee完成安装包下载与SHA512校验；当前0.5.2检查不下载。冻结旧客户端、过渡客户端与轻量客户端均通过真实latest入口检查。0.5.0与0.5.1旧下载页已保留原说明并置顶0.5.2恢复指引。实现提交7571810已推送；最终证据见legacy-update-validation/published-0.5.2.json。

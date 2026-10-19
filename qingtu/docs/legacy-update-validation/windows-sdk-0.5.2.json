@@ -1,0 +1,9 @@
+{
+  "passed": true,
+  "realNsisSdk": true,
+  "version": "0.5.2",
+  "bytes": 9276744,
+  "sha512": "PrGaw8yGnnOrTdFBBFZ2tL8tHbrakJ+OfgP2l6VDR5kByE5OAi2E8JknOowcZgBQVHWOrSLNmW9OaTMwnmOZnA==",
+  "installationTriggered": false,
+  "source": "https://gitee.com/a1meon_admin/halframe-releases/releases/download/v0.5.2/"
+}
