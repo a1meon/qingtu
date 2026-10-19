@@ -12,10 +12,12 @@ Mac 开启透明原生窗口，页面使用 12px 圆角，浮动参数框和原�
 
 使用 pack:release 构建完整 18 个更新兼容附件，本地总计 312,769,761 字节。安装包约 9–12 MB，另有保留给 0.4.x 升级使用的兼容桥接附件。Windows 安装包提取的四个载荷与构建文件逐字节一致。全部附件哈希、三个轻量签名清单及四份 Mac Sparkle 归档签名验证通过。
 
-本机是 Apple Silicon Mac，未在真实 Windows 或 Intel Mac 上运行本版本。Windows 原生测试程序仅完成交叉编译。用户已授权发布，发行地址为 https://gitee.com/a1meon_admin/halframe-releases/releases/tag/v0.5.4 。最终上传和匿名下载核验结果见发布验证记录。
+本机是 Apple Silicon Mac，未在真实 Windows 或 Intel Mac 上运行本版本。Windows 原生测试程序仅完成交叉编译。用户已授权发布，发行地址为 https://gitee.com/a1meon_admin/halframe-releases/releases/tag/v0.5.4 。已保存为最新正式版。18 个附件均匿名重新下载，与本地逐字节一致，总计 312,769,761 字节；四份官方 Sparkle 签名及三个轻量签名清单有效。源码实现提交 ed9e79f，完整记录见 docs/legacy-update-validation/published-0.5.4.json。
 
 Windows 0.5.2 用户若点击“立即更新”没有响应，下载发行页的 0.5.4 Setup.exe，关闭轻图后覆盖原安装，无需卸载。已有前端不能通过更新清单在下载前自行修补此点击问题。
 
-发布前公开附件合计 625,473,983 字节，本次附件 312,769,761 字节；网页提示仓库附件总配额 1 GB。公开附件总和并不保证等于服务器计费容量，以上传服务器实际结果为准。最早的 0.5.2 已匿名重新下载完整 18 文件并逐字节核对到 release/archive-v052；仅在空间不足时清理。
+发布前公开附件合计 625,473,983 字节，本次附件 312,769,761 字节；网页提示仓库附件总配额 1 GB。公开附件总和并不保证等于服务器计费容量，以上传服务器实际结果为准。最早的 0.5.2 已匿名重新下载完整 18 文件并逐字节核对到 release/archive-v052；实际补传返回超过 1 GB 配额，经用户在执行时再次确认后删除 v0.5.2。保留 v0.5.3 和 v0.5.4，公开附件合计 625,514,024 字节。
 
 参考：[Win32 窗口区域](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-setwindowrgn)。
+
+发布后，命令行和已登录 Chrome 的 /api/v5/.../releases/latest 均返回 403 Forbidden (Rate Limit Exceeded)。网页发行版标记和静态附件可用，但未确认线上应用内更新检查恢复；不将签名及本地迁移检查当作 API 恢复证据。受影响用户可从发行页直接下载安装包。

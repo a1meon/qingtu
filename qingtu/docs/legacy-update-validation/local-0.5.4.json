@@ -1,6 +1,6 @@
 {
   "version": "0.5.4",
-  "status": "validated-for-publication",
+  "status": "published",
   "checkedAt": "2026-10-19T13:50:15.394064+00:00",
   "unitTests": 315,
   "liteTests": 278,
@@ -398,8 +398,8 @@
   "windowsTestsCrossCompiled": true,
   "windowsNativeExecuted": false,
   "review": "Mac transparent host, body and modal backdrop clipping reviewed; fullscreen event corrected; no further actionable findings.",
-  "giteePublished": false,
-  "generatedMacAppCopiesTrashed": 0,
+  "giteePublished": true,
+  "generatedMacAppCopiesTrashed": 9,
   "installedUserAppPreserved": "/Applications/轻图.app",
   "nativeMacMigration": {
     "passed": true,

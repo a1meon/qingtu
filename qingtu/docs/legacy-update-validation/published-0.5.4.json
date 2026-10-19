@@ -1,0 +1,144 @@
+{
+  "version": "0.5.4",
+  "tag": "v0.5.4",
+  "prerelease": false,
+  "url": "https://gitee.com/a1meon_admin/halframe-releases/releases/tag/v0.5.4",
+  "sourceImplementationCommit": "ed9e79f",
+  "checkedAt": "2026-10-19T14:05:31.806989+00:00",
+  "formalLatestConfirmedInBrowser": true,
+  "anonymousDownloadAndByteEquality": {
+    "checkedAt": "2026-10-19T14:03:33.483524+00:00",
+    "files": [
+      {
+        "name": "Qingtu-0.5.4-Mac-arm64.zip",
+        "bytes": 10020904,
+        "sha256": "55e4fa53ebb87af0f928b4bf10469ca5c3af9396f50cfcbe9ad53caeddd4414a"
+      },
+      {
+        "name": "lite-darwin-x64.json",
+        "bytes": 411,
+        "sha256": "84702a9a94fec26fd4dbc488cab1daf7724212d6774c2e3db83bb8c786f0bff1"
+      },
+      {
+        "name": "mac-x64.json",
+        "bytes": 998,
+        "sha256": "565b97562a55d269ff8aaceb553088d95e1fed9a01c2783e3c7c92a4cd9b735b"
+      },
+      {
+        "name": "Qingtu-0.5.4-Mac-arm64-Installer.dmg",
+        "bytes": 11044242,
+        "sha256": "432d39428be183f81aea9630fe4a9a4d17bb304cf469cb0d1c7b47702153cf29"
+      },
+      {
+        "name": "Qingtu-0.5.4-Windows-x64-Setup.exe",
+        "bytes": 9289840,
+        "sha256": "34b0be102f57a28335eba4566588e3c97a78d50e7651e1152d607cd15ae97394"
+      },
+      {
+        "name": "Qingtu-0.4.9-mac-arm64.zip.part02",
+        "bytes": 59264136,
+        "sha256": "20b10ceec8676a202e0dbcfc2a7523cfb4a5aab35e92a2290179bf9bae90eca8"
+      },
+      {
+        "name": "Qingtu-0.4.9-mac-x64.zip.part02",
+        "bytes": 67017550,
+        "sha256": "0f09675403b1099aa571357e9c866213577a6ab070c92b0762c3f8636fadd119"
+      },
+      {
+        "name": "Qingtu-0.5.4-Mac-x64-Installer.dmg",
+        "bytes": 11501050,
+        "sha256": "3205cbbadaf9575be8ca029c3d3c16901ddd268b6e9b7c98a8f3b7b43e39336d"
+      },
+      {
+        "name": "latest.yml",
+        "bytes": 601,
+        "sha256": "0710134fcadb4a6dde1a52d338239e96c2923fedcf815525dbc70b550dbd345a"
+      },
+      {
+        "name": "mac-arm64.json",
+        "bytes": 1006,
+        "sha256": "e252a58b324918830f016b2f23b6efd672ccf4b72c4d5411a6d8319d9c53e746"
+      },
+      {
+        "name": "mac-light-arm64.json",
+        "bytes": 782,
+        "sha256": "a0d3e804c59234b2065dc911448f4dd5cfe517c0052e2974904cc3cc2ca1e9e9"
+      },
+      {
+        "name": "lite-darwin-arm64.json",
+        "bytes": 415,
+        "sha256": "c5a293a934cb4bc3af9e762362dddefaf363038603fb38e01b6dfacf9b2639b2"
+      },
+      {
+        "name": "Qingtu-0.5.4-Mac-x64.zip",
+        "bytes": 10407353,
+        "sha256": "017ea0ecf83d52b851c7466d9b8a849d2c11493935927e0f0e444cfc9050f3f8"
+      },
+      {
+        "name": "SHA256SUMS-0.5.4.txt",
+        "bytes": 1556,
+        "sha256": "aa209cbb405f976de60650991f761e6b7df8ee8dcf254cb0a3ea9d6ac4cc852d"
+      },
+      {
+        "name": "Qingtu-0.4.9-mac-arm64.zip.part01",
+        "bytes": 67108864,
+        "sha256": "be8874a174ed32234e7357120556179ccf46d03243845b2fea15df10fb52d9d6"
+      },
+      {
+        "name": "lite-win32-x64.json",
+        "bytes": 415,
+        "sha256": "efb1f7a8fe83d34181f94bc64914970cde941817638da380941dac1c64a3364b"
+      },
+      {
+        "name": "mac-light-x64.json",
+        "bytes": 774,
+        "sha256": "d4c683cf4ff16af2b8e5a96ad237dd00633a0983149a47bcdd76224400a5fdaf"
+      },
+      {
+        "name": "Qingtu-0.4.9-mac-x64.zip.part01",
+        "bytes": 67108864,
+        "sha256": "c74be06f97df8c60fd9da82fb0052f21a1ed20cb4432f704a1584f30b030fcf3"
+      }
+    ],
+    "version": "0.5.4",
+    "anonymousDownload": true,
+    "byteEqualToLocal": true,
+    "bytes": 312769761
+  },
+  "signatures": {
+    "signedLiteManifests": 3,
+    "officialSparkleArchives": 4,
+    "allVerified": true
+  },
+  "quota": {
+    "publicAttachmentBytesBefore": 625473983,
+    "newAttachmentBytes": 312769761,
+    "uploadRejectedWith": "文件大小已超出仓库附件配额：1 GB",
+    "explicitActionTimeConfirmation": true,
+    "deleted": [
+      "v0.5.2"
+    ],
+    "deletedBytes": 312729720,
+    "backupDirectory": "release/archive-v052",
+    "backupFiles": 18,
+    "freshAnonymousBackup": true,
+    "byteEqualOriginal": true,
+    "retained": [
+      "v0.5.3",
+      "v0.5.4"
+    ],
+    "publicAttachmentBytesAfter": 625514024
+  },
+  "updateAPI": {
+    "liveLatestHTTPStatus": 403,
+    "browserBody": "403 Forbidden (Rate Limit Exceeded)",
+    "apiRecoveryConfirmed": false,
+    "publicStaticDownloadsVerified": true,
+    "inAppLiveUpdateCheckConfirmed": false
+  },
+  "validationRecord": "local-0.5.4.json",
+  "nativeWindowsExecuted": false,
+  "nativeIntelMacExecuted": false,
+  "installedUserAppPreserved": "/Applications/轻图.app",
+  "generatedMacAppCopiesTrashed": 9
+}
