@@ -27,4 +27,4 @@
 | Qingtu-0.5.0-Mac-x64-Installer.dmg | 11,483,147 | 11.48 |
 | Qingtu-0.5.0-Windows-x64-Setup.exe | 9,248,731 | 9.25 |
 
-已准备发行附件和源码；Gitee 上传等待 Chrome 可操作，线上下载验证完成后更新此记录。
+源码已推送至 origin/codex/stitch-and-quality：实现提交 62a8aeb，验证记录提交 1c03dea。9 个发行附件白名单位于 release/upload-v050。Gitee 上传等待 Chrome 可操作，线上下载验证完成后更新此记录。
