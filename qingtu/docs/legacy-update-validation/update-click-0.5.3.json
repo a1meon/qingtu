@@ -1,0 +1,48 @@
+{
+  "checkedAt": "2026-10-19T12:24:36.112Z",
+  "baseline052": {
+    "hiddenOffscreen": true,
+    "baseline052": true,
+    "dragCalls": 1,
+    "downloads": 1,
+    "phase": "ready",
+    "installerExecuted": false,
+    "windowsNativeExecuted": false
+  },
+  "current053": {
+    "hiddenOffscreen": true,
+    "baseline052": false,
+    "dragCalls": 0,
+    "downloads": 1,
+    "phase": "ready",
+    "installerExecuted": false,
+    "windowsNativeExecuted": false,
+    "installOpenRequested": true,
+    "closeRequestedAfterFlush": true
+  },
+  "publicInstaller": {
+    "version": "0.5.3",
+    "anonymousDownload": true,
+    "size": 9278261,
+    "sha256": "6cd1baab31726ec743dd914fd0bd84e0130c55252008860f13689a1f9a719749",
+    "signedManifest": true,
+    "byteEqualPublishedInstaller": true,
+    "windowsNativeExecuted": false
+  },
+  "unitTests": {
+    "passed": 315,
+    "failed": 0
+  },
+  "buildPassed": true,
+  "publicRecoveryNotice": {
+    "url": "https://gitee.com/a1meon_admin/halframe-releases/releases/tag/v0.5.3",
+    "verifiedViaBrowser": true,
+    "latestLabel": true,
+    "attachmentCount": 18
+  },
+  "limitations": [
+    "Windows native move loop and installation not executed; SDK RPC boundary substituted",
+    "API version discovery not re-tested in this dialog-only fixture"
+  ],
+  "recovery": "Close Qingtu and run the public 0.5.3 Windows Setup.exe over its existing installation; preserve user projects."
+}
