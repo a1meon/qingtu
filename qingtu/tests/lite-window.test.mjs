@@ -3,7 +3,7 @@ import {windowOptions,fittedNativeWindow,fitInitialWindow,bindTitlebar,setupNati
 test('both lightweight platforms remove the duplicate native title row with physical API units',()=>{
  const win=windowOptions('win32'),mac=windowOptions('darwin');
  assert.equal(win.borderless,true);assert.equal(win.resizable,true);assert.equal(win.useLogicalPixels,false,'never mix scaled widths with native physical screen coordinates');
- assert.equal(mac.borderless,true);assert.equal(mac.resizable,true);assert.equal(mac.useLogicalPixels,false,'Cocoa frame sizes are already points');
+ assert.equal(mac.borderless,false);assert.equal(mac.resizable,true);assert.equal(mac.useLogicalPixels,false,'Cocoa frame sizes are already points');
  assert.equal(win.injectGlobals,false);assert.equal(mac.injectGlobals,false);
  assert.equal(mac.transparent,true,'Cocoa and WKWebView must expose transparent corners');assert.equal(win.transparent,false,'Windows uses its native rounded region');
 });

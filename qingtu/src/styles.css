@@ -544,9 +544,3 @@ label,h2 { display:block; font-size:16px; font-weight:700; margin-bottom:14px; l
 .edge-nw { top:0; left:0; cursor:nwse-resize; }.edge-se { bottom:0; right:0; cursor:nwse-resize; }
 .edge-ne { top:0; right:0; cursor:nesw-resize; }.edge-sw { bottom:0; left:0; cursor:nesw-resize; }
 .lite-win-maximized .window-resize-edges { display:none; }
-.mac-window-controls { position:absolute; left:10px; top:0; height:100%; display:flex; align-items:center; -webkit-app-region:no-drag; }
-.mac-window-controls button { position:relative; width:28px; height:36px; display:grid; place-items:center; border-radius:7px; -webkit-app-region:no-drag; }
-.mac-window-controls button::before { content:''; position:absolute; width:12px; height:12px; border:1px solid #0002; border-radius:50%; }
-.mac-close::before { background:#ff6058; }.mac-minimize::before { background:#ffbd2e; }.mac-maximize::before { background:#28c840; }
-.mac-window-controls svg { position:relative; z-index:1; opacity:0; color:#3d342e; }
-.mac-window-controls:hover svg,.mac-window-controls button:focus-visible svg { opacity:1; }

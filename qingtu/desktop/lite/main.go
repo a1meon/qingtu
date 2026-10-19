@@ -82,6 +82,8 @@ func remote(raw string) (*http.Response, error) {
 func call(r request) (any, error) {
 	p := str(r, 0)
 	switch r.Method {
+	case "installMacUpdate", "completeMacUpdate", "pendingMacUpdate":
+		return macUpdateRPC(r)
 	case "fetchText":
 		response, e := remote(p)
 		if e != nil {
@@ -233,7 +235,7 @@ func call(r request) (any, error) {
 	return nil, fmt.Errorf("unsupported native operation: %s", r.Method)
 }
 func main() {
-	if installCommand(os.Args[1:]) {
+	if macUpdateCommand(os.Args[1:]) || installCommand(os.Args[1:]) {
 		return
 	}
 	defer func() {

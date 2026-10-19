@@ -1,6 +1,6 @@
 export function windowOptions(platform) {
  return {title:'轻图',width:1280,height:820,minWidth:600,minHeight:420,
-  resizable:true,useLogicalPixels:false,borderless:true,
+  resizable:true,useLogicalPixels:false,borderless:platform!=='darwin',
   transparent:platform==='darwin',
   hidden:false,center:true,exitProcessOnClose:false,useSavedState:false,
   injectGlobals:false,injectClientLibrary:false,icon:'/resources/assets/app-icon.png'};

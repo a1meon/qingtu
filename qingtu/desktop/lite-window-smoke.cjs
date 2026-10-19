@@ -7,7 +7,7 @@ const root=path.resolve('artifacts/lite-window');app.setPath('userData',path.joi
  await fs.mkdir(root,{recursive:true});await app.whenReady();const cases=[];
  for(const platform of ['win32','darwin']) {
   const preload=path.join(root,`preload-${platform}.cjs`);
-  await fs.writeFile(preload,`window.addEventListener('DOMContentLoaded',()=>document.documentElement.classList.add('lite-desktop',${JSON.stringify(platform==='darwin'?'lite-mac':'lite-win')}));window.actions=[];window.resizeCalls=[];window.titlebarBound=false;window.qingtu={platform:${JSON.stringify(platform)},windowChrome:${JSON.stringify(platform==='win32'?'custom-win':'custom-mac')},beginWindowResize:async edge=>window.resizeCalls.push(edge),bindTitlebar:async element=>{window.titlebarBound=!!element;return()=>{};},onFlush:()=>()=>{},onMenu:()=>()=>{},onUpdate:()=>()=>{},samples:async()=>[],stitchList:async()=>[],stitchPreviews:async()=>[],updateStatus:async()=>({version:'0.5.3',phase:'idle',visible:false}),windowAction:async a=>window.actions.push(a)};`);
+  await fs.writeFile(preload,`window.addEventListener('DOMContentLoaded',()=>document.documentElement.classList.add('lite-desktop',${JSON.stringify(platform==='darwin'?'lite-mac':'lite-win')}));window.actions=[];window.resizeCalls=[];window.titlebarBound=false;window.qingtu={platform:${JSON.stringify(platform)},windowChrome:${JSON.stringify(platform==='win32'?'custom-win':'native-mac')},beginWindowResize:async edge=>window.resizeCalls.push(edge),bindTitlebar:async element=>{window.titlebarBound=!!element;return()=>{};},onFlush:()=>()=>{},onMenu:()=>()=>{},onUpdate:()=>()=>{},samples:async()=>[],stitchList:async()=>[],stitchPreviews:async()=>[],updateStatus:async()=>({version:'0.5.3',phase:'idle',visible:false}),windowAction:async a=>window.actions.push(a)};`);
   const win=new BrowserWindow({show:false,opacity:0,x:32000,y:32000,width:1280,height:820,transparent:platform==='darwin',backgroundColor:platform==='darwin'?'#00000000':'#ffffff',webPreferences:{preload,contextIsolation:false,nodeIntegration:false,offscreen:true}});
   assert.ok(!win.isVisible()&&!win.isFocused()&&win.webContents.isOffscreen());
   await win.loadFile(path.resolve('dist/client/index.html'));
@@ -27,7 +27,7 @@ const root=path.resolve('artifacts/lite-window');app.setPath('userData',path.joi
    }
   }
   const buttons=await js("[...document.querySelectorAll('.window-controls button,.mac-window-controls button')].map(e=>e.getAttribute('aria-label'))");
-  const expected=platform==='win32'?['最小化','最大化或还原','关闭窗口']:['关闭窗口','最小化','最大化或还原'];
+  const expected=platform==='win32'?['最小化','最大化或还原','关闭窗口']:[];
   if(platform==='darwin'){
    assert.equal(await js("getComputedStyle(document.querySelector('.app')).borderTopLeftRadius"),'12px','Mac page corners must be rounded');
    for(const selector of ['html','body','#root'])assert.equal(await js(`getComputedStyle(document.querySelector('${selector}')).backgroundColor`),'rgba(0, 0, 0, 0)','Mac host backing must be transparent');
@@ -37,7 +37,7 @@ const root=path.resolve('artifacts/lite-window');app.setPath('userData',path.joi
   }
   assert.deepEqual(buttons,expected,'exactly one set of integrated window controls');
   for(const label of buttons)await js(`document.querySelector('[aria-label="${label}"]').click()`);
-  assert.deepEqual(await js('window.actions'),platform==='win32'?['minimize','maximize','close']:['close','minimize','maximize']);assert.equal(await js('window.titlebarBound'),true);
+  assert.deepEqual(await js('window.actions'),platform==='win32'?['minimize','maximize','close']:[]);assert.equal(await js('window.titlebarBound'),true);
   if(platform==='win32'){
    assert.equal(await js("getComputedStyle(document.querySelector('.app')).borderTopLeftRadius"),'12px');
    for(const edge of ['n','s','e','w','nw','ne','sw','se'])await js(`document.querySelector('[data-window-edge="${edge}"]').dispatchEvent(new PointerEvent('pointerdown',{bubbles:true,button:0,isPrimary:true}))`);
@@ -61,5 +61,5 @@ const root=path.resolve('artifacts/lite-window');app.setPath('userData',path.joi
   }
   win.webContents.debugger.detach();win.destroy();
  }
- const report={passed:true,hiddenOffscreen:true,cases,windowsIntegratedControls:true,windowsResizeEdges:8,windowsRoundPage:true,macCustomControls:true,macTransparentCorners:true,nativeWindowsExecuted:false};await fs.writeFile(path.join(root,'report.json'),JSON.stringify(report,null,2));console.log(JSON.stringify(report));app.exit(0);
+ const report={passed:true,hiddenOffscreen:true,cases,windowsIntegratedControls:true,windowsResizeEdges:8,windowsRoundPage:true,macNativeControls:true,macTransparentCorners:true,nativeWindowsExecuted:false};await fs.writeFile(path.join(root,'report.json'),JSON.stringify(report,null,2));console.log(JSON.stringify(report));app.exit(0);
 })().catch(e=>{console.error(e);app.exit(1);});

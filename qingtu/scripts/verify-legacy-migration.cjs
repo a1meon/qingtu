@@ -1,7 +1,7 @@
 // Owned, hidden fixture bundles only. Never launch/replace /Applications or a user's app.
 const fs=require('node:fs/promises'),path=require('node:path'),http=require('node:http'),assert=require('node:assert/strict'),{createReadStream}=require('node:fs'),{spawn,execFileSync}=require('node:child_process'),asar=require('@electron/asar');
 const {writeMacChannel}=require('./prepare-legacy-update.cjs');
-const root=path.resolve('artifacts/legacy-migration'),version=require('../package.json').version;
+const root=path.resolve(process.env.QINGTU_MIGRATION_WORK_ROOT||'artifacts/legacy-migration'),version=require('../package.json').version;
 const run=(cmd,args)=>execFileSync(cmd,args,{stdio:'pipe'});
 const plist=(app,key,type,value)=>{try{run('/usr/libexec/PlistBuddy',['-c',`Delete :${key}`,path.join(app,'Contents/Info.plist')]);}catch{}run('/usr/libexec/PlistBuddy',['-c',`Add :${key} ${type} ${value}`,path.join(app,'Contents/Info.plist')]);};
 (async()=>{

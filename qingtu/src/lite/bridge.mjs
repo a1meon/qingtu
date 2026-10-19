@@ -36,7 +36,7 @@ export async function initialize(){
  let state={version:version.version,phase:'idle',visible:false};
  const api=Object.fromEntries(methods.map(method=>[method,(...args)=>call(method,...args)]));
  let syncCorners=async()=>{};
- Object.assign(api,{platform,windowChrome:platform==='darwin'?'custom-mac':'custom-win',beginWindowResize:edge=>native('windowResize',globalThis.NL_PID,edge),bindTitlebar:element=>bindTitlebar(N,element,platform,()=>api.windowAction('maximize')),onFlush:f=>(flushers.add(f),()=>flushers.delete(f)),onMenu:f=>(menus.add(f),()=>menus.delete(f)),onUpdate:f=>(updates.add(f),()=>updates.delete(f)),
+ Object.assign(api,{platform,windowChrome:platform==='darwin'?'native-mac':'custom-win',beginWindowResize:edge=>native('windowResize',globalThis.NL_PID,edge),bindTitlebar:element=>bindTitlebar(N,element,platform,()=>api.windowAction('maximize')),onFlush:f=>(flushers.add(f),()=>flushers.delete(f)),onMenu:f=>(menus.add(f),()=>menus.delete(f)),onUpdate:f=>(updates.add(f),()=>updates.delete(f)),
  samples:async()=>[],chooseFiles:()=>choose(false),stitchChooseFiles:()=>choose(true),
  chooseFolder:async()=>{const p=await N.os.showFolderDialog('选择保存位置',{defaultPath:folder||await N.os.getPath('pictures')});if(!p)return null;folder=p;return {name:p.replaceAll('\\','/').split('/').at(-1),path:p};},
  save:token=>{if(!folder)throw new Error('请先选择保存位置');return call('save',token,folder);},revealFolder:()=>folder?N.os.open(folder):true,

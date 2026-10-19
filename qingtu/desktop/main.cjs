@@ -40,6 +40,10 @@ async function start(options={}) {
         if(!response.ok)throw new Error('发行版服务暂不可用');
         const text=await response.text();if(text.length>1024*1024)throw new Error('发行版信息过大');
         return JSON.parse(text);
+      },async url=>{
+        const response=await net.fetch(url,{signal:AbortSignal.timeout(8000),headers:{Accept:'text/html','Cache-Control':'no-cache'}});
+        if(!response.ok)throw new Error('发行版页面暂不可用');
+        const text=await response.text();if(text.length>1024*1024)throw new Error('发行版信息过大');return text;
       });
       if(feed&&source.provider==='gitee'&&process.platform==='win32'){
         const {ChunkTransport}=require('./chunk-download.cjs');const {GiteeChunkProvider}=require('./chunk-provider.cjs');

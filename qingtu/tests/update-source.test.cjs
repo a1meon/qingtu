@@ -1,9 +1,10 @@
 const {test}=require('node:test');const assert=require('node:assert/strict');
 const {resolveUpdateFeed}=require('../desktop/update-source.cjs');
-test('Gitee latest release resolves a generic feed using its exact immutable tag',async()=>{
+const signed=require('./fixtures/lite-signed-manifest.json');
+test('Gitee stable signed release resolves a generic feed using its exact immutable tag',async()=>{
  let requested;
- const feed=await resolveUpdateFeed({provider:'gitee',owner:'qingtu-test',repo:'desktop'},'darwin','arm64',async url=>{requested=url;return {tag_name:'v0.5.0',prerelease:false};});
- assert.equal(requested,'https://gitee.com/api/v5/repos/qingtu-test/desktop/releases/latest');
+ const feed=await resolveUpdateFeed({provider:'gitee',owner:'qingtu-test',repo:'desktop'},'darwin','arm64',async url=>{requested=url;return signed;});
+ assert.equal(requested,'https://gitee.com/qingtu-test/desktop/raw/main/updates/stable/lite-darwin-arm64.json');
  assert.equal(feed.url,'https://gitee.com/qingtu-test/desktop/releases/download/v0.5.0/');assert.equal(feed.provider,'generic');
  const {GenericProvider}=require('electron-updater/out/providers/GenericProvider');
  assert.equal(new GenericProvider(feed,{}, {platform:'darwin',executor:{}}).channel,'latest-arm64-mac');
@@ -18,4 +19,10 @@ test('empty source disables updates and malformed or insecure sources fail befor
  assert.equal(await resolveUpdateFeed({provider:'gitee',owner:'',repo:''},'darwin','arm64'),null);
  for(const url of ['http://downloads.example.test/','https://user:secret@example.test/','file:///tmp/update'])await assert.rejects(resolveUpdateFeed({provider:'generic',url},'win32','x64'),/HTTPS/);
  await assert.rejects(resolveUpdateFeed({provider:'gitee',owner:'../bad',repo:'app'},'darwin','arm64'),/仓库/);
+});
+test('Gitee API rate limits do not block discovery from its public formal release page',async()=>{
+ const feed=await resolveUpdateFeed({provider:'gitee',owner:'qingtu-test',repo:'desktop'},'darwin','arm64',async()=>{throw Error('HTTP 403');},async url=>{
+  assert.equal(url,'https://gitee.com/qingtu-test/desktop/releases/latest');
+  return `<div class='release-header-main'><a class='title' href='/qingtu-test/desktop/releases/tag/v0.5.4'>Release</a><div class='latest-version'>latest</div></div>`;
+ });assert.equal(feed.url,'https://gitee.com/qingtu-test/desktop/releases/download/v0.5.4/');
 });

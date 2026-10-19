@@ -15,6 +15,7 @@ await fs.mkdir(out,{recursive:true});await fs.mkdir(work,{recursive:true});
 const neutralino='.cache/lite-probe/neutralino',go=path.resolve('.cache/lite-go/go/bin/go');
 const checks=[['.cache/lite-probe/neutralino.zip','e633f480737f229f582d8ec6165a52d789340950aef062560702122389f08329'],['.cache/lite-go/go.tar.gz','76812b213b1b2302c978d28fa52fa92d541704b9e7d9d5db8002c50e4018c4c5'],['.cache/lite-probe/MicrosoftEdgeWebview2Setup.exe','90ae8eb0d9d22d6e51fccde49e4d25d266ff9343ad0cc931faa6f482569cea62']];
 for(const [p,expected]of checks)if(hash(await fs.readFile(p))!==expected)throw new Error('Dependency integrity check failed: '+p);
+run(process.execPath,['scripts/prepare-mac-runtime.mjs']);
 run(process.execPath,['node_modules/vite/bin/vite.js','build','--config','vite.lite.config.mjs']);
 const resourceRoot=path.join(work,'bundle');await fs.rm(resourceRoot,{recursive:true,force:true});
 await fs.mkdir(path.join(resourceRoot,'resources'),{recursive:true});
@@ -34,7 +35,7 @@ for(const [platform,arch,goos,goarch]of [['darwin','arm64','darwin','arm64'],['d
  const app=platform==='darwin'?path.join(stage,'轻图.app'):stage;
  const bin=platform==='darwin'?path.join(app,'Contents','MacOS'):app;await fs.mkdir(bin,{recursive:true});
  const executable=path.join(bin,platform==='darwin'?'轻图':'轻图.exe');
- await fs.copyFile(path.join(neutralino,platform==='darwin'?'neutralino-mac_'+arch:'neutralino-win_x64.exe'),executable);await fs.chmod(executable,0o755);
+ await fs.copyFile(platform==='darwin'?path.join('.cache/mac-native-runtime','neutralino-mac_'+arch):path.join(neutralino,'neutralino-win_x64.exe'),executable);await fs.chmod(executable,0o755);
  if(platform==='win32')await fs.writeFile(executable,applyWindowManifest(await fs.readFile(executable)));
  run(go,['-C','desktop/lite','build','-trimpath','-ldflags=-s -w'+(platform==='win32'?' -H=windowsgui':''),'-o',path.join(bin,'qingtu-io'+(platform==='win32'?'.exe':'')),'.'],{env:{...process.env,CGO_ENABLED:'0',GOOS:goos,GOARCH:goarch}});
  const platformConfig=structuredClone(config);platformConfig.modes.window=windowOptions(platform);
@@ -49,6 +50,8 @@ for(const [platform,arch,goos,goarch]of [['darwin','arm64','darwin','arm64'],['d
   const plist={CFBundleDisplayName:'轻图',CFBundleName:'轻图',CFBundleIdentifier:'com.qingtu.desktop',CFBundleExecutable:'轻图',CFBundlePackageType:'APPL',CFBundleShortVersionString:version,CFBundleVersion:version,CFBundleIconFile:'icon.icns',LSMinimumSystemVersion:'13.3',NSHighResolutionCapable:true,NSPrincipalClass:'NSApplication',SUPublicEDKey:publicKey};
   await fs.writeFile(path.join(app,'Contents','Info.plist'),'<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd"><plist version="1.0"><dict>'+Object.entries(plist).map(([k,v])=>`<key>${k}</key>`+(v===true?'<true/>':`<string>${v}</string>`)).join('')+'</dict></plist>');
   await fs.rename(executable,path.join(bin,'qingtu-runtime'));run('clang',['-arch',arch==='x64'?'x86_64':arch,'-mmacosx-version-min=13.3','-Os','desktop/lite/launcher/main.c','-o',executable]);
+  run('clang',['-arch',arch==='x64'?'x86_64':arch,'-mmacosx-version-min=13.3','-Os','desktop/lite/macos/swap.c','-o',path.join(bin,'qingtu-swap')]);
+  run('codesign',['--force','--sign','-','--timestamp=none',path.join(bin,'qingtu-swap')]);
   run('codesign',['--force','--sign','-','--timestamp=none',path.join(bin,'qingtu-runtime')]);run('codesign',['--force','--sign','-','--timestamp=none',path.join(bin,'qingtu-io')]);run('codesign',['--force','--sign','-','--timestamp=none',app]);run('codesign',['--verify','--deep','--strict',app]);
   const zip=`Qingtu-${version}-Mac-${arch}.zip`;run('ditto',['-c','-k','--sequesterRsrc','--keepParent',app,path.join(out,zip)]);artifacts.push({platform,arch,name:zip,kind:'zip'});
   const dmgSource=path.join(work,'dmg-'+arch);await fs.rm(dmgSource,{recursive:true,force:true});await fs.mkdir(dmgSource);await fs.cp(app,path.join(dmgSource,'轻图.app'),{recursive:true});await fs.symlink('/Applications',path.join(dmgSource,'应用程序'));
@@ -65,11 +68,11 @@ const seed=Buffer.from((await fs.readFile('.cache/sparkle-signing/update-seed.tx
 const key=createPrivateKey({key:Buffer.concat([Buffer.from('302e020100300506032b657004220420','hex'),seed]),format:'der',type:'pkcs8'});
 const publicKey=createPublicKey(key).export({format:'der',type:'spki'}).subarray(-32).toString('base64');
 if(publicKey!==JSON.parse(await fs.readFile('desktop/sparkle-public-key.json','utf8')).publicKey)throw new Error('Signing identity mismatch');
-for(const item of artifacts){const bytes=await fs.readFile(path.join(out,item.name));Object.assign(item,{size:bytes.length,sha256:hash(bytes)});if(item.kind==='installer'){
- const manifest={version,platform:item.platform,arch:item.arch,minOS:item.platform==='darwin'?'13.3':'Windows 10',file:{name:item.name,size:item.size,sha256:item.sha256}};const payload=Buffer.from(JSON.stringify(manifest));await fs.writeFile(path.join(out,`lite-${item.platform}-${item.arch}.json`),JSON.stringify({payload:payload.toString('base64'),signature:sign(null,payload,key).toString('base64')},null,2)+'\n');
+for(const item of artifacts){const bytes=await fs.readFile(path.join(out,item.name));Object.assign(item,{size:bytes.length,sha256:hash(bytes)});if(item.kind==='installer'||item.platform==='darwin'&&item.kind==='zip'){
+ const manifest={version,platform:item.platform,arch:item.arch,minOS:item.platform==='darwin'?'13.3':'Windows 10',file:{name:item.name,size:item.size,sha256:item.sha256}};const payload=Buffer.from(JSON.stringify(manifest));await fs.writeFile(path.join(out,`${item.platform==='darwin'&&item.kind==='zip'?'lite-auto':'lite'}-${item.platform}-${item.arch}.json`),JSON.stringify({payload:payload.toString('base64'),signature:sign(null,payload,key).toString('base64')},null,2)+'\n');
 }}
 await fs.writeFile(path.join(out,'SHA256SUMS-'+version+'.txt'),artifacts.map(a=>a.sha256+'  '+a.name).join('\n')+'\n');await fs.writeFile(path.join(out,'build-report.json'),JSON.stringify({version,artifacts,dependencies:checks.map(([file,sha256])=>({file,sha256}))},null,2)+'\n');
-const publishedNames=[...artifacts.map(a=>a.name),'lite-darwin-arm64.json','lite-darwin-x64.json','lite-win32-x64.json'];await fs.writeFile(path.join(out,'SHA256SUMS-'+version+'.txt'),(await Promise.all(publishedNames.map(async name=>hash(await fs.readFile(path.join(out,name)))+'  '+name))).join('\n')+'\n');
+const publishedNames=[...artifacts.map(a=>a.name),'lite-darwin-arm64.json','lite-darwin-x64.json','lite-auto-darwin-arm64.json','lite-auto-darwin-x64.json','lite-win32-x64.json'];await fs.writeFile(path.join(out,'SHA256SUMS-'+version+'.txt'),(await Promise.all(publishedNames.map(async name=>hash(await fs.readFile(path.join(out,name)))+'  '+name))).join('\n')+'\n');
 // Every latest release also serves old clients. Never point the unguarded Mac
 // legacy channel straight at a WebView build requiring a newer operating system.
 await require('./prepare-legacy-update.cjs').prepare(version);

@@ -8,9 +8,9 @@ export async function smoke(ctx){
   report.chrome={mode:api.windowChrome,nativeSize:await N.window.getSize(),viewport:{width:innerWidth,height:innerHeight},pageScroll:document.documentElement.scrollHeight>innerHeight};
   if(report.chrome.pageScroll)throw new Error('Page exceeds the native client viewport');
   if(api.platform==='darwin'){
-   const controls=document.querySelectorAll('.mac-window-controls button');if(controls.length!==3)throw new Error('Mac window controls missing');
-   const titlebar=document.querySelector('.titlebar'),brand=titlebar.querySelector('.brand').getBoundingClientRect(),buttons=titlebar.querySelector('.mac-window-controls').getBoundingClientRect();
-   if(brand.left<buttons.right+5)throw new Error('Mac buttons overlap application name');
+   const controls=document.querySelectorAll('.mac-window-controls button');if(controls.length!==0||api.windowChrome!=='native-mac')throw new Error('Mac must use native AppKit window controls');
+   const titlebar=document.querySelector('.titlebar'),brand=titlebar.querySelector('.brand').getBoundingClientRect();
+   if(brand.left<100)throw new Error('App content overlaps native Mac buttons');
    if(Math.abs(report.chrome.nativeSize.height-innerHeight)>1)throw new Error('Duplicate native Mac title row remains');
    report.chrome.cornerRadius=getComputedStyle(document.querySelector('.app')).borderTopLeftRadius;
    report.chrome.transparentBacking=['html','body','#root'].every(selector=>getComputedStyle(document.querySelector(selector)).backgroundColor==='rgba(0, 0, 0, 0)');

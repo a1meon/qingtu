@@ -1,0 +1,188 @@
+{
+  "passed": true,
+  "from": "0.4.8",
+  "bridge": "0.4.9",
+  "to": "0.5.5",
+  "nativeSparkleReplaceAndRelaunch": true,
+  "hiddenOffscreen": true,
+  "legacyProjectUnchanged": true,
+  "sourceBytesUnchanged": true,
+  "events": [
+    {
+      "type": "launch",
+      "version": "0.4.8",
+      "visible": false,
+      "offscreen": true,
+      "pid": 62683
+    },
+    {
+      "type": "available",
+      "from": "0.4.8",
+      "to": "0.4.9",
+      "pid": 62683
+    },
+    {
+      "type": "downloaded",
+      "from": "0.4.8",
+      "pid": 62683
+    },
+    {
+      "type": "checking",
+      "pid": 62683
+    },
+    {
+      "type": "verifying",
+      "pid": 62683
+    },
+    {
+      "type": "extracting",
+      "pid": 62683
+    },
+    {
+      "type": "installing",
+      "pid": 62683
+    },
+    {
+      "type": "installing",
+      "pid": 62683
+    },
+    {
+      "type": "launch",
+      "version": "0.4.9",
+      "visible": false,
+      "offscreen": true,
+      "pid": 62692
+    },
+    {
+      "type": "available",
+      "from": "0.4.9",
+      "to": "0.5.5",
+      "pid": 62692
+    },
+    {
+      "type": "downloaded",
+      "from": "0.4.9",
+      "pid": 62692
+    },
+    {
+      "type": "checking",
+      "pid": 62692
+    },
+    {
+      "type": "verifying",
+      "pid": 62692
+    },
+    {
+      "type": "extracting",
+      "pid": 62692
+    },
+    {
+      "type": "installing",
+      "pid": 62692
+    },
+    {
+      "type": "installing",
+      "pid": 62692
+    }
+  ],
+  "lightweightSmoke": {
+    "hidden": true,
+    "position": {
+      "x": 32000,
+      "y": 32000
+    },
+    "ui": true,
+    "chrome": {
+      "mode": "native-mac",
+      "nativeSize": {
+        "height": 820,
+        "maxHeight": -1,
+        "maxWidth": -1,
+        "minHeight": 420,
+        "minWidth": 600,
+        "resizable": true,
+        "width": 1280
+      },
+      "viewport": {
+        "width": 1280,
+        "height": 820
+      },
+      "pageScroll": false,
+      "cornerRadius": "12px",
+      "transparentBacking": true,
+      "clipsChildren": true,
+      "nativeDragBound": true
+    },
+    "stage": "render",
+    "worker": [
+      {
+        "id": "migration-preserved",
+        "name": "旧版自定义名称",
+        "updatedAt": 1792435096499,
+        "count": 1,
+        "thumbnail": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAFAAAAA8CAYAAADxJz2MAAAACXBIWXMAAAPoAAAD6AG1e1JrAAAAzElEQVR4nO2W0QkDQRCFrqA0a5fbhekhB3ks+DENiDLv+XDszs8MnuCdVwIFkAC6rCgDCaAZyL1LoIQJoBnIPsUSJoCubeqJEEDXRjVjCKA3XUOaAJqB7FMsYQLo2qaeCAF0bVQzhgB60zWkCaAZyD7FEiaArm3qiRBA10Y1YwigN11DmgCagexTLGEC6NqmnggBdG1UM4YAetM1pAmgGcg+xRImgK5t6okQQNdGNWMIoDddQ5oAmoHsUyxhAujapp4IAXRtVDOG/wL8Au1sheAHYMeVAAAAAElFTkSuQmCC"
+      }
+    ],
+    "project": {
+      "id": "lite-smoke",
+      "name": "轻量导出测试",
+      "images": [
+        {
+          "id": "9c34cff0-c232-4bce-a5ba-4e097baad89f",
+          "assetId": "daa1d8a2a7a6f058a140bd5902dae7bb340c81d2fdc289913416dd01b716952e",
+          "name": "输入.png",
+          "width": 80,
+          "height": 60,
+          "bytes": 282
+        }
+      ],
+      "canvasMode": "fixed",
+      "canvas": {
+        "width": 64,
+        "height": 48
+      },
+      "positions": {
+        "9c34cff0-c232-4bce-a5ba-4e097baad89f": {
+          "x": 2,
+          "y": 3,
+          "width": 40,
+          "height": 30
+        }
+      },
+      "layout": "horizontal",
+      "export": {
+        "format": "png",
+        "targetBytes": 1000000
+      },
+      "updatedAt": 1792435121552
+    },
+    "export": {
+      "width": 64,
+      "height": 48,
+      "bytes": 154,
+      "format": "png"
+    },
+    "saved": {
+      "path": "/private/tmp/qingtu-migration-v055-1792435096/installed/轻图.app/Contents/Resources/smoke-exports/轻量导出测试.png",
+      "bytes": 154
+    },
+    "savedAgain": {
+      "path": "/private/tmp/qingtu-migration-v055-1792435096/installed/轻图.app/Contents/Resources/smoke-exports/轻量导出测试-2.png",
+      "bytes": 154
+    },
+    "compression": {
+      "width": 40,
+      "height": 30,
+      "bytes": 284
+    },
+    "ok": true
+  },
+  "httpRequests": [
+    "/mac-arm64.json",
+    "/Fixture-0.4.9.zip.part01",
+    "/Fixture-0.4.9.zip.part02",
+    "/Fixture-0.4.9.zip.part03",
+    "/mac-light-arm64.json",
+    "/Fixture-0.5.5.zip"
+  ]
+}
