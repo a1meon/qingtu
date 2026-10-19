@@ -1,0 +1,9 @@
+{
+  "passed": true,
+  "version": "0.5.2",
+  "extractedPayloadByteEqual": true,
+  "oneTimeToken": true,
+  "injectGlobals": false,
+  "blockingGlobalsBeforeModule": true,
+  "nativeWindowsExecution": false
+}

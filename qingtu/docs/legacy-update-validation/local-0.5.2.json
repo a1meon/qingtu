@@ -1,0 +1,132 @@
+{
+  "version": "0.5.2",
+  "attachments": 18,
+  "bytes": 312729720,
+  "files": [
+    {
+      "name": "Qingtu-0.4.9-mac-arm64.zip.part01",
+      "bytes": 67108864,
+      "sha256": "02fedad7dd4b7dc3ffe55a82336983fad9ca601f4b623d1adbe0fa480fefe0b8"
+    },
+    {
+      "name": "Qingtu-0.4.9-mac-arm64.zip.part02",
+      "bytes": 59257311,
+      "sha256": "dedb5d6b337f082f2a01708f8d614c671adab0921564d687fd38e47e4a78dfd1"
+    },
+    {
+      "name": "Qingtu-0.4.9-mac-x64.zip.part01",
+      "bytes": 67108864,
+      "sha256": "d4d5325204bce107b405e68e7a110b5cec3528222951aa4cbf943e94433a7092"
+    },
+    {
+      "name": "Qingtu-0.4.9-mac-x64.zip.part02",
+      "bytes": 67010741,
+      "sha256": "ad9c986c12dcb5548f913313600a2427b3298d28582711d398440bbe008e2c8f"
+    },
+    {
+      "name": "Qingtu-0.5.2-Mac-arm64-Installer.dmg",
+      "bytes": 11042418,
+      "sha256": "8a83abe4412f847b0816c27b89fd032872205ba0cb9da2b5ee1519376ff974a1"
+    },
+    {
+      "name": "Qingtu-0.5.2-Mac-arm64.zip",
+      "bytes": 10018222,
+      "sha256": "84ccca1db7e679ca51dbdbbfa80569c2cbb934f84fe16698c45a3b2d3dad9b03"
+    },
+    {
+      "name": "Qingtu-0.5.2-Mac-x64-Installer.dmg",
+      "bytes": 11494940,
+      "sha256": "4ff7b27faf98ae3308bef85dee1c57b07c60c1100338ba6c37404a6138021476"
+    },
+    {
+      "name": "Qingtu-0.5.2-Mac-x64.zip",
+      "bytes": 10404658,
+      "sha256": "5b6e2f91fa82e815831755d7e53760f52a3ca7f47790e90602088100486024b5"
+    },
+    {
+      "name": "Qingtu-0.5.2-Windows-x64-Setup.exe",
+      "bytes": 9276744,
+      "sha256": "3109fa7d462564c4f9858df2e2c1a88057f05875446d6a3a29765a71207c557c"
+    },
+    {
+      "name": "latest.yml",
+      "bytes": 601,
+      "sha256": "c2488851515bbed820ec150467ed8fa8898c77c2be5ff0958d47a56b49cf6af5"
+    },
+    {
+      "name": "lite-darwin-arm64.json",
+      "bytes": 415,
+      "sha256": "1ef15c667d0a835d897fff1ed4375db12e93d1ffcc89525216407bc9107829ad"
+    },
+    {
+      "name": "lite-darwin-x64.json",
+      "bytes": 411,
+      "sha256": "28bb2e1dc92398b72ed1de2da09a108fe54cba5d0fcc7d7ed4a1a4686b7d9586"
+    },
+    {
+      "name": "lite-win32-x64.json",
+      "bytes": 415,
+      "sha256": "e861e06dee9b25f1ab962cb32ce289527996845a511f629b454593d1a2a4ff85"
+    },
+    {
+      "name": "mac-arm64.json",
+      "bytes": 1006,
+      "sha256": "904c078819496a03f00ad3a19480c76d12f6044afd856d577f5a3df577bda484"
+    },
+    {
+      "name": "mac-light-arm64.json",
+      "bytes": 782,
+      "sha256": "bee2114a7cca74dfa1fa6a71d4df1f48d21b0c6c1b965e8332516d25805de98b"
+    },
+    {
+      "name": "mac-light-x64.json",
+      "bytes": 774,
+      "sha256": "3759c72054b63dc968ab15414a451ef507b0ec3620d6e75d784edf7f4698e6ae"
+    },
+    {
+      "name": "mac-x64.json",
+      "bytes": 998,
+      "sha256": "66f20b460a48472d1891f29e7d5e47d5d6a60a2b89f7f8c9bcd6ee7b1ff16763"
+    }
+  ],
+  "channels": [
+    {
+      "channel": "mac",
+      "arch": "arm64",
+      "version": "0.4.9",
+      "minimumSystemVersion": "13.0",
+      "archiveBytes": 126366175,
+      "officialSparkleSignature": true
+    },
+    {
+      "channel": "mac",
+      "arch": "x64",
+      "version": "0.4.9",
+      "minimumSystemVersion": "13.0",
+      "archiveBytes": 134119605,
+      "officialSparkleSignature": true
+    },
+    {
+      "channel": "mac-light",
+      "arch": "arm64",
+      "version": "0.5.2",
+      "minimumSystemVersion": "13.3",
+      "archiveBytes": 10018222,
+      "officialSparkleSignature": true
+    },
+    {
+      "channel": "mac-light",
+      "arch": "x64",
+      "version": "0.5.2",
+      "minimumSystemVersion": "13.3",
+      "archiveBytes": 10404658,
+      "officialSparkleSignature": true
+    }
+  ],
+  "windows": {
+    "version": "0.5.2",
+    "bytes": 9276744,
+    "sha512": "PrGaw8yGnnOrTdFBBFZ2tL8tHbrakJ+OfgP2l6VDR5kByE5OAi2E8JknOowcZgBQVHWOrSLNmW9OaTMwnmOZnA=="
+  },
+  "privateSigningMaterialRead": false
+}

@@ -1,0 +1,40 @@
+{
+  "passed": true,
+  "originalErrorReproduced": true,
+  "realNeutralinoClient": true,
+  "cspEnabled": true,
+  "delayedGlobals": true,
+  "refreshWithOneTimeToken": true,
+  "rejectedSocketRecovery": true,
+  "globalsRequests": 3,
+  "connections": 2,
+  "cases": [
+    {
+      "mode": "legacy",
+      "title": "failed",
+      "error": "轻图启动失败：Failed to construct 'WebSocket': The URL 'ws://127.0.0.1:undefined?connectToken=undefined' is invalid.请关闭轻图并覆盖安装最新修复版，无需卸载。Windows 若无法关闭，可在任务管理器结束“轻图”后安装。下载最新修复版",
+      "rootWasMissing": false,
+      "recovery": true,
+      "hidden": true,
+      "offscreen": true
+    },
+    {
+      "mode": "fixed",
+      "title": "ready",
+      "error": "",
+      "recovery": false,
+      "hidden": true,
+      "offscreen": true
+    },
+    {
+      "mode": "rejected",
+      "title": "failed",
+      "error": "轻图启动失败：本机服务连接超时，请关闭后重新打开轻图请关闭轻图并覆盖安装最新修复版，无需卸载。Windows 若无法关闭，可在任务管理器结束“轻图”后安装。下载最新修复版",
+      "rootWasMissing": true,
+      "recovery": true,
+      "hidden": true,
+      "offscreen": true
+    }
+  ],
+  "windowsNativeRuntimeExecuted": false
+}

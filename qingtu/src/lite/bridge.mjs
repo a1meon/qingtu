@@ -1,9 +1,9 @@
 import * as N from '@neutralinojs/lib';
 import {Buffer} from 'buffer';
 import version from '../../package.json';
+import {startNativeClient} from './startup.mjs';
 export async function initialize(){
- N.init();
- await new Promise(resolve=>N.events.on('ready',resolve));
+ await startNativeClient(N);
  const nativePending=new Map(),pending=new Map();let sequence=0,output='',folder=null,closing=false,helperFailure=null,workerFailure=null;let helper;
  const flushers=new Set(),menus=new Set(),updates=new Set();
  const quote=value=>globalThis.NL_OS==='Windows'?'"'+value.replaceAll('"','')+'"':"'"+value.replaceAll("'","'\\''")+"'";
