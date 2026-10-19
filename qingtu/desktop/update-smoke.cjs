@@ -9,7 +9,7 @@ class UpdateFixture extends EventEmitter {
 }
 async function waitFor(win,expression){for(let i=0;i<150;i++){if(await win.webContents.executeJavaScript(expression))return;await new Promise(r=>setTimeout(r,40));}throw new Error('Timed out: '+expression);}
 (async()=>{
- const adapter=new UpdateFixture();const {win,updater}=await start({hidden:true,updater:adapter,resolveUpdateFeed:async()=>({provider:'generic',url:'https://updates.example.test/'})});
+ const adapter=new UpdateFixture();const {win,updater}=await start({offscreen:true,hidden:true,updater:adapter,resolveUpdateFeed:async()=>({provider:'generic',url:'https://updates.example.test/'})});
  win.webContents.setBackgroundThrottling(false);
  const js=code=>win.webContents.executeJavaScript(code);
  await waitFor(win,"!!document.querySelector('.version-button')");

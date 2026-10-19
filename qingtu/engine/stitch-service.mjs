@@ -6,7 +6,8 @@ import {INPUT_OPTIONS} from './image.mjs';
 import {imageGeometry} from './stitch-edits.mjs';
 import {encodeJpeg} from './jpeg-quality.mjs';
 import {clipRectangle} from './canvas-clip.mjs';
-import {sourceWindow} from './image-source.mjs';
+import {rotatedImageBounds} from './image-rotation.mjs';
+import {sourceWindow,imageRotation,imageAngle} from './image-source.mjs';
 
 export async function composeProject(project,store,{isObsolete}={}){
  const check=()=>{if(isObsolete?.())throw new Error('预览参数已更新');};
@@ -14,27 +15,51 @@ export async function composeProject(project,store,{isObsolete}={}){
  for(const pose of layout.rects){
   check();
   const rect=layout.fixed?{...pose,x:Math.round(pose.x),y:Math.round(pose.y),width:Math.max(1,Math.round(pose.x+pose.width)-Math.round(pose.x)),height:Math.max(1,Math.round(pose.y+pose.height)-Math.round(pose.y))}:pose;
-  const clipped=clipRectangle(rect,layout);
+  const image=project.images.find(i=>i.id===rect.id),fine=imageAngle(image),rotationRect=fine?{...rect,x:pose.x+(pose.width-rect.width)/2,y:pose.y+(pose.height-rect.height)/2}:rect,bounds=rotatedImageBounds(rotationRect,fine);
+  if(bounds.x+bounds.width<=0||bounds.y+bounds.height<=0||bounds.x>=layout.width||bounds.y>=layout.height)continue;
+  if(fine&&Math.ceil(bounds.width)*Math.ceil(bounds.height)>100000000)throw new Error('旋转图像过大，请缩小图片');
+  const clipped=fine?{left:rect.x,top:rect.y,width:rect.width,height:rect.height,sourceLeft:0,sourceTop:0}:clipRectangle(rect,layout);
   if(!clipped)continue;
   const source=await store.readAsset(rect.assetId);check();
-  const meta=await sharp(source,INPUT_OPTIONS).metadata(),image=project.images.find(i=>i.id===rect.id),rotated=[5,6,7,8].includes(meta.orientation),window=sourceWindow(image);
-  if(window.fullWidth!==(rotated?meta.height:meta.width)||window.fullHeight!==(rotated?meta.width:meta.height)||image.bytes!==source.length)throw new Error('原图副本与项目尺寸不一致，请检查项目数据');
+  const meta=await sharp(source,INPUT_OPTIONS).metadata(),rotated=[5,6,7,8].includes(meta.orientation),window=sourceWindow(image);
+  const angle=imageRotation(image),baseWidth=rotated?meta.height:meta.width,baseHeight=rotated?meta.width:meta.height;
+  if(window.fullWidth!==(angle%180?baseHeight:baseWidth)||window.fullHeight!==(angle%180?baseWidth:baseHeight)||image.bytes!==source.length)throw new Error('原图副本与项目尺寸不一致，请检查项目数据');
   let pipeline=sharp(source,INPUT_OPTIONS).rotate().toColourspace('srgb');
+  if(angle){
+   // Auto-orient EXIF first. Sharp supports only one explicit rotation per
+   // pipeline; separate raw stages retain every oriented source pixel.
+   const oriented=await pipeline.ensureAlpha().raw().toBuffer({resolveWithObject:true});check();
+   const turned=await sharp(oriented.data,{raw:oriented.info}).rotate(angle).raw().toBuffer({resolveWithObject:true});check();
+   pipeline=sharp(turned.data,{raw:turned.info});
+  }
   const geometry=imageGeometry(image,project.edits?.[image.id]);
   if(rect.proportionalCrop){
    if(image.source)pipeline=pipeline.extract({left:window.left,top:window.top,width:window.width,height:window.height});
-   // Round only at the export raster. Symmetric sides differ by at most one
-   // output pixel; keeping the source height preserves the original scale.
-   const fullWidth=layout.fixed?Math.ceil(rect.width/(1-2*project.edits[image.id].fraction)-1e-9):Math.ceil(image.width/image.height*rect.height);
-   if(fullWidth<rect.width)throw new Error('分辨率过低，无法保持左右裁剪，请增加长边');
-   pipeline=pipeline.resize(fullWidth,rect.height,{fit:'fill'}).extract({left:Math.floor((fullWidth-rect.width)/2)+clipped.sourceLeft,top:clipped.sourceTop,width:clipped.width,height:clipped.height});
+   // Round only at the export raster, retaining source scale along the
+   // uncropped axis. Opposing cuts differ by at most one output pixel.
+   const edit=project.edits[image.id];
+   if(edit.axis==='vertical'){
+    const fullHeight=layout.fixed?Math.ceil(rect.height/(1-2*edit.fraction)-1e-9):Math.ceil(image.height/image.width*rect.width);
+    if(fullHeight<rect.height)throw new Error('分辨率过低，无法保持上下裁剪，请增加长边');
+    pipeline=pipeline.resize(rect.width,fullHeight,{fit:'fill'}).extract({left:clipped.sourceLeft,top:Math.floor((fullHeight-rect.height)/2)+clipped.sourceTop,width:clipped.width,height:clipped.height});
+   }else{
+    const fullWidth=layout.fixed?Math.ceil(rect.width/(1-2*edit.fraction)-1e-9):Math.ceil(image.width/image.height*rect.height);
+    if(fullWidth<rect.width)throw new Error('分辨率过低，无法保持左右裁剪，请增加长边');
+    pipeline=pipeline.resize(fullWidth,rect.height,{fit:'fill'}).extract({left:Math.floor((fullWidth-rect.width)/2)+clipped.sourceLeft,top:clipped.sourceTop,width:clipped.width,height:clipped.height});
+   }
   }else if(rect.autoCrop){
    if(geometry.left||geometry.top)pipeline=pipeline.extract(geometry);
    const resized=await pipeline.resize({height:rect.height}).ensureAlpha().raw().toBuffer({resolveWithObject:true});
    pipeline=sharp(resized.data,{raw:resized.info}).extract({left:Math.floor((resized.info.width-rect.width)/2),top:0,width:rect.width,height:rect.height});
   }else {if(image.source||geometry.width!==image.width||geometry.height!==image.height)pipeline=pipeline.extract({left:window.left+geometry.left,top:window.top+geometry.top,width:geometry.width,height:geometry.height});pipeline=pipeline.resize(rect.width,rect.height,{fit:'fill'});if(layout.fixed)pipeline=pipeline.extract({left:clipped.sourceLeft,top:clipped.sourceTop,width:clipped.width,height:clipped.height});}
-  const part=await pipeline.ensureAlpha().raw().toBuffer();
-  canvas=await sharp(canvas,{raw:{width:layout.width,height:layout.height,channels:4}}).composite([{input:part,raw:{width:clipped.width,height:clipped.height,channels:4},left:clipped.left,top:clipped.top}]).raw().toBuffer();
+  let part=await pipeline.ensureAlpha().raw().toBuffer(),destination=clipped;
+  if(fine){
+   const turned=await sharp(part,{raw:{width:clipped.width,height:clipped.height,channels:4}}).rotate(fine,{background:'#00000000'}).raw().toBuffer({resolveWithObject:true});check();
+   destination=clipRectangle({x:Math.round(pose.x+pose.width/2-turned.info.width/2),y:Math.round(pose.y+pose.height/2-turned.info.height/2),width:turned.info.width,height:turned.info.height},layout);
+   if(!destination)continue;
+   part=await sharp(turned.data,{raw:turned.info}).extract({left:destination.sourceLeft,top:destination.sourceTop,width:destination.width,height:destination.height}).raw().toBuffer();
+  }
+  canvas=await sharp(canvas,{raw:{width:layout.width,height:layout.height,channels:4}}).composite([{input:part,raw:{width:destination.width,height:destination.height,channels:4},left:destination.left,top:destination.top}]).raw().toBuffer();
  }
  return {data:canvas,info:{width:layout.width,height:layout.height,channels:4},layout};
 }
@@ -60,7 +85,7 @@ export class StitchService{
  render(project,options={}){
   const copy=structuredClone(project);this.store.validate(copy);
   const encodingEdits=Object.fromEntries(Object.entries(copy.edits||{}).map(([id,edit])=>[id,edit?.edges?{edges:{left:edit.edges.left,top:edit.edges.top,right:edit.edges.right,bottom:edit.edges.bottom}}:edit]));
-  const key=JSON.stringify({id:copy.id,canvasMode:copy.canvasMode,canvas:copy.canvas,layout:copy.layout,grid:copy.grid,images:copy.images.map(({id,assetId,width,height,bytes,source})=>({id,assetId,width,height,bytes,source})),positions:copy.positions,edits:encodingEdits,export:copy.export});
+  const key=JSON.stringify({id:copy.id,canvasMode:copy.canvasMode,canvas:copy.canvas,layout:copy.layout,grid:copy.grid,images:copy.images.map(({id,assetId,width,height,bytes,source,rotation=0,angle=0})=>({id,assetId,width,height,bytes,source,rotation,angle})),positions:copy.positions,edits:encodingEdits,export:copy.export});
   const revision=options?.latest===true?(this.revisions.get(copy.id)||0)+1:null;
   if(revision!==null)this.revisions.set(copy.id,revision);
   const task=this.pending.catch(()=>{}).then(async()=>{
@@ -74,7 +99,7 @@ export class StitchService{
    const {data,info,layout}=await composeProject(copy,this.store,options);
    const output=await encodeProject(data,info,copy.export||{},options),token=randomUUID();
    if(options.isObsolete())throw new Error('预览参数已更新');
-   const preview=await sharp(output.buffer).resize({width:1200,height:800,fit:'inside',withoutEnlargement:true}).png().toBuffer();
+   const preview=await sharp(output.buffer).resize({width:1600,height:1200,fit:'inside',withoutEnlargement:true}).png().toBuffer();
    if(revision!==null){const previous=this.previews.get(copy.id);if(previous)this.images.results.delete(previous);this.previews.set(copy.id,token);}
    if(revision===null||output.buffer.length<=64*1024*1024){
     this.images.results.set(token,{id:copy.id,name:copy.name||'图像',canvas:true,output,exportTask:revision===null});

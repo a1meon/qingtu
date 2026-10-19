@@ -1,0 +1,35 @@
+{
+  "date": "2026-10-17",
+  "unit": {
+    "passed": 274,
+    "failed": 0
+  },
+  "build": "passed",
+  "desktop": "passed",
+  "fullUI": "passed",
+  "compressionQueue": "passed",
+  "nativeValidation": "hidden offscreen, no OS focus",
+  "targetedChecks": {
+    "passed": true,
+    "offscreen": true,
+    "thumbnailsContainPortraitAndWide": true,
+    "actualCornerBandsVisible": true,
+    "dimmedFullSizeOriginalDuringProcessing": true,
+    "spinnerFollowsComparisonSplit": true,
+    "portraitSpinnerOverImage": true,
+    "processedOnlyPlaceholder": true,
+    "originalViewUnchanged": true,
+    "realResultReplacesPlaceholder": true,
+    "correctPlaceholderAfterImageSwitch": true,
+    "errorStopsSpinner": true,
+    "loading": {
+      "sourceMatches": true,
+      "opacity": 0.45,
+      "filter": "blur(1px)",
+      "spinner": true,
+      "busy": "true",
+      "noActualResult": true
+    }
+  },
+  "preview": "http://127.0.0.1:4173/ HTTP 200"
+}

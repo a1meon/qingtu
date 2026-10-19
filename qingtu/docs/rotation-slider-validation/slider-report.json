@@ -1,0 +1,12 @@
+{
+  "passed": true,
+  "offscreen": true,
+  "sliderBelowParameters": true,
+  "noOperationHint": true,
+  "stepPointOneAndBoundaryWrap": true,
+  "sliderPreviewWithoutSaveOrEncode": true,
+  "escapeCancelsSlider": true,
+  "pointerCancelPreservesKeyboard": true,
+  "moduleSwitchFlushesSlider": true,
+  "sourceGeometryUnchanged": true
+}

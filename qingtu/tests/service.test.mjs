@@ -4,6 +4,7 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import sharp from 'sharp';
+import engineSharp from './engine-backend.mjs';
 import { ImageService } from '../engine/service.mjs';
 
 const config={mode:'target',targetBytes:10000,format:'jpeg',resize:{type:'scale',percent:50}};
@@ -78,13 +79,31 @@ test('a queued export is never discarded by newer live preview settings',async()
 test('an in-flight obsolete preview stops at its encoding boundary while a true export remains queued and completes',async()=>{
  const service=new ImageService(),data=Buffer.alloc(52*34*3);let seed=333;for(let i=0;i<data.length;i++){seed=(Math.imul(seed,1664525)+1013904223)>>>0;data[i]=seed>>>24;}
  const source=await sharp(data,{raw:{width:52,height:34,channels:3}}).png({compressionLevel:0}).toBuffer(),file=await service.add(source,'in-flight.png');
- let enter,release,signalled=false,encodes=0;const entered=new Promise(resolve=>enter=resolve),gate=new Promise(resolve=>release=resolve),png=sharp.prototype.png;
- sharp.prototype.png=function(options){const pipeline=png.call(this,options),toBuffer=pipeline.toBuffer;pipeline.toBuffer=async function(...args){if(options?.compressionLevel===9){encodes++;if(!signalled){signalled=true;enter();await gate;}}return toBuffer.apply(this,args);};return pipeline;};
+ let enter,release,signalled=false,encodes=0;const entered=new Promise(resolve=>enter=resolve),gate=new Promise(resolve=>release=resolve),png=engineSharp.prototype.png;
+ engineSharp.prototype.png=function(options){const pipeline=png.call(this,options),toBuffer=pipeline.toBuffer;pipeline.toBuffer=async function(...args){if(options?.compressionLevel===9){encodes++;if(!signalled){signalled=true;enter();await gate;}}return toBuffer.apply(this,args);};return pipeline;};
  const settings={mode:'smart',format:'png',resize:{type:'scale',percent:100},targetBytes:64};
  try{
   const old=service.process(file.id,settings,{latest:true}),oldResult=Promise.allSettled([old]);await entered;
   const exported=service.process(file.id,{...settings,format:'jpeg',targetBytes:1000000}),newest=service.process(file.id,{...settings,targetBytes:1000000},{latest:true});release();
   const [obsolete]=await oldResult;assert.equal(obsolete.status,'rejected');assert.match(obsolete.reason.message,/预览参数已更新/);
   const [actual,latest]=await Promise.all([exported,newest]);assert.equal(actual.format,'jpeg');assert.ok(service.result(actual.token));assert.equal(latest.unchanged,true);assert.equal(encodes,2,'only the two running lossless probes finish; obsolete lossy searches never start');
- }finally{release();sharp.prototype.png=png;}
+ }finally{release();engineSharp.prototype.png=png;}
+});
+
+test('compression rename updates cached previews and pinned exports without changing bytes or tokens',async t=>{
+ const root=await fs.mkdtemp(path.join(os.tmpdir(),'qingtu-rename-'));t.after(()=>fs.rm(root,{recursive:true,force:true}));
+ const s=new ImageService(),buffer=await sharp({create:{width:80,height:60,channels:4,background:'#447799'}}).png().toBuffer(),file=await s.add(buffer,'old.png');
+ const settings={...config,format:'png'},preview=await s.process(file.id,settings,{latest:true}),pinned=await s.process(file.id,settings),bytes=s.result(preview.token).output.buffer;
+ const renamed=s.rename(file.id,'产品.定稿.png');assert.equal(renamed.name,'产品.定稿.png');
+ assert.equal((await s.process(file.id,settings,{latest:true})).token,preview.token);
+ assert.equal(s.result(preview.token).output.buffer,bytes);assert.ok(s.original(file.id).buffer.equals(buffer));
+ assert.equal(s.download(preview.token).name,'产品.定稿-qingtu.png');assert.equal(s.download(pinned.token).name,'产品.定稿-qingtu.png');
+ assert.equal(path.basename((await s.save(pinned.token,root)).path),'产品.定稿-qingtu.png');
+ s.rename(file.id,'产品.v2');assert.equal(s.download(preview.token).name,'产品.v2-qingtu.png','literal dots remain when the user enters no image extension');
+ const changed=await s.process(file.id,{...settings,resize:{type:'scale',percent:25}});assert.equal(s.download(changed.token).name,'产品.v2-qingtu.png','fresh encodes retain the renamed stem');
+});
+test('invalid compression names fail without changing the queue or cached output names',async()=>{
+ const s=new ImageService(),buffer=await sharp({create:{width:20,height:20,channels:3,background:'#446688'}}).png().toBuffer(),file=await s.add(buffer,'valid.png');
+ for(const name of ['', '   ','../x','a\\b','a:b','bad\u0000name','x'.repeat(201)])assert.throws(()=>s.rename(file.id,name),/名称/);
+ assert.equal(s.original(file.id).item.name,'valid.png');assert.throws(()=>s.rename('missing','name'),/已移除/);
 });

@@ -1,0 +1,64 @@
+{
+  "date": "2026-10-17",
+  "checks": {
+    "unit": "272 passed, 0 failed",
+    "build": "passed",
+    "desktop": "passed",
+    "ui": "passed (including expected injected save failure)",
+    "layoutPolish": "passed",
+    "windowClose": "passed: empty, thumbnail, optimization, save-error, card-name",
+    "sidebarResponsive": "passed",
+    "preview": "HTTP 200 at http://127.0.0.1:4173/"
+  },
+  "nativeValidation": {
+    "hidden": true,
+    "offscreenRendering": true,
+    "opacity": 0,
+    "outsideAllDisplays": true,
+    "noOSFocus": true
+  },
+  "windowBounds": {
+    "x": 1768,
+    "y": 1238,
+    "width": 1280,
+    "height": 820
+  },
+  "displayBounds": [
+    {
+      "x": 0,
+      "y": 0,
+      "width": 1512,
+      "height": 982
+    }
+  ],
+  "restoreFollowup": {
+    "autoCollapseAndRestore": "passed",
+    "manualOpenSurvivesResize": "passed",
+    "manualCloseSurvivesResize": "passed",
+    "unit": "272 passed, 0 failed",
+    "build": "passed",
+    "desktop": "passed",
+    "ui": "passed",
+    "continuousResize": "passed",
+    "verification": "hidden offscreen rendering"
+  },
+  "refitFollowup": {
+    "automaticCollapseFitsNewWidth": true,
+    "manualCollapseFitsNewWidth": true,
+    "filledCanvasFitsNewWidth": true,
+    "imageScalesWithCanvas": true,
+    "savedCanvasPositionsAndExportUnchanged": true,
+    "manualPreferenceSurvivesResize": true,
+    "oldViewportCapReproduction": {
+      "actualBefore": 246,
+      "expectedAndActualAfter": 616
+    },
+    "unitTests": 272,
+    "unitFailures": 0,
+    "build": "passed",
+    "desktop": "passed",
+    "ui": "passed",
+    "continuousResize": "passed",
+    "offscreenValidation": true
+  }
+}

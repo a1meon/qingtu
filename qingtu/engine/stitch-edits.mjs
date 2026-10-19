@@ -14,8 +14,8 @@ export function imageGeometry(image,edit){
  const axis=edit?.axis??'horizontal',amount=edit?.amount??0;
  if(edit?.fraction!=null){
   const fraction=edit.fraction;
-  if(axis!=='horizontal'||edit.amount!=null||!Number.isFinite(fraction)||fraction<0||fraction>=.5||image.width*(1-2*fraction)<1)throw new Error('等比例左右裁剪数据无效');
-  return {left:image.width*fraction,top:0,width:image.width*(1-2*fraction),height:image.height};
+  if(!['horizontal','vertical'].includes(axis)||edit.amount!=null||!Number.isFinite(fraction)||fraction<0||fraction>=.5||image[axis==='horizontal'?'width':'height']*(1-2*fraction)<1)throw new Error('等比例裁剪数据无效');
+  return axis==='horizontal'?{left:image.width*fraction,top:0,width:image.width*(1-2*fraction),height:image.height}:{left:0,top:image.height*fraction,width:image.width,height:image.height*(1-2*fraction)};
  }
  if(!['horizontal','vertical',...singleAxes].includes(axis)||!Number.isInteger(amount)||amount<0||amount>cropLimit(image,axis))throw new Error('单图裁剪须为有效的原图像素，且至少保留 1 像素');
  const left=['horizontal','left'].includes(axis)?amount:0,top=['vertical','top'].includes(axis)?amount:0;

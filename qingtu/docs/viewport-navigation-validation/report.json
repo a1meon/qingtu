@@ -1,0 +1,11 @@
+{
+  "passed": true,
+  "offscreen": true,
+  "parametersBelowImageOutsideWorkArea": true,
+  "outsidePanelRealHitTest": true,
+  "buttonAndPointerAnchoredWheelZoom": true,
+  "handSpaceAndMiddlePan": true,
+  "resetRestoresView": true,
+  "noNavigationSaveOrEncode": true,
+  "zoomedImageEditingCoordinates": true
+}

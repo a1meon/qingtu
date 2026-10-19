@@ -40,12 +40,13 @@ export function AppUpdates({busy,hasImages}){
    <h2 id="update-title">{titles[phase]}</h2>
    <p id="update-description" aria-live="polite">{statusText[phase]}</p>
    {phase==='downloading'&&<progress max="100" value={state.percent||0} aria-label="更新下载进度"/>}
-   {phase==='ready'&&hasImages&&<p className="update-detail">重启会清空当前图片队列</p>}
+   {phase==='ready'&&state.manualInstall&&<p className="update-detail">打开后将轻图拖入应用程序，替换旧版本；替换前请关闭轻图。</p>}
+   {phase==='ready'&&hasImages&&!state.manualInstall&&<p className="update-detail">重启会清空当前图片队列</p>}
    {actionError&&<p className="update-error" role="alert">{actionError}</p>}
    <div className="update-actions">
     {['available','downloading','ready'].includes(phase)||retryDownload?<button className="update-secondary" onClick={close}>{phase==='downloading'?'后台下载':'稍后'}</button>:null}
     {(phase==='available'||retryDownload)&&<button autoFocus className="primary" onClick={()=>act('downloadUpdate')}>{retryDownload?'重新下载':'立即更新'}</button>}
-    {phase==='ready'&&<button autoFocus className="primary" disabled={busy} onClick={()=>act('installUpdate')}>{busy?'处理完成后重启':'重启并更新'}</button>}
+    {phase==='ready'&&<button autoFocus className="primary" disabled={busy} onClick={()=>act('installUpdate')}>{busy?'请等待处理完成':state.installLabel||'重启并更新'}</button>}
     {['offline','error'].includes(phase)&&!retryDownload&&<button autoFocus className="primary" onClick={check}>重新检查</button>}
     {['current','unconfigured','preview'].includes(phase)&&<button autoFocus className="primary" onClick={close}>知道了</button>}
    </div>

@@ -1,0 +1,30 @@
+Qingtu 0.5 lightweight desktop runtime
+
+Neutralinojs 6.10.0 and @neutralinojs/lib 6.10.0
+Copyright Neutralinojs contributors. MIT License.
+Source: https://github.com/neutralinojs/neutralinojs/tree/v6.10.0
+Client: https://github.com/neutralinojs/neutralino.js
+
+wasm-vips 0.0.19 / libvips 8.18.7
+Copyright Kleis Auke W. and respective library contributors.
+Source, build instructions and replacement WASM modules:
+https://github.com/kleisauke/wasm-vips/tree/49ac4378f2df80e38f45491abeeac9b86dddbedd
+https://www.npmjs.com/package/wasm-vips/v/0.0.19
+Full component license notices are included in resources/vips/THIRD-PARTY-NOTICES.md.
+The image engine is a separate WebAssembly library. Rebuild the source with its
+Docker build instructions, replace resources/vips/vips*.wasm and vips-es6.js,
+and repack resources.neu with @electron/asar. No private release signing key
+is required to run your own modified build; the key protects official updates.
+
+Go 1.27.2 standard library/runtime (BSD-style license)
+https://go.dev/LICENSE
+https://go.dev/dl/
+
+React 19.2.0, Buffer 6.0.3, path-browserify 1.0.1, Phosphor Icons 2.1.10,
+@noble/hashes 2.0.1 and @noble/curves 2.0.1 are used under their MIT licenses.
+Their license texts are included alongside this notice in the application.
+
+Microsoft Edge WebView2 Evergreen Bootstrapper is unmodified Microsoft software,
+included only in the Windows installer. Its runtime is provided and updated by
+Microsoft and shared with other applications; it is not embedded in Qingtu.
+https://developer.microsoft.com/microsoft-edge/webview2/

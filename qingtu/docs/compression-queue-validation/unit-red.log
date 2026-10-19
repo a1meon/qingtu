@@ -1,0 +1,49 @@
+✔ failed file saves release export buffers while retaining the reusable preview (6.739125ms)
+✔ service imports real files, writes exclusive output names, and releases removed entries (4.401708ms)
+✔ rejects invalid imports, unknown tokens and animation, while retaining valid imports (1.303291ms)
+✔ concurrent exports serialize per file and preserve each independent export token (7.552041ms)
+✔ queued live previews skip obsolete settings while retaining the newest request (1.652291ms)
+✔ a queued export is never discarded by newer live preview settings (2.553333ms)
+✔ an in-flight obsolete preview stops at its encoding boundary while a true export remains queued and completes (3.217791ms)
+✖ compression rename updates cached previews and pinned exports without changing bytes or tokens (3.28525ms)
+✖ invalid compression names fail without changing the queue or cached output names (1.572ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 7
+ℹ fail 2
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 156.786334
+
+✖ failing tests:
+
+test at tests/service.test.mjs:92:1
+✖ compression rename updates cached previews and pinned exports without changing bytes or tokens (3.28525ms)
+  TypeError: s.rename is not a function
+      at TestContext.<anonymous> (file:///Users/xx/Documents/ChatGPT/%E5%9B%BE%E7%89%87%E5%A4%84%E7%90%86%E8%BD%AF%E4%BB%B6/qingtu/tests/service.test.mjs:96:18)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7)
+
+test at tests/service.test.mjs:104:1
+✖ invalid compression names fail without changing the queue or cached output names (1.572ms)
+  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /名称/. Input:
+  
+  'TypeError: s.rename is not a function'
+  
+      at TestContext.<anonymous> (file:///Users/xx/Documents/ChatGPT/%E5%9B%BE%E7%89%87%E5%A4%84%E7%90%86%E8%BD%AF%E4%BB%B6/qingtu/tests/service.test.mjs:106:91)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: TypeError: s.rename is not a function
+        at file:///Users/xx/Documents/ChatGPT/%E5%9B%BE%E7%89%87%E5%A4%84%E7%90%86%E8%BD%AF%E4%BB%B6/qingtu/tests/service.test.mjs:106:104
+        at getActual (node:assert:611:5)
+        at strict.throws (node:assert:759:24)
+        at TestContext.<anonymous> (file:///Users/xx/Documents/ChatGPT/%E5%9B%BE%E7%89%87%E5%A4%84%E7%90%86%E8%BD%AF%E4%BB%B6/qingtu/tests/service.test.mjs:106:91)
+        at async Test.run (node:internal/test_runner/test:1389:7)
+        at async Test.processPendingSubtests (node:internal/test_runner/test:960:7),
+    expected: /名称/,
+    operator: 'throws',
+    diff: 'simple'
+  }

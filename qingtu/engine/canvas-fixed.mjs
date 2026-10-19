@@ -1,3 +1,4 @@
+import {imageAngle} from './image-source.mjs';
 import {imageGeometry,cropFractions} from './stitch-edits.mjs';
 import {DEFAULT_CANVAS,validateCanvas} from './canvas-limits.mjs';
 import {fitCanvasToContent} from './canvas-fit.mjs';
@@ -14,7 +15,7 @@ export function calculateFixedLayout(project,{draft=false}={}){
  const rects=images.map(image=>{
   const position=project.positions?.[image.id],source=imageGeometry(image,project.edits?.[image.id]);
   if(!position||![position.x,position.y,position.width,position.height].every(Number.isFinite)||position.width<=0||position.height<=0)throw new Error('图片位置或尺寸无效');
-  return {id:image.id,assetId:image.assetId,x:position.x,y:position.y,width:position.width,height:position.height,crop:cropFractions(image,source),...(project.edits?.[image.id]?.fraction!=null?{proportionalCrop:true}:{})};
+  return {id:image.id,assetId:image.assetId,x:position.x,y:position.y,width:position.width,height:position.height,crop:cropFractions(image,source),...(imageAngle(image)?{angle:imageAngle(image)}:{}),...(project.edits?.[image.id]?.fraction!=null?{proportionalCrop:true}:{})};
  });
  return {width,height,rects,type:project.layout||'horizontal',fixed:true};
 }

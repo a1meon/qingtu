@@ -1,0 +1,31 @@
+{
+  "passed": true,
+  "offscreen": true,
+  "typedDecimalAngle": true,
+  "heldCornerPreviewsWithoutEncodingOrSaving": true,
+  "shiftSnaps45": true,
+  "fourCornerHandles": true,
+  "noSliderOrQuarterButtons": true,
+  "escapeCancelsAngleGesture": true,
+  "angleAndBoundsMatch": true,
+  "sourceCanvasAndExportSettingsUnchanged": true,
+  "actualExportPixels": true,
+  "reloadRotation": true,
+  "restoreDirection": true,
+  "moduleSwitchFlushesAngle": true,
+  "latestAngleSurvivesPendingSave": true,
+  "pendingSavePreservesNewerUncommittedPreview": true,
+  "pendingSavePreservesHeldCorner": true,
+  "heldCornerModuleSwitchFlush": true,
+  "cornersFollowLiveAngle": true,
+  "navigationOutsideDisplay": true,
+  "rotatedCropPointerCoordinates": true,
+  "splitRetainsRotatedPlane": true,
+  "output": {
+    "file": "/Users/xx/Documents/ChatGPT/图片处理软件/qingtu/artifacts/precise-rotation/precise-27.4-15.png",
+    "width": 200,
+    "height": 200,
+    "bytes": 1819,
+    "limit": 30000000
+  }
+}

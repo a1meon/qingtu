@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import sharp from 'sharp';
+import engineSharp from './engine-backend.mjs';
 import {processImage} from '../engine/image.mjs';
 const photo=await fs.readFile(new URL('../public/samples/alpine-lake.jpg',import.meta.url));
 const settings={mode:'smart',format:'auto',exact:true,targetBytes:10*1048576,resize:{type:'scale',percent:100}};
@@ -19,34 +20,34 @@ test('an unchanged PNG that fits the budget is reused byte for byte without re-e
 });
 test('fitting unchanged inputs bypass every raster encoder, while explicit format and size edits still apply',async()=>{
  const png=await sharp({create:{width:80,height:60,channels:3,background:'#556677'}}).png({compressionLevel:0}).toBuffer();
- const encodePng=sharp.prototype.png,encodeJpeg=sharp.prototype.jpeg;
- sharp.prototype.png=sharp.prototype.jpeg=function(){throw new Error('unnecessary raster encoder');};
+ const encodePng=engineSharp.prototype.png,encodeJpeg=engineSharp.prototype.jpeg;
+ engineSharp.prototype.png=engineSharp.prototype.jpeg=function(){throw new Error('unnecessary raster encoder');};
  try{for(const [source,format] of [[photo,'auto'],[photo,'jpeg'],[png,'png']]){const r=await processImage(source,{...settings,format});assert.ok(r.unchanged);assert.ok(r.buffer.equals(source));}}
- finally{sharp.prototype.png=encodePng;sharp.prototype.jpeg=encodeJpeg;}
+ finally{engineSharp.prototype.png=encodePng;engineSharp.prototype.jpeg=encodeJpeg;}
  const resized=await processImage(png,{...settings,format:'png',resize:{type:'scale',percent:50}});assert.deepEqual([resized.width,resized.height],[40,30]);
  const converted=await processImage(photo,{...settings,format:'png'});assert.equal(converted.format,'png');assert.equal(converted.unchanged,false);
 });
 test('an oversized noisy PNG reduces resolution while keeping full-colour high-fidelity candidates',async()=>{
  const source=await noise(240,160).png({compressionLevel:0}).toBuffer();
- const png=sharp.prototype.png;let fullEncodes=0;
- sharp.prototype.png=function(options){assert.equal(options?.palette,false,'smart PNG must never enable a 256-colour palette');if(options?.palette===false)fullEncodes++;return png.call(this,options);};
+ const png=engineSharp.prototype.png;let fullEncodes=0;
+ engineSharp.prototype.png=function(options){assert.equal(options?.palette,false,'smart PNG must never enable a 256-colour palette');if(options?.palette===false)fullEncodes++;return png.call(this,options);};
  try{
   const result=await processImage(source,{...settings,format:'png',targetBytes:65536});
   assert.equal(result.autoResized,true);assert.ok(result.width<240&&result.height<160);assert.ok(result.buffer.length<=65536);assert.equal(result.requestedWidth,240);assert.equal(result.requestedHeight,160);
   assert.ok(result.difference.maxError<=2&&result.difference.alphaMaxError===0);assert.ok(fullEncodes>=4&&fullEncodes<45,'bounded search retains the PNG quality floor');
- }finally{sharp.prototype.png=png;}
+ }finally{engineSharp.prototype.png=png;}
 });
 test('repeating a tight PNG budget reuses bounded candidates without lowering the quality floor',async()=>{
  const source=await noise(248,168).png({compressionLevel:0}).toBuffer();
- const png=sharp.prototype.png;let calls=0;
- sharp.prototype.png=function(options){calls++;return png.call(this,options);};
+ const png=engineSharp.prototype.png;let calls=0;
+ engineSharp.prototype.png=function(options){calls++;return png.call(this,options);};
  try{
   const first=await processImage(source,{...settings,format:'png',targetBytes:65536});
   const previous=calls;
   const second=await processImage(source,{...settings,format:'png',targetBytes:65536});
   assert.ok(first.buffer.equals(second.buffer));assert.equal(calls,previous,'the same target must not repeat the same PNG encodes');
   const changed=await processImage(source,{...settings,format:'png',targetBytes:73728});assert.ok(changed.buffer.length<=73728);assert.ok(changed.difference.maxError<=2);
- }finally{sharp.prototype.png=png;}
+ }finally{engineSharp.prototype.png=png;}
 });
 test('cached PNG encodings cannot leak pixels between different source images',async()=>{
  const red=await sharp({create:{width:120,height:80,channels:3,background:'#ff0000'}}).png({compressionLevel:0}).toBuffer();

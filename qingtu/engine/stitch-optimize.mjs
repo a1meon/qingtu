@@ -10,7 +10,7 @@ export function optimizationAvailability(project){
  let next,settings;try{settings=optimizationSettings(project.optimization);const edits=optimizationEdits(project.images,targetRatio(project),settings);next=project.canvasMode==='fixed'?arrangeImages({...project,edits},'horizontal'):{edits};}catch(error){return {enabled:false,hint:error.message};}
  if(sameOptimization(project,next))return {enabled:false,hint:'当前裁剪已优化'};
  const crops=optimizationImageCrops(settings,project.images),selected=project.images.filter(image=>crops[image.id]?.enabled);
- return {enabled:true,hint:selected.length?`为 ${selected.length} 张图片应用特殊裁剪，其余左右裁剪铺满画布`:'按原图统一左右裁剪并铺满画布'};
+ return {enabled:true,hint:selected.length?`为 ${selected.length} 张图片应用特殊裁剪，其余自动裁剪铺满画布`:'按原图自动裁剪并铺满画布'};
 }
 function sameCrop(image,a,b){const left=imageGeometry(image,a),right=imageGeometry(image,b);return ['left','top','width','height'].every(key=>Math.abs(left[key]-right[key])<1e-9);}
 // Availability and execution must agree: matching crops alone do not mean
@@ -39,10 +39,12 @@ export function proportionalHorizontalEdits(images,target=2.5){
  if(!images?.length)throw new Error('请添加图片');
  if(images.length>100||images.some(image=>![image.width,image.height].every(value=>Number.isInteger(value)&&value>0)))throw new Error('图片尺寸无效');
  const ratio=images.reduce((sum,image)=>sum+image.width/image.height,0);
- if(!Number.isFinite(target)||target<=0||ratio<target)throw new Error(`原图横排比例不足 ${target}，无法靠左右裁剪铺满画布`);
- const fraction=(1-target/ratio)/2;
- if(images.some(image=>image.width*(1-2*fraction)<1))throw new Error('裁剪后不足 1 原图像素，请调整图片');
- return Object.fromEntries(images.map(image=>[image.id,{axis:'horizontal',fraction}]));
+ if(!Number.isFinite(target)||target<=0)throw new Error('画布比例无效');
+ // Width-only cropping cannot fill a wider canvas. Crop the other axis
+ // instead, retaining equal scale and the user's exact special-image cuts.
+ const axis=ratio<target?'vertical':'horizontal',fraction=(1-Math.min(ratio/target,target/ratio))/2;
+ if(images.some(image=>image[axis==='horizontal'?'width':'height']*(1-2*fraction)<1))throw new Error('裁剪后不足 1 原图像素，请调整图片或画布');
+ return Object.fromEntries(images.map(image=>[image.id,{axis,fraction}]));
 }
 
 export function optimizeHorizontal(project){
