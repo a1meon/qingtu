@@ -1,0 +1,8 @@
+{
+  "passed": true,
+  "currentVersion": "0.5.3",
+  "noAutomaticDownload": true,
+  "source": "https://gitee.com/a1meon_admin/halframe-releases/releases/download/v0.5.3/",
+  "feedResolvedViaLiveAPI": false,
+  "reason": "Gitee API returned HTTP 403 Rate Limit Exceeded; direct public release feed was verified"
+}

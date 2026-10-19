@@ -1,0 +1,13 @@
+{
+  "version": "0.5.3",
+  "nativeHTTPSDownloads": true,
+  "postPublicationFormalAPISnapshot": true,
+  "liveAPIRequests": 0,
+  "currentVersionPhase": "current",
+  "currentVersionAutomaticDownloads": 0,
+  "newerVersionPhase": "available",
+  "signedDownloadPhase": "ready",
+  "manualMacInstall": true,
+  "apiSnapshotReads": 1,
+  "installerExecuted": false
+}

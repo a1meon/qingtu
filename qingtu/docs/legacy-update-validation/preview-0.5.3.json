@@ -19,6 +19,11 @@
       "sha256": "0dc8ae901b592bfc4536f7bb7f2b8e04c6d70d6a13ca02c2ad6596aeb9baa1ba"
     },
     {
+      "name": "Qingtu-0.4.9-mac-x64.zip.part02",
+      "bytes": 67014137,
+      "sha256": "fde57b64c74cf8b865b3dc18999b3366ec6c8f64ba66fd45be3805f6d759b337"
+    },
+    {
       "name": "Qingtu-0.5.3-Mac-arm64.zip",
       "bytes": 10019706,
       "sha256": "2f15e44d3a0c7463ee059672fea9341c5827818fc7706f0d87e84ddd38eb894e"
@@ -89,11 +94,10 @@
       "sha256": "097bcdc8bd936d1b33646815e1f13f5a9883201112be1c6272247a9f4835565c"
     }
   ],
-  "bytes": 245730126,
+  "bytes": 312744263,
   "releaseId": 1219177,
   "prerelease": true,
-  "incomplete": true,
-  "missing": [
-    "Qingtu-0.4.9-mac-x64.zip.part02"
-  ]
+  "incomplete": false,
+  "missing": [],
+  "officialSparkleSignatures": 4
 }

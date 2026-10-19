@@ -11,25 +11,32 @@
       "backup": "release/archive-v050",
       "anonymousFreshDownloadAndByteEquality": true,
       "userActionTimeConfirmation": true
+    },
+    {
+      "tag": "v0.5.1",
+      "files": 18,
+      "bytes": 312728516,
+      "backup": "release/archive-v051",
+      "anonymousFreshDownloadAndByteEquality": true,
+      "allPublishedSHA256Verified": true,
+      "userActionTimeConfirmation": true
     }
   ],
   "remoteReleaseInventoryMatchedLocalVerifiedAttachments": true,
   "spaceEnoughByPublishedAttachmentSum": true,
   "giteeActualUploadQuotaExceeded": true,
-  "missingAttachment": "Qingtu-0.4.9-mac-x64.zip.part02",
   "actualAdditionalServerCountedBytes": "unknown",
-  "projectedPublishedAttachmentBytesAfterCleanup": 938202499,
+  "projectedPublishedAttachmentBytesAfterCleanup": 625473983,
   "cleanupVerifiedByRemoteReleaseList": true,
   "afterV050DeletionStillQuotaExceeded": true,
   "serverUploadResponse": {
     "error": 1,
     "msg": "上传失败，原因：验证失败：文件大小已超出仓库附件配额：1 GB"
   },
-  "nextCleanupAwaitingUserActionTimeConfirmation": {
-    "tag": "v0.5.1",
-    "files": 18,
-    "bytes": 312728516,
-    "backup": "release/archive-v051",
-    "allPublishedSHA256Verified": true
-  }
+  "all18AttachmentsUploadedAfterV051Cleanup": true,
+  "giteeQuotaErrorResolved": true,
+  "retainedVersions": [
+    "v0.5.2",
+    "v0.5.3"
+  ]
 }
