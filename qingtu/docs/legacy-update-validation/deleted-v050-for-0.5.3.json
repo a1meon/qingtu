@@ -1,0 +1,53 @@
+{
+  "tag": "v0.5.0",
+  "files": [
+    {
+      "name": "lite-win32-x64.json",
+      "bytes": 415,
+      "sha256": "b3f19e97b1ece0579ec5856cb5dc17700d4818e1c815385a5105f419edab7b9f"
+    },
+    {
+      "name": "lite-darwin-arm64.json",
+      "bytes": 415,
+      "sha256": "a0cfac1244fc895ef93a5b00bc986660c07089f20cc2aadc70deaee8772e4462"
+    },
+    {
+      "name": "lite-darwin-x64.json",
+      "bytes": 411,
+      "sha256": "323ef835e6d665cdd260b8cbb2526b8ef6661b0e004b862af9a1462e02dfb59f"
+    },
+    {
+      "name": "SHA256SUMS-0.5.0.txt",
+      "bytes": 751,
+      "sha256": "ebebb4104e3f570abf6082c998ff2e1365318f3d6c3a494ac22f0be9777b711e"
+    },
+    {
+      "name": "Qingtu-0.5.0-Mac-arm64-Installer.dmg",
+      "bytes": 11025785,
+      "sha256": "280c87acb3e4a233131d51552e284e58d44b4f548577cd4250072f7a5aa4cccb"
+    },
+    {
+      "name": "Qingtu-0.5.0-Windows-x64-Setup.exe",
+      "bytes": 9248731,
+      "sha256": "6ed310f7114356649ef04ea2b82c34cf6bd4890616db5bb22ff27c001192d90a"
+    },
+    {
+      "name": "Qingtu-0.5.0-Mac-arm64.zip",
+      "bytes": 10004190,
+      "sha256": "b150890e1870399ee3c21aa10595c1abe7f38fa064bef2966f6320f567497974"
+    },
+    {
+      "name": "Qingtu-0.5.0-Mac-x64-Installer.dmg",
+      "bytes": 11483147,
+      "sha256": "53f99a38957c1103070df9bf6e6589db5b5daba02d5409fc40cbe2b3905599fd"
+    },
+    {
+      "name": "Qingtu-0.5.0-Mac-x64.zip",
+      "bytes": 10389101,
+      "sha256": "6ea7359bec037ddd5e7e390286e6505d0dae89be7e5e9150fffacbf35a410bdc"
+    }
+  ],
+  "bytes": 52152946,
+  "anonymousFreshDownload": true,
+  "byteEqualToVerifiedOriginalUpload": true
+}
