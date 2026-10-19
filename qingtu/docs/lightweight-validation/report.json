@@ -1,0 +1,97 @@
+{
+  "version": "0.5.0",
+  "nodeTests": 298,
+  "liteTests": 265,
+  "requiredChecks": [
+    {
+      "check": "smoke:desktop",
+      "exitCode": 0
+    },
+    {
+      "check": "smoke:ui",
+      "exitCode": 0
+    },
+    {
+      "check": "smoke:canvas",
+      "exitCode": 0
+    },
+    {
+      "check": "smoke:canvas-fit",
+      "exitCode": 0
+    },
+    {
+      "check": "smoke:canvas-resize",
+      "exitCode": 0
+    },
+    {
+      "check": "smoke:crop",
+      "exitCode": 0
+    },
+    {
+      "check": "smoke:split",
+      "exitCode": 0
+    },
+    {
+      "check": "smoke:recovery",
+      "exitCode": 0
+    },
+    {
+      "check": "smoke:optimization",
+      "exitCode": 0
+    },
+    {
+      "check": "smoke:png-budget",
+      "exitCode": 0
+    },
+    {
+      "check": "verify:quality",
+      "exitCode": 0
+    },
+    {
+      "check": "verify:png-budget",
+      "exitCode": 0
+    },
+    {
+      "check": "test:sites",
+      "exitCode": 0
+    }
+  ],
+  "nativeFileTests": "passed with race detector",
+  "packagedMac": {
+    "hidden": true,
+    "position": {
+      "x": 32000,
+      "y": 32000
+    },
+    "ui": true,
+    "export": {
+      "width": 64,
+      "height": 48,
+      "bytes": 154,
+      "format": "png"
+    },
+    "compression": {
+      "width": 40,
+      "height": 30,
+      "bytes": 284
+    },
+    "exclusiveExports": [
+      "轻量导出测试.png",
+      "轻量导出测试-2.png"
+    ],
+    "ok": true
+  },
+  "release": {
+    "files": 9,
+    "bytes": 52152946,
+    "currentRemoteBytes": 814398065,
+    "projectedRemoteBytes": 866551011,
+    "quotaBytes": 1000000000,
+    "spaceEnough": true
+  },
+  "limitations": [
+    "Windows native installation/runtime not executed on this Mac",
+    "Intel Mac runtime not executed: Rosetta unavailable",
+    "Gitee upload pending Chrome availability"
+  ]
+}
