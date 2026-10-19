@@ -6,7 +6,7 @@ import assert from 'node:assert/strict';
 import {initializeUpdater} from '../src/lite/updater.mjs';
 const version=JSON.parse(await fs.readFile('package.json','utf8')).version;
 globalThis.NL_ARGS=['--qingtu-smoke'];
-const helper=spawn(path.resolve('.cache/lite-build/darwin-arm64/轻图.app/Contents/MacOS/qingtu-io'),[],{stdio:['pipe','pipe','pipe']});
+const helper=spawn(path.resolve(process.env.QINGTU_LIVE_HELPER_PATH||'.cache/lite-build/darwin-arm64/轻图.app/Contents/MacOS/qingtu-io'),[],{stdio:['pipe','pipe','pipe']});
 let next=0,buffer='';const waiting=new Map();
 helper.stdout.setEncoding('utf8');helper.stdout.on('data',chunk=>{buffer+=chunk;let at;while((at=buffer.indexOf('\n'))>=0){const line=buffer.slice(0,at);buffer=buffer.slice(at+1);if(!line)continue;const m=JSON.parse(line),p=waiting.get(m.id);waiting.delete(m.id);m.error?p.reject(new Error(m.error.message)):p.resolve(m.result);}});
 helper.on('exit',()=>{for(const p of waiting.values())p.reject(new Error('Native helper exited'));});
@@ -20,6 +20,7 @@ try{
  const ready=await old.api.downloadUpdate();assert.equal(ready.phase,'ready');assert.equal(ready.manualInstall,false);assert.equal(downloaded,1);
  const platforms=[{platform:'darwin',arch:'arm64',current:same.phase,available:available.phase,ready:ready.phase,manualInstall:ready.manualInstall}];
  for(const [platform,arch]of [['darwin','x64'],['win32','x64']]){const now=context(platform,arch);initializeUpdater(now);assert.equal((await now.api.checkUpdate()).phase,'current');const before=context(platform,arch);initializeUpdater(before,'0.5.4');const next=await before.api.checkUpdate();assert.equal(next.phase,'available');assert.equal(next.availableVersion,version);const file=await before.api.downloadUpdate();assert.equal(file.phase,'ready');assert.equal(file.manualInstall,false);platforms.push({platform,arch,current:'current',available:next.phase,ready:file.phase,manualInstall:file.manualInstall});}
+ const fallback=context();fallback.native=async(method,...args)=>{if(method==='fetchText'&&args[0].includes('/updates/stable/'))throw Error('Controlled stable transport outage');return native(method,...args);};initializeUpdater(fallback,'0.5.4');const pageFallback=await fallback.api.checkUpdate();assert.equal(pageFallback.phase,'available');assert.equal(pageFallback.availableVersion,version);
  assert.equal(downloaded,3);
- const report={version,platforms,nativeHTTPS:true,currentVersionPhase:same.phase,currentVersionAutomaticDownloads:0,newerVersionPhase:available.phase,signedDownloadPhase:ready.phase,manualMacInstall:ready.manualInstall,apiRequests:networkCalls,stableRequests,apiIndependent:networkCalls===0,installerExecuted:false};await fs.writeFile('artifacts/gitee-v'+version.replaceAll('.','')+'-live-update.json',JSON.stringify(report,null,2));console.log(JSON.stringify(report));
+ const report={version,platforms,nativeHTTPS:true,currentVersionPhase:same.phase,currentVersionAutomaticDownloads:0,newerVersionPhase:available.phase,signedDownloadPhase:ready.phase,manualMacInstall:ready.manualInstall,apiRequests:networkCalls,stableRequests,apiIndependent:networkCalls===0,publicPageFallback:pageFallback.phase==='available',installerExecuted:false};await fs.writeFile('artifacts/gitee-v'+version.replaceAll('.','')+'-live-update.json',JSON.stringify(report,null,2));console.log(JSON.stringify(report));
 }finally{helper.stdin.end();}

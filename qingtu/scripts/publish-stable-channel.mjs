@@ -8,7 +8,7 @@ if(proof.version!==version||!proof.anonymousDownload||!proof.byteEqualToLocal||p
 function git(args){const r=spawnSync('git',['-C',repo,...args],{encoding:'utf8'});if(r.status!==0)throw Error(r.stderr);return r.stdout.trim();}
 if(git(['remote','get-url','origin'])!=='https://gitee.com/a1meon_admin/halframe-releases.git'||git(['rev-parse','--show-toplevel'])!==repo)throw Error('Wrong stable channel repository');
 if(git(['status','--porcelain']))throw Error('Stable channel checkout has pending changes');
-const response=await fetch(base+'releases/latest',{headers:{'Cache-Control':'no-cache'}});if(!response.ok)throw Error('Cannot confirm formal release');const release=formalReleaseFromPage(await response.text(),base);if(release.version!==version)throw Error('Stable publication requires this version to be latest formal');
+const response=await fetch(base+'releases/latest',{headers:{Accept:'text/html','User-Agent':'Qingtu-Lightweight','Cache-Control':'no-cache'}});if(!response.ok)throw Error('Cannot confirm formal release');const release=formalReleaseFromPage(await response.text(),base);if(release.version!==version)throw Error('Stable publication requires this version to be latest formal');
 const prepared=[];
 for(const [platform,arch]of [['darwin','arm64'],['darwin','x64'],['win32','x64']]){
  const source=`${platform==='darwin'?'lite-auto':'lite'}-${platform}-${arch}.json`,file=await fs.readFile(path.join(out,source)),entry=proof.files.find(f=>f.name===source);

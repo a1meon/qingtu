@@ -108,8 +108,8 @@
   "apiUsed": false,
   "implementationCommit": "b374f26",
   "release": "https://gitee.com/a1meon_admin/halframe-releases/releases/tag/v0.5.5",
-  "formal": false,
-  "stableChannelPublished": false,
+  "formal": true,
+  "stableChannelPublished": true,
   "quota": {
     "beforePublicAttachmentBytes": 625514024,
     "thisReleaseBytes": 313204545,
@@ -128,5 +128,9 @@
     "nativeMacControlsHidden": true,
     "nativeMacAtomicUpdateHidden": true,
     "realLegacyMigrationHidden": true
-  }
+  },
+  "stableCommit": "1327b680ce5af65fcf2e84a93de77f758812a49f",
+  "apiIndependentLiveChecks": true,
+  "known4kMemoryIssueFixed": false,
+  "buildCopiesMovedToTrash": 16
 }
