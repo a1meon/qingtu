@@ -3,7 +3,11 @@
   "newBytes": 312744263,
   "projectedBytes": 990355445,
   "quotaBytes": 1000000000,
-  "spaceEnough": true,
   "deletedVersions": [],
-  "remoteReleaseInventoryMatchedLocalVerifiedAttachments": true
+  "remoteReleaseInventoryMatchedLocalVerifiedAttachments": true,
+  "spaceEnoughByPublishedAttachmentSum": true,
+  "giteeActualUploadQuotaExceeded": true,
+  "missingAttachment": "Qingtu-0.4.9-mac-x64.zip.part02",
+  "cleanupAwaitingUserActionTimeConfirmation": "v0.5.0",
+  "actualAdditionalServerCountedBytes": "unknown"
 }
