@@ -1,11 +1,11 @@
-// Check the real latest endpoint with the updater extracted from shipped0.4.8.
+// Check current signed stable discovery with the updater extracted from shipped0.4.8.
 // Read metadata only; downloads are independently verified and no install runs.
 const fs=require('node:fs/promises'),path=require('node:path'),assert=require('node:assert/strict'),asar=require('@electron/asar');
 (async()=>{
  const version=require('../package.json').version,root=path.resolve('.cache/frozen-legacy-updater');await fs.mkdir(root,{recursive:true});
  const cleanup=JSON.parse(await fs.readFile('.cache/mac-app-cleanup.json','utf8')),archive=path.join(cleanup.moved.find(x=>x.original.endsWith('/release/mac-arm64/轻图.app')).trash,'Contents/Resources/app.asar');
  for(const name of ['mac-updater.cjs','chunk-download.cjs','update-source.cjs'])await fs.writeFile(path.join(root,name),asar.extractFile(archive,'desktop/'+name));
- const {MacUpdater:LegacyMacUpdater}=require(path.join(root,'mac-updater.cjs')),{resolveUpdateFeed}=require(path.join(root,'update-source.cjs')),{MacUpdater}=require('../desktop/mac-updater.cjs');
+ const {MacUpdater:LegacyMacUpdater}=require(path.join(root,'mac-updater.cjs')),{resolveUpdateFeed}=require('../desktop/update-source.cjs'),{MacUpdater}=require('../desktop/mac-updater.cjs');
  const requests=[],responses=new Map();async function fetcher(url,options){if(!responses.has(url)){const r=await fetch(url,options);assert.equal(r.status,200,url);responses.set(url,await r.text());requests.push(url);}return new Response(responses.get(url),{status:200});}
  const cases=[],publicKey=require('../desktop/sparkle-public-key.json').publicKey,native={install:()=>{throw Error('Installation forbidden in metadata verification');}};
  for(const arch of ['arm64','x64']){
