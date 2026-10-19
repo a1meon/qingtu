@@ -91,7 +91,13 @@
   },
   "limitations": [
     "Windows native installation/runtime not executed on this Mac",
-    "Intel Mac runtime not executed: Rosetta unavailable",
-    "Gitee upload pending Chrome availability"
-  ]
+    "Intel Mac runtime not executed: Rosetta unavailable"
+  ],
+  "published": {
+    "url": "https://gitee.com/a1meon_admin/halframe-releases/releases/tag/v0.5.0",
+    "releaseId": 1218806,
+    "allNineFilesMatch": true,
+    "signedManifests": true,
+    "nativeUpdateDownload": true
+  }
 }

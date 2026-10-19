@@ -1,0 +1,105 @@
+{
+  "url": "https://gitee.com/a1meon_admin/halframe-releases/releases/tag/v0.5.0",
+  "releaseId": 1218806,
+  "tag": "v0.5.0",
+  "prerelease": false,
+  "assetCount": 9,
+  "bytes": 52152946,
+  "quotaUsedBytes": 866551011,
+  "removedVersions": [],
+  "downloads": {
+    "complete": true,
+    "files": [
+      {
+        "name": "Qingtu-0.5.0-Mac-arm64-Installer.dmg",
+        "bytes": 11025785,
+        "sha256": "280c87acb3e4a233131d51552e284e58d44b4f548577cd4250072f7a5aa4cccb",
+        "match": true
+      },
+      {
+        "name": "Qingtu-0.5.0-Mac-arm64.zip",
+        "bytes": 10004190,
+        "sha256": "b150890e1870399ee3c21aa10595c1abe7f38fa064bef2966f6320f567497974",
+        "match": true
+      },
+      {
+        "name": "Qingtu-0.5.0-Mac-x64-Installer.dmg",
+        "bytes": 11483147,
+        "sha256": "53f99a38957c1103070df9bf6e6589db5b5daba02d5409fc40cbe2b3905599fd",
+        "match": true
+      },
+      {
+        "name": "Qingtu-0.5.0-Mac-x64.zip",
+        "bytes": 10389101,
+        "sha256": "6ea7359bec037ddd5e7e390286e6505d0dae89be7e5e9150fffacbf35a410bdc",
+        "match": true
+      },
+      {
+        "name": "Qingtu-0.5.0-Windows-x64-Setup.exe",
+        "bytes": 9248731,
+        "sha256": "6ed310f7114356649ef04ea2b82c34cf6bd4890616db5bb22ff27c001192d90a",
+        "match": true
+      },
+      {
+        "name": "SHA256SUMS-0.5.0.txt",
+        "bytes": 751,
+        "sha256": "ebebb4104e3f570abf6082c998ff2e1365318f3d6c3a494ac22f0be9777b711e",
+        "match": true
+      },
+      {
+        "name": "lite-darwin-arm64.json",
+        "bytes": 415,
+        "sha256": "a0cfac1244fc895ef93a5b00bc986660c07089f20cc2aadc70deaee8772e4462",
+        "match": true
+      },
+      {
+        "name": "lite-darwin-x64.json",
+        "bytes": 411,
+        "sha256": "323ef835e6d665cdd260b8cbb2526b8ef6661b0e004b862af9a1462e02dfb59f",
+        "match": true
+      },
+      {
+        "name": "lite-win32-x64.json",
+        "bytes": 415,
+        "sha256": "b3f19e97b1ece0579ec5856cb5dc17700d4818e1c815385a5105f419edab7b9f",
+        "match": true
+      }
+    ],
+    "totalBytes": 52152946
+  },
+  "signedManifests": [
+    {
+      "platform": "darwin",
+      "arch": "arm64",
+      "signature": true,
+      "packageSha256": true,
+      "size": 11025785
+    },
+    {
+      "platform": "darwin",
+      "arch": "x64",
+      "signature": true,
+      "packageSha256": true,
+      "size": 11483147
+    },
+    {
+      "platform": "win32",
+      "arch": "x64",
+      "signature": true,
+      "packageSha256": true,
+      "size": 9248731
+    }
+  ],
+  "liveUpdate": {
+    "version": "0.5.0",
+    "nativeHTTPS": true,
+    "currentVersionPhase": "current",
+    "currentVersionAutomaticDownloads": 0,
+    "newerVersionPhase": "available",
+    "signedDownloadPhase": "ready",
+    "manualMacInstall": true,
+    "apiRequests": 1,
+    "installerExecuted": false
+  },
+  "verifiedAt": "2026-10-19T09:28:56.565Z"
+}

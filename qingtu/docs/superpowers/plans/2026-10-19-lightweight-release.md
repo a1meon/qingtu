@@ -65,5 +65,5 @@ Files: lightweight packaging scripts, native update helper/bridge, signed manife
 - [x] Review the implementation against spec and resolve important findings.
 - [x] Recheck actual Gitee asset quota using the current public asset list plus previously verified per-file sizes; authenticated upload validates the server limit. If needed, download/checksum/backup earliest releases before authorized deletion; retain as much history as fits.
 - [x] Commit all authorized current UI/lightweight changes and push codex/stitch-and-quality without merging main or including ignored secrets/caches.
-- [ ] Upload only verified complete installers/metadata/checksums, verify anonymous downloads/full-package hashes and update discovery, then mark formal release.
-- [ ] Record measured byte sizes, release/source URLs, cleanup actions and remaining platform test limitations; leave web preview running.
+- [x] Upload only verified complete installers/metadata/checksums, verify anonymous downloads/full-package hashes and update discovery, then mark formal release.
+- [x] Record measured byte sizes, release/source URLs, cleanup actions and remaining platform test limitations; leave web preview running.

@@ -27,4 +27,4 @@
 | Qingtu-0.5.0-Mac-x64-Installer.dmg | 11,483,147 | 11.48 |
 | Qingtu-0.5.0-Windows-x64-Setup.exe | 9,248,731 | 9.25 |
 
-源码已推送至 origin/codex/stitch-and-quality：实现提交 62a8aeb，验证记录提交 1c03dea。9 个发行附件白名单位于 release/upload-v050。Gitee 上传等待 Chrome 可操作，线上下载验证完成后更新此记录。
+源码已推送至 origin/codex/stitch-and-quality：实现提交 62a8aeb，验证记录提交 1c03dea。9 个发行附件白名单位于 release/upload-v050。Gitee 已正式发布：[v0.5.0](https://gitee.com/a1meon_admin/halframe-releases/releases/tag/v0.5.0)（发行版 ID 1218806），页面确认“最新版”，API prerelease=false。全部 9 个附件匿名重新下载后与本地逐字节一致，SHA-256 和三个签名更新清单校验通过。真实原生 HTTPS/文件服务仅请求一次版本列表，0.5.0 当前版本检查不自动下载；模拟旧基线后发现 0.5.0，下载并校验实际 Mac 安装包至 ready，未执行安装。Windows/Intel 安装包已匿名下载与哈希核对，未在对应原生系统执行。未删除任何历史版本。
