@@ -1,0 +1,11 @@
+{
+  "version": "0.5.1",
+  "nativeHTTPS": true,
+  "currentVersionPhase": "current",
+  "currentVersionAutomaticDownloads": 0,
+  "newerVersionPhase": "available",
+  "signedDownloadPhase": "ready",
+  "manualMacInstall": true,
+  "apiRequests": 1,
+  "installerExecuted": false
+}

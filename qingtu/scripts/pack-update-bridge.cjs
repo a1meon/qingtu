@@ -5,6 +5,7 @@ const run=(args)=>{const r=spawnSync(process.execPath,args,{stdio:'inherit'});if
 (async()=>{
  run(['node_modules/vite/bin/vite.js','build']);
  const pkg=require('../package.json'),source=require('../desktop/update-source.json'),publicKey=require('../desktop/sparkle-public-key.json').publicKey;
+ if(pkg.devDependencies.electron!=='44.7.0'||require('electron/package.json').version!=='44.7.0')throw new Error('Re-audit macOS13.0 support before changing the legacy bridge Electron runtime');
  for(const arch of ['arm64','x64']){
   run(['scripts/prepare-native.mjs','darwin',arch]);run(['scripts/prepare-sparkle.cjs',arch]);
   const {config}=updateBuild(source,{...pkg,version:'0.4.9'},'darwin',arch,publicKey);

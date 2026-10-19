@@ -14,4 +14,4 @@ Mac 具备 Sparkle 和原公钥的正式 0.4.4–0.4.8 先自动更新完整过�
 
 附件共18个，312,728,516字节。发行前空间不足，用户再次确认后删除最早v0.4.7的15个附件（407,197,206字节）；此前已匿名完整下载并逐字节校验到release/archive-v047。保留v0.4.8、v0.5.0，上传后预计占用772,082,321字节，低于1,000,000,000字节限额。
 
-发布地址：https://gitee.com/a1meon_admin/halframe-releases/releases/tag/v0.5.1 。先预览上传全部附件，匿名验证后转正式；最终远程检查记录见legacy-update-validation目录。
+已正式发布：https://gitee.com/a1meon_admin/halframe-releases/releases/tag/v0.5.1 （ID1218966，prerelease=false，latest已指向此版）。18个附件匿名下载与本地逐字节一致，四份Mac归档通过官方Sparkle签名验证；真实0.4.8发行包提取的旧更新客户端以0.4.6版本检查真实latest入口，两架构均发现0.4.9过渡版，过渡客户端在13.3发现0.5.1、13.2保留可用旧版。Windows真实SDK从Gitee下载并验证9,279,404字节安装包；当前0.5.1检查不自动下载。安装器提取后的两份x64程序和资源与构建目录逐字节一致。源码实现提交6896711已推送，最终记录见legacy-update-validation/published-0.5.1.json。

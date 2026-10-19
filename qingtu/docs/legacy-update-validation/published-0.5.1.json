@@ -1,0 +1,165 @@
+{
+  "url": "https://gitee.com/a1meon_admin/halframe-releases/releases/tag/v0.5.1",
+  "releaseId": 1218966,
+  "tag": "v0.5.1",
+  "prerelease": false,
+  "implementationCommit": "68967110d6c45ab42fea9f8025e442331f4a37f8",
+  "assetCount": 18,
+  "bytes": 312728516,
+  "quotaUsedBytes": 772082321,
+  "quotaBytes": 1000000000,
+  "removedVersions": [
+    "v0.4.7"
+  ],
+  "backup": {
+    "path": "release/archive-v047",
+    "files": 15,
+    "bytes": 407197206,
+    "anonymousDownloadByteExact": true,
+    "userConfirmed": true
+  },
+  "retained": [
+    {
+      "tag": "v0.4.8",
+      "files": 15,
+      "bytes": 407200859
+    },
+    {
+      "tag": "v0.5.0",
+      "files": 9,
+      "bytes": 52152946
+    },
+    {
+      "tag": "v0.5.1",
+      "files": 18,
+      "bytes": 312728516
+    }
+  ],
+  "downloads": {
+    "tag": "v0.5.1",
+    "verified": true,
+    "files": [
+      {
+        "name": "latest.yml",
+        "bytes": 601,
+        "sha256": "81795ea69d4f2f16f5a98656f228b0f1e11daa831980f75cb884ee27e23bf3f2",
+        "matchesUpload": true
+      },
+      {
+        "name": "lite-darwin-arm64.json",
+        "bytes": 415,
+        "sha256": "f223cca9428718bcb770745772a76a4865961328852f950dc442c659a92f6332",
+        "matchesUpload": true
+      },
+      {
+        "name": "lite-darwin-x64.json",
+        "bytes": 411,
+        "sha256": "13c207a82029171f581dfd82407ed7c283771e5546c78cf5de2607465d49cd34",
+        "matchesUpload": true
+      },
+      {
+        "name": "lite-win32-x64.json",
+        "bytes": 415,
+        "sha256": "2ac5aaad7c567e5478a51ebac93b23f5e19fd2dc937a41757a24f1d1caa62180",
+        "matchesUpload": true
+      },
+      {
+        "name": "mac-arm64.json",
+        "bytes": 1006,
+        "sha256": "904c078819496a03f00ad3a19480c76d12f6044afd856d577f5a3df577bda484",
+        "matchesUpload": true
+      },
+      {
+        "name": "mac-light-arm64.json",
+        "bytes": 782,
+        "sha256": "b8881531ded9096449a65248f085b5e69a844fe9ce6957a5b2c18de296f1cff4",
+        "matchesUpload": true
+      },
+      {
+        "name": "mac-light-x64.json",
+        "bytes": 774,
+        "sha256": "b56463a0f3eefcb0c117b4ea91e6d7f8037d9d6abcfee25920ec5c8b9a572711",
+        "matchesUpload": true
+      },
+      {
+        "name": "mac-x64.json",
+        "bytes": 998,
+        "sha256": "66f20b460a48472d1891f29e7d5e47d5d6a60a2b89f7f8c9bcd6ee7b1ff16763",
+        "matchesUpload": true
+      },
+      {
+        "name": "Qingtu-0.4.9-mac-arm64.zip.part01",
+        "bytes": 67108864,
+        "sha256": "02fedad7dd4b7dc3ffe55a82336983fad9ca601f4b623d1adbe0fa480fefe0b8",
+        "matchesUpload": true
+      },
+      {
+        "name": "Qingtu-0.4.9-mac-arm64.zip.part02",
+        "bytes": 59257311,
+        "sha256": "dedb5d6b337f082f2a01708f8d614c671adab0921564d687fd38e47e4a78dfd1",
+        "matchesUpload": true
+      },
+      {
+        "name": "Qingtu-0.4.9-mac-x64.zip.part01",
+        "bytes": 67108864,
+        "sha256": "d4d5325204bce107b405e68e7a110b5cec3528222951aa4cbf943e94433a7092",
+        "matchesUpload": true
+      },
+      {
+        "name": "Qingtu-0.4.9-mac-x64.zip.part02",
+        "bytes": 67010741,
+        "sha256": "ad9c986c12dcb5548f913313600a2427b3298d28582711d398440bbe008e2c8f",
+        "matchesUpload": true
+      },
+      {
+        "name": "Qingtu-0.5.1-Mac-arm64-Installer.dmg",
+        "bytes": 11040374,
+        "sha256": "720335dae2c6450aca026d1228df1930f1cc7081890edb0ee6c12348794a6531",
+        "matchesUpload": true
+      },
+      {
+        "name": "Qingtu-0.5.1-Mac-arm64.zip",
+        "bytes": 10017464,
+        "sha256": "38f27a88fc322190490f5d30a573a5555d241155145f56b5b29854cbff62eeba",
+        "matchesUpload": true
+      },
+      {
+        "name": "Qingtu-0.5.1-Mac-x64-Installer.dmg",
+        "bytes": 11494642,
+        "sha256": "cb284bf91dbc21cdaa9a239967008e937daeba984b3520af6928ec59e702c589",
+        "matchesUpload": true
+      },
+      {
+        "name": "Qingtu-0.5.1-Mac-x64.zip",
+        "bytes": 10403894,
+        "sha256": "22ce98ef7049de960f51430ed4c49e391e8adeb5e5a43c16ae903b80eb4d8684",
+        "matchesUpload": true
+      },
+      {
+        "name": "Qingtu-0.5.1-Windows-x64-Setup.exe",
+        "bytes": 9279404,
+        "sha256": "d2e0bf913e545bbfb17acb8916cec217ae2b58aace59cacac5c60161f57efcbe",
+        "matchesUpload": true
+      },
+      {
+        "name": "SHA256SUMS-0.5.1.txt",
+        "bytes": 1556,
+        "sha256": "9f5d6c0d2013bc9762d97b664b65a5cadf77d1f5f9467976b088ebe82f9c77aa",
+        "matchesUpload": true
+      }
+    ],
+    "bytes": 312728516
+  },
+  "nativeMigration": {
+    "passed": true,
+    "from": "0.4.8",
+    "bridge": "0.4.9",
+    "to": "0.5.1",
+    "hiddenOffscreen": true,
+    "legacyProjectAndSourceUnchanged": true
+  },
+  "legacyLatestVerified": true,
+  "officialSparkleSignatures": 4,
+  "windowsNativeInstallationExecuted": false,
+  "intelMacNativeExecution": false
+}

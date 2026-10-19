@@ -23,33 +23,35 @@
 
 Files: desktop/mac-updater.cjs, desktop/update-controller.cjs, desktop/main.cjs, tests/mac-updater.test.cjs, tests/update-controller.test.cjs.
 
-- [ ] 添加真实 HTTP 测试：mac-light 通道、签名最小系统要求、13.2 拒绝且无包下载、13.3 接受、无效系统要求拒绝、appcast 携带最低系统版本。
-- [ ] 先运行 `node --test tests/mac-updater.test.cjs tests/update-controller.test.cjs` 记录失败。
-- [ ] 构造器增加 channel/systemVersion；先验证清单再比较系统，抛出 UPDATE_OS_UNSUPPORTED；控制器显示具体要求；main 只在新构建使用 mac-light 通道。
-- [ ] 重跑同一测试并审查旧默认通道兼容。
+- [x] 添加真实 HTTP 测试：mac-light 通道、签名最小系统要求、13.2 拒绝且无包下载、13.3 接受、无效系统要求拒绝、appcast 携带最低系统版本。
+- [x] 先运行 `node --test tests/mac-updater.test.cjs tests/update-controller.test.cjs` 记录失败。
+- [x] 构造器增加 channel/systemVersion；先验证清单再比较系统，抛出 UPDATE_OS_UNSUPPORTED；控制器显示具体要求；main 只在新构建使用 mac-light 通道。
+- [x] 重跑同一测试并审查旧默认通道兼容。
 
 ### Task 2: Windows 安装迁移
 
-Files: desktop/lite/installer.nsi, desktop/lite/windows-migration.nsh, tests/windows-migration.test.cjs.
+Files: desktop/lite/installer.nsi, desktop/lite/windows-migration.nsh, desktop/lite/install_test.go.
 
-- [ ] 测试固定旧应用 GUID 510f7683-73da-5142-8631-32518f41bf0b、NSIS 目录选择优先级、显式 /D 及每用户/全用户作用域。
-- [ ] 使用旧 Software/GUID InstallLocation 与旧卸载项作发现源；保留 /D；仅全用户安装需要提权。使用同一 GUID 替换卸载项，清理匹配目录的 QingtuLite 旧项。
-- [ ] 新文件先暂存，检查写入错误，待旧进程退出；失败恢复原可执行文件；成功后清理明确拥有的 Electron 文件，禁止递归删除整个安装目录/用户资源。
-- [ ] 编译 NSIS，提取安装器验证新文件；明确注明无 Windows 原生安装环境。
+- [x] 审查固定旧应用 GUID 510f7683-73da-5142-8631-32518f41bf0b、NSIS 目录选择优先级、显式 /D 及每用户/全用户作用域；使用Go真实文件系统测试每一步替换失败、重试、崩溃残留和提交恢复。
+- [x] 使用旧 Software/GUID InstallLocation 与旧卸载项作发现源；保留 /D；仅全用户安装需要提权。使用同一 GUID 替换卸载项，清理匹配目录的 QingtuLite 旧项。
+- [x] 新文件先暂存，检查写入错误，待旧进程退出；失败恢复原可执行文件；成功后清理明确拥有的 Electron 文件，禁止递归删除整个安装目录/用户资源。
+- [x] 编译 NSIS，提取安装器验证新文件；明确注明无 Windows 原生安装环境。
 
 ### Task 3: 版本和兼容附件打包
 
 Files: scripts/pack-lite.mjs, scripts/pack-update-bridge.cjs, scripts/prepare-legacy-update.cjs, package.json, package-lock.json.
 
-- [ ] 更新轻量版版本 0.5.1；打包 Windows 和 Mac 两架构。
-- [ ] 构建 0.4.9 Electron Mac 两架构 ZIP（最低 macOS 13.0），排除轻量运行时依赖及测试资源；沿用 Sparkle 公钥并完整签名。
-- [ ] 生成 mac-{arch}.json/过渡版分片、mac-light-{arch}.json/轻量 ZIP、latest.yml/轻量 EXE；所有通道签名、架构、大小、哈希完整验证。
-- [ ] 用冻结的真实 0.4.8 客户端验证新附件；用隐藏隔离应用执行 Sparkle 两阶段原位迁移并检查项目原图/清单不变。
+- [x] 更新轻量版版本 0.5.1；打包 Windows 和 Mac 两架构。
+- [x] 构建 0.4.9 Electron Mac 两架构 ZIP（最低 macOS 13.0），排除轻量运行时依赖及测试资源；沿用 Sparkle 公钥并完整签名。
+- [x] 生成 mac-{arch}.json/过渡版分片、mac-light-{arch}.json/轻量 ZIP、latest.yml/轻量 EXE；所有通道签名、架构、大小、哈希完整验证。
+- [x] 用冻结的真实 0.4.8 客户端验证新附件；用隐藏隔离应用执行 Sparkle 两阶段原位迁移并检查项目原图/清单不变。
 
 ### Task 4: 验证、审查和发布
 
 Files: docs/auto-update.md, docs/release-0.5.1.md, docs/lightweight-validation/published-0.5.1.json.
 
-- [ ] 执行适当单元/集成/必需回归，使用独立 reviewer 审查更新边界，修复重要问题。
-- [ ] 容量计算、必要备份清理；Gitee 先预览发行附件，匿名下载全部校验并运行旧协议检查，再正式发布。
-- [ ] 更新发布记录，提交并推送源代码，确认远程提交与正式 release 一致。
+- [x] 执行适当单元/集成/必需回归，使用独立 reviewer 审查更新边界，修复重要问题。
+- [x] 容量计算、必要备份清理；Gitee 先预览发行附件，匿名下载全部校验并运行旧协议检查，再正式发布。
+- [x] 更新发布记录，提交并推送源代码，确认远程提交与正式 release 一致。
+
+完成：v0.5.1 已正式发布（ID1218966），清理前备份并经用户再次确认删除v0.4.7；18个线上附件均逐字节一致，真实latest和旧版通道检查通过。Windows原生安装及Intel Mac原生运行无可用设备，未声称执行。

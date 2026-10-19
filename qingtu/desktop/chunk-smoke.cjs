@@ -1,4 +1,5 @@
 const {app,net}=require('electron');const fs=require('node:fs/promises');const {createReadStream}=require('node:fs');const path=require('node:path');const os=require('node:os');const http=require('node:http');const assert=require('node:assert/strict');const yaml=require('js-yaml');const {createHash}=require('node:crypto');const {NsisUpdater}=require('electron-updater');const {GiteeChunkProvider}=require('./chunk-provider.cjs');const {ChunkTransport}=require('./chunk-download.cjs');
+if(process.platform==='darwin')app.setActivationPolicy('accessory');
 (async()=>{
  await app.whenReady();const root=await fs.mkdtemp(path.join(os.tmpdir(),'qingtu-sdk-'));let server,transport;
  try{
