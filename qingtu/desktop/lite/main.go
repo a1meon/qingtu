@@ -227,6 +227,9 @@ func call(r request) (any, error) {
 	return nil, fmt.Errorf("unsupported native operation: %s", r.Method)
 }
 func main() {
+	if installCommand(os.Args[1:]) {
+		return
+	}
 	defer func() {
 		for _, f := range handles {
 			f.Close()

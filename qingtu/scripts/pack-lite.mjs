@@ -66,6 +66,8 @@ for(const item of artifacts){const bytes=await fs.readFile(path.join(out,item.na
  const manifest={version,platform:item.platform,arch:item.arch,minOS:item.platform==='darwin'?'13.3':'Windows 10',file:{name:item.name,size:item.size,sha256:item.sha256}};const payload=Buffer.from(JSON.stringify(manifest));await fs.writeFile(path.join(out,`lite-${item.platform}-${item.arch}.json`),JSON.stringify({payload:payload.toString('base64'),signature:sign(null,payload,key).toString('base64')},null,2)+'\n');
 }}
 await fs.writeFile(path.join(out,'SHA256SUMS-'+version+'.txt'),artifacts.map(a=>a.sha256+'  '+a.name).join('\n')+'\n');await fs.writeFile(path.join(out,'build-report.json'),JSON.stringify({version,artifacts,dependencies:checks.map(([file,sha256])=>({file,sha256}))},null,2)+'\n');
-for(const name of ['mac-arm64.json','mac-x64.json','latest.yml'])await fs.rm(path.join(out,name),{force:true});
 const publishedNames=[...artifacts.map(a=>a.name),'lite-darwin-arm64.json','lite-darwin-x64.json','lite-win32-x64.json'];await fs.writeFile(path.join(out,'SHA256SUMS-'+version+'.txt'),(await Promise.all(publishedNames.map(async name=>hash(await fs.readFile(path.join(out,name)))+'  '+name))).join('\n')+'\n');
+// Every latest release also serves old clients. Never point the unguarded Mac
+// legacy channel straight at a WebView build requiring a newer operating system.
+await require('./prepare-legacy-update.cjs').prepare(version);
 console.log(JSON.stringify(artifacts.map(({name,size})=>({name,MB:(size/1000000).toFixed(2)})),null,2));

@@ -1,6 +1,6 @@
 {
   "name": "qingtu",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "private": true,
   "type": "module",
   "scripts": {
@@ -57,6 +57,8 @@
     "smoke:rotation-slider": "electron desktop/rotation-slider-smoke.cjs",
     "build:lite": "vite build --config vite.lite.config.mjs",
     "pack:lite": "node scripts/pack-lite.mjs",
+    "pack:update-bridge": "node scripts/pack-update-bridge.cjs",
+    "pack:release": "npm run pack:update-bridge && npm run pack:lite",
     "prepare:lite": "node scripts/prepare-lite-tools.mjs",
     "test:lite": "QINGTU_TEST_LITE=1 node --import ./scripts/lite-test-loader.mjs --test --test-concurrency=2 tests/*.test.mjs"
   },
