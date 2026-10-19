@@ -27,7 +27,7 @@ const plist=(app,key,type,value)=>{try{run('/usr/libexec/PlistBuddy',['-c',`Dele
  }
  try{
   const old=path.join(root,'installed/轻图.app'),bridge=path.join(root,'bridge/轻图.app'),light=path.join(root,'light/轻图.app');
-  await electronFixture(path.resolve('release/mac-arm64/轻图.app'),old,'mac');await electronFixture(path.resolve('release/bridge-0.4.9/arm64/mac-arm64/轻图.app'),bridge,'mac-light');
+  await electronFixture(path.resolve(process.env.QINGTU_MIGRATION_SOURCE||'release/mac-arm64/轻图.app'),old,'mac');await electronFixture(path.resolve('release/bridge-0.4.9/arm64/mac-arm64/轻图.app'),bridge,'mac-light');
   await fs.rm(light,{recursive:true,force:true});await fs.cp('.cache/lite-build/darwin-arm64/轻图.app',light,{recursive:true,verbatimSymlinks:true});plist(light,'CFBundleIdentifier','string',bundleID);plist(light,'LSUIElement','bool','true');
   const resources=path.join(light,'Contents/Resources'),bundle=path.join(resources,'resources.neu'),expanded=path.join(root,'light-resources');await fs.rm(expanded,{recursive:true,force:true});asar.extractAll(bundle,expanded);const config=JSON.parse(await fs.readFile(path.join(expanded,'neutralino.config.json'),'utf8'));config.applicationId=bundleID;Object.assign(config.modes.window,{hidden:true,center:false,x:32000,y:32000});await fs.writeFile(path.join(expanded,'neutralino.config.json'),JSON.stringify(config));await fs.rm(bundle);await asar.createPackage(expanded,bundle);await fs.writeFile(path.join(resources,'fixture.png'),fixture);
   // Test launcher adds only hidden/test-root/smoke arguments; the real native

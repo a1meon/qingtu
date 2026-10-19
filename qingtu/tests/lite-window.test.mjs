@@ -5,6 +5,7 @@ test('both lightweight platforms remove the duplicate native title row with phys
  assert.equal(win.borderless,true);assert.equal(win.resizable,true);assert.equal(win.useLogicalPixels,false,'never mix scaled widths with native physical screen coordinates');
  assert.equal(mac.borderless,true);assert.equal(mac.resizable,true);assert.equal(mac.useLogicalPixels,false,'Cocoa frame sizes are already points');
  assert.equal(win.injectGlobals,false);assert.equal(mac.injectGlobals,false);
+ assert.equal(mac.transparent,true,'Cocoa and WKWebView must expose transparent corners');assert.equal(win.transparent,false,'Windows uses its native rounded region');
 });
 test('native frame and position fit physical work area at 100/125/150/200 percent DPI and on offset monitors',()=>{
  for(const dpi of [96,120,144,192])for(const left of [-1920,0,1920]){

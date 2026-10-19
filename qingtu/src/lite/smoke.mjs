@@ -12,6 +12,10 @@ export async function smoke(ctx){
    const titlebar=document.querySelector('.titlebar'),brand=titlebar.querySelector('.brand').getBoundingClientRect(),buttons=titlebar.querySelector('.mac-window-controls').getBoundingClientRect();
    if(brand.left<buttons.right+5)throw new Error('Mac buttons overlap application name');
    if(Math.abs(report.chrome.nativeSize.height-innerHeight)>1)throw new Error('Duplicate native Mac title row remains');
+   report.chrome.cornerRadius=getComputedStyle(document.querySelector('.app')).borderTopLeftRadius;
+   report.chrome.transparentBacking=['html','body','#root'].every(selector=>getComputedStyle(document.querySelector(selector)).backgroundColor==='rgba(0, 0, 0, 0)');
+   if(report.chrome.cornerRadius!=='12px'||!report.chrome.transparentBacking)throw new Error('Mac page corners are not transparent and rounded');
+   report.chrome.clipsChildren=getComputedStyle(document.querySelector('.app')).overflow==='hidden';if(!report.chrome.clipsChildren)throw new Error('Mac page content is not clipped to rounded corners');
    try{await N.window.setDraggableRegion(titlebar);throw new Error('Mac titlebar did not bind after mount');}catch(e){if(e.code!=='NE_WD_ALRDREL')throw e;report.chrome.nativeDragBound=true;}
   }
   report.stage='list';report.worker=await call('stitchList');

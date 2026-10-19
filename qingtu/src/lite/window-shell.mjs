@@ -1,6 +1,7 @@
 export function windowOptions(platform) {
  return {title:'轻图',width:1280,height:820,minWidth:600,minHeight:420,
   resizable:true,useLogicalPixels:false,borderless:true,
+  transparent:platform==='darwin',
   hidden:false,center:true,exitProcessOnClose:false,useSavedState:false,
   injectGlobals:false,injectClientLibrary:false,icon:'/resources/assets/app-icon.png'};
 }
@@ -22,10 +23,10 @@ export async function fitInitialWindow(N,platform,{native,pid=globalThis.NL_PID,
  await N.window.move(x,y);
 }
 
-export async function bindTitlebar(N,element,platform) {
+export async function bindTitlebar(N,element,platform,toggleMaximize) {
  if(!['darwin','win32'].includes(platform)||!element)return()=>{};
  await N.window.setDraggableRegion(element,{exclude:[...element.querySelectorAll('button,dialog')]});
- const doubleClick=event=>{if(event.target.closest('button,a,input,dialog'))return;N.window.isMaximized().then(maximized=>maximized?N.window.unmaximize():N.window.maximize()).catch(console.error);};
+ const doubleClick=event=>{if(event.target.closest('button,a,input,dialog'))return;(toggleMaximize?toggleMaximize():N.window.isMaximized().then(maximized=>maximized?N.window.unmaximize():N.window.maximize())).catch(console.error);};
  element.addEventListener('dblclick',doubleClick);
  return()=>{element.removeEventListener('dblclick',doubleClick);N.window.unsetDraggableRegion(element).catch(()=>{});};
 }

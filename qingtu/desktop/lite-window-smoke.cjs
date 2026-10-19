@@ -8,7 +8,7 @@ const root=path.resolve('artifacts/lite-window');app.setPath('userData',path.joi
  for(const platform of ['win32','darwin']) {
   const preload=path.join(root,`preload-${platform}.cjs`);
   await fs.writeFile(preload,`window.addEventListener('DOMContentLoaded',()=>document.documentElement.classList.add('lite-desktop',${JSON.stringify(platform==='darwin'?'lite-mac':'lite-win')}));window.actions=[];window.resizeCalls=[];window.titlebarBound=false;window.qingtu={platform:${JSON.stringify(platform)},windowChrome:${JSON.stringify(platform==='win32'?'custom-win':'custom-mac')},beginWindowResize:async edge=>window.resizeCalls.push(edge),bindTitlebar:async element=>{window.titlebarBound=!!element;return()=>{};},onFlush:()=>()=>{},onMenu:()=>()=>{},onUpdate:()=>()=>{},samples:async()=>[],stitchList:async()=>[],stitchPreviews:async()=>[],updateStatus:async()=>({version:'0.5.3',phase:'idle',visible:false}),windowAction:async a=>window.actions.push(a)};`);
-  const win=new BrowserWindow({show:false,opacity:0,x:32000,y:32000,width:1280,height:820,webPreferences:{preload,contextIsolation:false,nodeIntegration:false,offscreen:true}});
+  const win=new BrowserWindow({show:false,opacity:0,x:32000,y:32000,width:1280,height:820,transparent:platform==='darwin',backgroundColor:platform==='darwin'?'#00000000':'#ffffff',webPreferences:{preload,contextIsolation:false,nodeIntegration:false,offscreen:true}});
   assert.ok(!win.isVisible()&&!win.isFocused()&&win.webContents.isOffscreen());
   await win.loadFile(path.resolve('dist/client/index.html'));
   const js=code=>win.webContents.executeJavaScript(code);for(let n=0;n<100;n++){if(await js("!!document.querySelector('.app')"))break;await new Promise(r=>setTimeout(r,50));}
@@ -28,6 +28,13 @@ const root=path.resolve('artifacts/lite-window');app.setPath('userData',path.joi
   }
   const buttons=await js("[...document.querySelectorAll('.window-controls button,.mac-window-controls button')].map(e=>e.getAttribute('aria-label'))");
   const expected=platform==='win32'?['最小化','最大化或还原','关闭窗口']:['关闭窗口','最小化','最大化或还原'];
+  if(platform==='darwin'){
+   assert.equal(await js("getComputedStyle(document.querySelector('.app')).borderTopLeftRadius"),'12px','Mac page corners must be rounded');
+   for(const selector of ['html','body','#root'])assert.equal(await js(`getComputedStyle(document.querySelector('${selector}')).backgroundColor`),'rgba(0, 0, 0, 0)','Mac host backing must be transparent');
+   await js("document.documentElement.classList.add('lite-mac-maximized')");
+   assert.equal(await js("getComputedStyle(document.querySelector('.app')).borderTopLeftRadius"),'0px');
+   await js("document.documentElement.classList.remove('lite-mac-maximized')");
+  }
   assert.deepEqual(buttons,expected,'exactly one set of integrated window controls');
   for(const label of buttons)await js(`document.querySelector('[aria-label="${label}"]').click()`);
   assert.deepEqual(await js('window.actions'),platform==='win32'?['minimize','maximize','close']:['close','minimize','maximize']);assert.equal(await js('window.titlebarBound'),true);
@@ -41,7 +48,18 @@ const root=path.resolve('artifacts/lite-window');app.setPath('userData',path.joi
    await js("document.documentElement.classList.remove('lite-win-maximized')");
    assert.equal(await js("getComputedStyle(document.querySelector('.app')).borderTopLeftRadius"),'12px');
   }
-  await win.webContents.debugger.sendCommand('Emulation.setDeviceMetricsOverride',{width:1280,height:820,deviceScaleFactor:1,mobile:false});await js('new Promise(r=>setTimeout(r,250))');console.log('Verified '+platform+' layout/controls');await fs.writeFile(path.join(root,platform+'.png'),(await win.webContents.capturePage().catch(e=>{throw new Error('Capture '+platform+': '+e.message);})).toPNG());win.webContents.debugger.detach();win.destroy();
+  await win.webContents.debugger.sendCommand('Emulation.setDeviceMetricsOverride',{width:1280,height:820,deviceScaleFactor:1,mobile:false});await js('new Promise(r=>setTimeout(r,250))');console.log('Verified '+platform+' layout/controls');const capture=(await win.webContents.capturePage().catch(e=>{throw new Error('Capture '+platform+': '+e.message);})).toPNG();await fs.writeFile(path.join(root,platform+'.png'),capture);
+  if(platform==='darwin'){
+   const checkAlpha=async(bytes,label)=>{const {data,info}=await require('sharp')(bytes).ensureAlpha().raw().toBuffer({resolveWithObject:true});for(const [x,y]of [[0,0],[info.width-1,0],[0,info.height-1],[info.width-1,info.height-1]])assert.equal(data[(y*info.width+x)*4+3],0,label);assert.equal(data[(30*info.width+30)*4+3],255,'main window content stays opaque');};
+   await checkAlpha(capture,'rounded corner pixel must be transparent');
+   await js("(()=>{const p=document.createElement('div');p.id='corner-portal-fixture';p.style.cssText='position:fixed;left:0;top:0;width:40px;height:40px;background:blue;z-index:999999';document.body.append(p)})()");await js('new Promise(r=>setTimeout(r,100))');await checkAlpha((await win.webContents.capturePage()).toPNG(),'floating panels must not paint outside window corners');await js("document.getElementById('corner-portal-fixture').remove()");
+   for(const kind of ['update-dialog','stitch-dialog']){
+    await js(`(()=>{let d=document.querySelector('dialog.${kind}');if(!d){d=document.createElement('dialog');d.className='${kind}';d.id='corner-dialog-fixture';d.textContent='圆角测试';document.body.append(d);}d.showModal()})()`);await js('new Promise(r=>setTimeout(r,150))');
+    await checkAlpha((await win.webContents.capturePage()).toPNG(),kind+' backdrop must preserve transparent window corners');
+    await js("(()=>{const d=document.querySelector('dialog[open]');d.close();if(d.id==='corner-dialog-fixture')d.remove()})()");
+   }
+  }
+  win.webContents.debugger.detach();win.destroy();
  }
- const report={passed:true,hiddenOffscreen:true,cases,windowsIntegratedControls:true,windowsResizeEdges:8,windowsRoundPage:true,macCustomControls:true,nativeWindowsExecuted:false};await fs.writeFile(path.join(root,'report.json'),JSON.stringify(report,null,2));console.log(JSON.stringify(report));app.exit(0);
+ const report={passed:true,hiddenOffscreen:true,cases,windowsIntegratedControls:true,windowsResizeEdges:8,windowsRoundPage:true,macCustomControls:true,macTransparentCorners:true,nativeWindowsExecuted:false};await fs.writeFile(path.join(root,'report.json'),JSON.stringify(report,null,2));console.log(JSON.stringify(report));app.exit(0);
 })().catch(e=>{console.error(e);app.exit(1);});

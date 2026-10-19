@@ -35,22 +35,24 @@ export async function initialize(){
  const methods=['stitchList','stitchLoad','stitchSave','stitchDelete','stitchImport','stitchPreviews','stitchMissing','stitchRender','stitchRelease','importFiles','process','rename','remove'];
  let state={version:version.version,phase:'idle',visible:false};
  const api=Object.fromEntries(methods.map(method=>[method,(...args)=>call(method,...args)]));
- Object.assign(api,{platform,windowChrome:platform==='darwin'?'custom-mac':'custom-win',beginWindowResize:edge=>native('windowResize',globalThis.NL_PID,edge),bindTitlebar:element=>bindTitlebar(N,element,platform),onFlush:f=>(flushers.add(f),()=>flushers.delete(f)),onMenu:f=>(menus.add(f),()=>menus.delete(f)),onUpdate:f=>(updates.add(f),()=>updates.delete(f)),
+ let syncCorners=async()=>{};
+ Object.assign(api,{platform,windowChrome:platform==='darwin'?'custom-mac':'custom-win',beginWindowResize:edge=>native('windowResize',globalThis.NL_PID,edge),bindTitlebar:element=>bindTitlebar(N,element,platform,()=>api.windowAction('maximize')),onFlush:f=>(flushers.add(f),()=>flushers.delete(f)),onMenu:f=>(menus.add(f),()=>menus.delete(f)),onUpdate:f=>(updates.add(f),()=>updates.delete(f)),
  samples:async()=>[],chooseFiles:()=>choose(false),stitchChooseFiles:()=>choose(true),
  chooseFolder:async()=>{const p=await N.os.showFolderDialog('选择保存位置',{defaultPath:folder||await N.os.getPath('pictures')});if(!p)return null;folder=p;return {name:p.replaceAll('\\','/').split('/').at(-1),path:p};},
  save:token=>{if(!folder)throw new Error('请先选择保存位置');return call('save',token,folder);},revealFolder:()=>folder?N.os.open(folder):true,
- windowAction:async action=>{if(action==='close')return close();if(action==='minimize')return N.window.minimize();if(action==='maximize')return (await N.window.isMaximized())?N.window.unmaximize():N.window.maximize();},
+ windowAction:async action=>{if(action==='close')return close();if(action==='minimize')return N.window.minimize();if(action==='maximize'){await((await N.window.isMaximized())?N.window.unmaximize():N.window.maximize());await syncCorners();}},
  updateStatus:async()=>state,checkUpdate:async()=>state,downloadUpdate:async()=>{throw new Error('请先检查更新');},installUpdate:async()=>{throw new Error('请先下载更新');}
  });
  window.qingtu=api;
- // Windows uses the system resize frame; Mac controls live in the app toolbar.
+ // Both hosts use their integrated toolbar and restore rounding after unzoom.
  document.documentElement.classList.add('lite-desktop');
  if(platform==='darwin')document.documentElement.classList.add('lite-mac');
- if(platform==='win32'){
-  const html=document.documentElement;html.classList.add('lite-win');
-  const sync=async()=>html.classList.toggle('lite-win-maximized',await N.window.isMaximized());
-  await N.events.on('windowMaximize',sync);await N.events.on('windowRestore',sync);await sync();
- }
+ const html=document.documentElement;if(platform==='win32')html.classList.add('lite-win');
+ let cornerRevision=0,cornerTimer;
+ syncCorners=async()=>{const revision=++cornerRevision,maximized=await N.window.isMaximized(),fullScreen=await N.window.isFullScreen();if(revision===cornerRevision)html.classList.toggle(platform==='win32'?'lite-win-maximized':'lite-mac-maximized',maximized||fullScreen);};
+ for(const event of ['windowMaximize','windowRestore','windowFullScreenEnter','windowFullScreenExit'])await N.events.on(event,()=>syncCorners().catch(console.error));
+ window.addEventListener('resize',()=>{clearTimeout(cornerTimer);cornerTimer=setTimeout(()=>syncCorners().catch(console.error),80);});
+ await syncCorners();
 
  await N.events.on('mainMenuItemClicked',ev=>{if(['close','quit'].includes(ev.detail.id))close();else for(const f of menus)f(ev.detail.id);});
  await setupNativeMenu(N,platform);

@@ -529,6 +529,11 @@ label,h2 { display:block; font-size:16px; font-weight:700; margin-bottom:14px; l
 .lite-desktop,.lite-desktop body,.lite-desktop #root { height:100%; overflow:hidden; }
 .lite-win .app { border-radius:12px; }
 .lite-win-maximized .app { border-radius:0; }
+.lite-mac,.lite-mac body,.lite-mac #root { background:transparent; }
+.lite-mac .app { border-radius:12px; background:#fff; }
+.lite-mac body,.lite-mac dialog::backdrop { clip-path:inset(0 round 12px); }
+.lite-mac-maximized .app { border-radius:0; }
+.lite-mac-maximized body,.lite-mac-maximized dialog::backdrop { clip-path:none; }
 .window-resize-edges { position:fixed; inset:0; pointer-events:none; z-index:20000; }
 .window-resize-edge { position:absolute; pointer-events:auto; touch-action:none; -webkit-app-region:no-drag; }
 .edge-n,.edge-s { left:14px; right:14px; height:5px; cursor:ns-resize; }
