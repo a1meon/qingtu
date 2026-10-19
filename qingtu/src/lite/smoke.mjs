@@ -5,6 +5,15 @@ export async function smoke(ctx){
   for(let i=0;i<50&&!document.querySelector('.titlebar');i++)await wait(100);
   await N.window.move(32000,32000);report.hidden=!(await N.window.isVisible());report.position=await N.window.getPosition();if(!report.hidden)throw new Error('Test window visible');
   report.ui=!!document.querySelector('.titlebar');if(!report.ui)throw new Error('UI did not mount');
+  report.chrome={mode:api.windowChrome,nativeSize:await N.window.getSize(),viewport:{width:innerWidth,height:innerHeight},pageScroll:document.documentElement.scrollHeight>innerHeight};
+  if(report.chrome.pageScroll)throw new Error('Page exceeds the native client viewport');
+  if(api.platform==='darwin'){
+   const controls=document.querySelectorAll('.mac-window-controls button');if(controls.length!==3)throw new Error('Mac window controls missing');
+   const titlebar=document.querySelector('.titlebar'),brand=titlebar.querySelector('.brand').getBoundingClientRect(),buttons=titlebar.querySelector('.mac-window-controls').getBoundingClientRect();
+   if(brand.left<buttons.right+5)throw new Error('Mac buttons overlap application name');
+   if(Math.abs(report.chrome.nativeSize.height-innerHeight)>1)throw new Error('Duplicate native Mac title row remains');
+   try{await N.window.setDraggableRegion(titlebar);throw new Error('Mac titlebar did not bind after mount');}catch(e){if(e.code!=='NE_WD_ALRDREL')throw e;report.chrome.nativeDragBound=true;}
+  }
   report.stage='list';report.worker=await call('stitchList');
   const input=await native('readFile',globalThis.NL_PATH+'/fixture.png');
   report.stage='import';const image=await api.stitchImport({name:'输入.png',base64:input});delete image.preview;

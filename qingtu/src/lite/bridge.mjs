@@ -2,6 +2,7 @@ import * as N from '@neutralinojs/lib';
 import {Buffer} from 'buffer';
 import version from '../../package.json';
 import {startNativeClient} from './startup.mjs';
+import {fitInitialWindow,bindTitlebar,setupNativeMenu} from './window-shell.mjs';
 export async function initialize(){
  await startNativeClient(N);
  const nativePending=new Map(),pending=new Map();let sequence=0,output='',folder=null,closing=false,helperFailure=null,workerFailure=null;let helper;
@@ -15,6 +16,7 @@ export async function initialize(){
  helper=await N.os.spawnProcess(quote(globalThis.NL_PATH+'/'+(globalThis.NL_IO_PATH||'qingtu-io')+(globalThis.NL_OS==='Windows'?'.exe':'')));
  const native=(method,...args)=>new Promise((resolve,reject)=>{if(helperFailure)return reject(helperFailure);const id=++sequence;nativePending.set(id,{resolve,reject});N.os.updateSpawnedProcess(helper.id,'stdIn',JSON.stringify({id,method,args})+'\n').catch(error=>{nativePending.delete(id);reject(error);});});
  const info=await native('platform'),platform=info.os==='windows'?'win32':'darwin';
+ await fitInitialWindow(N,platform,{native}).catch(error=>console.warn('窗口尺寸自动适配失败',error));
  const root=globalThis.NL_ARGS?.find(a=>a.startsWith('--qingtu-test-root='))?.split('=').slice(1).join('=')||await native('legacyRoot');
  const worker=new Worker(new URL('./worker.mjs',import.meta.url),{type:'module'});
  worker.onmessage=async({data:m})=>{
@@ -32,7 +34,7 @@ export async function initialize(){
  const methods=['stitchList','stitchLoad','stitchSave','stitchDelete','stitchImport','stitchPreviews','stitchMissing','stitchRender','stitchRelease','importFiles','process','rename','remove'];
  let state={version:version.version,phase:'idle',visible:false};
  const api=Object.fromEntries(methods.map(method=>[method,(...args)=>call(method,...args)]));
- Object.assign(api,{platform,onFlush:f=>(flushers.add(f),()=>flushers.delete(f)),onMenu:f=>(menus.add(f),()=>menus.delete(f)),onUpdate:f=>(updates.add(f),()=>updates.delete(f)),
+ Object.assign(api,{platform,windowChrome:platform==='darwin'?'custom-mac':'native',bindTitlebar:element=>bindTitlebar(N,element,platform),onFlush:f=>(flushers.add(f),()=>flushers.delete(f)),onMenu:f=>(menus.add(f),()=>menus.delete(f)),onUpdate:f=>(updates.add(f),()=>updates.delete(f)),
  samples:async()=>[],chooseFiles:()=>choose(false),stitchChooseFiles:()=>choose(true),
  chooseFolder:async()=>{const p=await N.os.showFolderDialog('选择保存位置',{defaultPath:folder||await N.os.getPath('pictures')});if(!p)return null;folder=p;return {name:p.replaceAll('\\','/').split('/').at(-1),path:p};},
  save:token=>{if(!folder)throw new Error('请先选择保存位置');return call('save',token,folder);},revealFolder:()=>folder?N.os.open(folder):true,
@@ -40,12 +42,12 @@ export async function initialize(){
  updateStatus:async()=>state,checkUpdate:async()=>state,downloadUpdate:async()=>{throw new Error('请先检查更新');},installUpdate:async()=>{throw new Error('请先下载更新');}
  });
  window.qingtu=api;
- // Native chrome supplies the normal macOS title bar; keep Windows controls.
+ // Windows uses the system resize frame; Mac controls live in the app toolbar.
  document.documentElement.classList.add('lite-desktop');
  if(platform==='darwin')document.documentElement.classList.add('lite-mac');
 
  await N.events.on('mainMenuItemClicked',ev=>{if(['close','quit'].includes(ev.detail.id))close();else for(const f of menus)f(ev.detail.id);});
- await N.window.setMainMenu([...(platform==='darwin'?[{text:'轻图',menuItems:[{id:'quit',text:'退出轻图',shortcut:'q'}]}]:[]),{text:'文件',menuItems:[{id:'import',text:'添加图片',shortcut:platform==='darwin'?'o':'Ctrl+O'},{id:'export',text:'导出图片',shortcut:platform==='darwin'?'S':'Ctrl+Shift+S'},{id:'close',text:'关闭',shortcut:platform==='darwin'?'w':'Alt+F4'}]},...(platform==='darwin'?[{text:'编辑',menuItems:[{text:'撤销',action:'undo:',shortcut:'z'},{text:'重做',action:'redo:',shortcut:'Z'},{text:'剪切',action:'cut:',shortcut:'x'},{text:'复制',action:'copy:',shortcut:'c'},{text:'粘贴',action:'paste:',shortcut:'v'},{text:'全选',action:'selectAll:',shortcut:'a'}]}]:[])]);
- document.addEventListener('keydown',event=>{if(platform==='win32'&&event.ctrlKey&&event.key.toLowerCase()==='o'){event.preventDefault();for(const f of menus)f('import');}else if(platform==='win32'&&event.ctrlKey&&event.shiftKey&&event.key.toLowerCase()==='s'){event.preventDefault();for(const f of menus)f('export');}});
+ await setupNativeMenu(N,platform);
+
  return {api,native,call,flush,close,N,info,updates,setState(value){state=value;for(const f of updates)f(state);}};
 }

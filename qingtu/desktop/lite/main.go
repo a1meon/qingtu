@@ -131,6 +131,8 @@ func call(r request) (any, error) {
 		return destination, nil
 	case "platform":
 		return map[string]any{"os": runtime.GOOS, "arch": runtime.GOARCH}, nil
+	case "windowMetrics":
+		return windowMetrics(number(r, 0))
 	case "readFile":
 		b, e := os.ReadFile(p)
 		return base64.StdEncoding.EncodeToString(b), e
