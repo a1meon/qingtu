@@ -17,6 +17,7 @@ export async function initialize(){
  const native=(method,...args)=>new Promise((resolve,reject)=>{if(helperFailure)return reject(helperFailure);const id=++sequence;nativePending.set(id,{resolve,reject});N.os.updateSpawnedProcess(helper.id,'stdIn',JSON.stringify({id,method,args})+'\n').catch(error=>{nativePending.delete(id);reject(error);});});
  const info=await native('platform'),platform=info.os==='windows'?'win32':'darwin';
  await fitInitialWindow(N,platform,{native}).catch(error=>console.warn('窗口尺寸自动适配失败',error));
+ if(platform==='win32')await native('windowChrome',globalThis.NL_PID);
  const root=globalThis.NL_ARGS?.find(a=>a.startsWith('--qingtu-test-root='))?.split('=').slice(1).join('=')||await native('legacyRoot');
  const worker=new Worker(new URL('./worker.mjs',import.meta.url),{type:'module'});
  worker.onmessage=async({data:m})=>{
@@ -34,7 +35,7 @@ export async function initialize(){
  const methods=['stitchList','stitchLoad','stitchSave','stitchDelete','stitchImport','stitchPreviews','stitchMissing','stitchRender','stitchRelease','importFiles','process','rename','remove'];
  let state={version:version.version,phase:'idle',visible:false};
  const api=Object.fromEntries(methods.map(method=>[method,(...args)=>call(method,...args)]));
- Object.assign(api,{platform,windowChrome:platform==='darwin'?'custom-mac':'native',bindTitlebar:element=>bindTitlebar(N,element,platform),onFlush:f=>(flushers.add(f),()=>flushers.delete(f)),onMenu:f=>(menus.add(f),()=>menus.delete(f)),onUpdate:f=>(updates.add(f),()=>updates.delete(f)),
+ Object.assign(api,{platform,windowChrome:platform==='darwin'?'custom-mac':'custom-win',beginWindowResize:edge=>native('windowResize',globalThis.NL_PID,edge),bindTitlebar:element=>bindTitlebar(N,element,platform),onFlush:f=>(flushers.add(f),()=>flushers.delete(f)),onMenu:f=>(menus.add(f),()=>menus.delete(f)),onUpdate:f=>(updates.add(f),()=>updates.delete(f)),
  samples:async()=>[],chooseFiles:()=>choose(false),stitchChooseFiles:()=>choose(true),
  chooseFolder:async()=>{const p=await N.os.showFolderDialog('选择保存位置',{defaultPath:folder||await N.os.getPath('pictures')});if(!p)return null;folder=p;return {name:p.replaceAll('\\','/').split('/').at(-1),path:p};},
  save:token=>{if(!folder)throw new Error('请先选择保存位置');return call('save',token,folder);},revealFolder:()=>folder?N.os.open(folder):true,
@@ -45,6 +46,11 @@ export async function initialize(){
  // Windows uses the system resize frame; Mac controls live in the app toolbar.
  document.documentElement.classList.add('lite-desktop');
  if(platform==='darwin')document.documentElement.classList.add('lite-mac');
+ if(platform==='win32'){
+  const html=document.documentElement;html.classList.add('lite-win');
+  const sync=async()=>html.classList.toggle('lite-win-maximized',await N.window.isMaximized());
+  await N.events.on('windowMaximize',sync);await N.events.on('windowRestore',sync);await sync();
+ }
 
  await N.events.on('mainMenuItemClicked',ev=>{if(['close','quit'].includes(ev.detail.id))close();else for(const f of menus)f(ev.detail.id);});
  await setupNativeMenu(N,platform);

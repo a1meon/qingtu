@@ -1,0 +1,401 @@
+{
+  "version": "0.5.4",
+  "status": "local-candidate",
+  "checkedAt": "2026-10-19T13:02:02.990Z",
+  "unitTests": 315,
+  "liteTests": 278,
+  "requiredChecks": [
+    {
+      "name": "smoke:desktop",
+      "exit": 0,
+      "log": ".cache/window-chrome-smoke-desktop.log"
+    },
+    {
+      "name": "smoke:ui",
+      "exit": 0,
+      "log": ".cache/window-chrome-smoke-ui.log"
+    },
+    {
+      "name": "smoke:canvas",
+      "exit": 0,
+      "log": ".cache/window-chrome-smoke-canvas.log"
+    },
+    {
+      "name": "smoke:canvas-fit",
+      "exit": 0,
+      "log": ".cache/window-chrome-smoke-canvas-fit.log"
+    },
+    {
+      "name": "smoke:canvas-resize",
+      "exit": 0,
+      "log": ".cache/window-chrome-smoke-canvas-resize.log"
+    },
+    {
+      "name": "smoke:crop",
+      "exit": 0,
+      "log": ".cache/window-chrome-smoke-crop.log"
+    },
+    {
+      "name": "smoke:split",
+      "exit": 0,
+      "log": ".cache/window-chrome-smoke-split.log"
+    },
+    {
+      "name": "smoke:recovery",
+      "exit": 0,
+      "log": ".cache/window-chrome-smoke-recovery.log"
+    },
+    {
+      "name": "smoke:optimization",
+      "exit": 0,
+      "log": ".cache/window-chrome-smoke-optimization.log"
+    },
+    {
+      "name": "smoke:png-budget",
+      "exit": 0,
+      "log": ".cache/window-chrome-smoke-png-budget.log"
+    },
+    {
+      "name": "verify:quality",
+      "exit": 0,
+      "log": ".cache/window-chrome-verify-quality.log"
+    },
+    {
+      "name": "verify:png-budget",
+      "exit": 0,
+      "log": ".cache/window-chrome-verify-png-budget.log"
+    },
+    {
+      "name": "smoke:window-close",
+      "exit": 0,
+      "cases": 5
+    }
+  ],
+  "ui": {
+    "passed": true,
+    "hiddenOffscreen": true,
+    "cases": [
+      {
+        "platform": "win32",
+        "width": 1280,
+        "height": 820,
+        "dpr": 1,
+        "module": "图像编辑",
+        "appHeight": 820,
+        "pageScroll": false
+      },
+      {
+        "platform": "win32",
+        "width": 1280,
+        "height": 820,
+        "dpr": 1,
+        "module": "压缩调整",
+        "appHeight": 820,
+        "pageScroll": false
+      },
+      {
+        "platform": "win32",
+        "width": 1093,
+        "height": 550,
+        "dpr": 1.25,
+        "module": "图像编辑",
+        "appHeight": 550,
+        "pageScroll": false
+      },
+      {
+        "platform": "win32",
+        "width": 1093,
+        "height": 550,
+        "dpr": 1.25,
+        "module": "压缩调整",
+        "appHeight": 550,
+        "pageScroll": false
+      },
+      {
+        "platform": "win32",
+        "width": 910,
+        "height": 470,
+        "dpr": 1.5,
+        "module": "图像编辑",
+        "appHeight": 470,
+        "pageScroll": false
+      },
+      {
+        "platform": "win32",
+        "width": 910,
+        "height": 470,
+        "dpr": 1.5,
+        "module": "压缩调整",
+        "appHeight": 470,
+        "pageScroll": false
+      },
+      {
+        "platform": "win32",
+        "width": 640,
+        "height": 420,
+        "dpr": 2,
+        "module": "图像编辑",
+        "appHeight": 420,
+        "pageScroll": false
+      },
+      {
+        "platform": "win32",
+        "width": 640,
+        "height": 420,
+        "dpr": 2,
+        "module": "压缩调整",
+        "appHeight": 420,
+        "pageScroll": false
+      },
+      {
+        "platform": "darwin",
+        "width": 1280,
+        "height": 820,
+        "dpr": 1,
+        "module": "图像编辑",
+        "appHeight": 820,
+        "pageScroll": false
+      },
+      {
+        "platform": "darwin",
+        "width": 1280,
+        "height": 820,
+        "dpr": 1,
+        "module": "压缩调整",
+        "appHeight": 820,
+        "pageScroll": false
+      },
+      {
+        "platform": "darwin",
+        "width": 1093,
+        "height": 550,
+        "dpr": 1.25,
+        "module": "图像编辑",
+        "appHeight": 550,
+        "pageScroll": false
+      },
+      {
+        "platform": "darwin",
+        "width": 1093,
+        "height": 550,
+        "dpr": 1.25,
+        "module": "压缩调整",
+        "appHeight": 550,
+        "pageScroll": false
+      },
+      {
+        "platform": "darwin",
+        "width": 910,
+        "height": 470,
+        "dpr": 1.5,
+        "module": "图像编辑",
+        "appHeight": 470,
+        "pageScroll": false
+      },
+      {
+        "platform": "darwin",
+        "width": 910,
+        "height": 470,
+        "dpr": 1.5,
+        "module": "压缩调整",
+        "appHeight": 470,
+        "pageScroll": false
+      },
+      {
+        "platform": "darwin",
+        "width": 640,
+        "height": 420,
+        "dpr": 2,
+        "module": "图像编辑",
+        "appHeight": 420,
+        "pageScroll": false
+      },
+      {
+        "platform": "darwin",
+        "width": 640,
+        "height": 420,
+        "dpr": 2,
+        "module": "压缩调整",
+        "appHeight": 420,
+        "pageScroll": false
+      }
+    ],
+    "windowsIntegratedControls": true,
+    "windowsResizeEdges": 8,
+    "windowsRoundPage": true,
+    "macCustomControls": true,
+    "nativeWindowsExecuted": false
+  },
+  "updateClick": {
+    "hiddenOffscreen": true,
+    "baseline052": false,
+    "dragCalls": 0,
+    "downloads": 1,
+    "phase": "ready",
+    "installerExecuted": false,
+    "windowsNativeExecuted": false,
+    "installOpenRequested": true,
+    "closeRequestedAfterFlush": true
+  },
+  "windowsPayload": {
+    "version": "0.5.4",
+    "allFourPayloadFilesByteEqual": true,
+    "window": {
+      "title": "轻图",
+      "width": 1280,
+      "height": 820,
+      "minWidth": 600,
+      "minHeight": 420,
+      "resizable": true,
+      "useLogicalPixels": false,
+      "borderless": true,
+      "hidden": false,
+      "center": true,
+      "exitProcessOnClose": false,
+      "useSavedState": false,
+      "injectGlobals": false,
+      "injectClientLibrary": false,
+      "icon": "/resources/assets/app-icon.png"
+    },
+    "installerBytes": 9285140,
+    "nativeWindowsExecuted": false
+  },
+  "legacy": {
+    "version": "0.5.4",
+    "attachments": 18,
+    "bytes": 312761235,
+    "files": [
+      {
+        "name": "Qingtu-0.4.9-mac-arm64.zip.part01",
+        "bytes": 67108864,
+        "sha256": "73b24088532bd24ad0243464f96b53a57f5e9a2075a5403999c37da837558bb4"
+      },
+      {
+        "name": "Qingtu-0.4.9-mac-arm64.zip.part02",
+        "bytes": 59263311,
+        "sha256": "0a1670047c99c734c9c795dc1df1015da5a095e3b0156799c037c864d9ecbd60"
+      },
+      {
+        "name": "Qingtu-0.4.9-mac-x64.zip.part01",
+        "bytes": 67108864,
+        "sha256": "838f6cc2489dffb1e86a590ad339aa090df54da87b9f50c4358845b8274b1a10"
+      },
+      {
+        "name": "Qingtu-0.4.9-mac-x64.zip.part02",
+        "bytes": 67016735,
+        "sha256": "10a51ab72496137b225ad3e2957ecff6b6729873988ae5b934c53ba040d69d15"
+      },
+      {
+        "name": "Qingtu-0.5.4-Mac-arm64-Installer.dmg",
+        "bytes": 11043872,
+        "sha256": "0615ff6f9a3578c6751864939cd091a8e75cce4cfa6bc2e26f293a3ca1cf70a5"
+      },
+      {
+        "name": "Qingtu-0.5.4-Mac-arm64.zip",
+        "bytes": 10020396,
+        "sha256": "97acae3a495ff2e9dc4132088d11f1cf42c1c4245bacdb0ae6b5e1bfedce1d9c"
+      },
+      {
+        "name": "Qingtu-0.5.4-Mac-x64-Installer.dmg",
+        "bytes": 11500247,
+        "sha256": "1ca1d735d79e2a35a0c1d2868956488c9d7ad30ba537d90b9cba24e6b230bb70"
+      },
+      {
+        "name": "Qingtu-0.5.4-Mac-x64.zip",
+        "bytes": 10406848,
+        "sha256": "0463723498656b6a720408031559eece0baa726c992df1f62984b8b7a276d7d4"
+      },
+      {
+        "name": "Qingtu-0.5.4-Windows-x64-Setup.exe",
+        "bytes": 9285140,
+        "sha256": "12e95d7435ac05e9f63009f7abd03cc3f3166972b6a7e5604ed48b45bb3f1800"
+      },
+      {
+        "name": "latest.yml",
+        "bytes": 601,
+        "sha256": "a27fa680fd91a344d1ffee8a587eb236cdf962970d765f8a769547a006bb0461"
+      },
+      {
+        "name": "lite-darwin-arm64.json",
+        "bytes": 415,
+        "sha256": "d379d26c2b3f4d3411207fa80f47e9773fb321eb098012937df2d11423d11db1"
+      },
+      {
+        "name": "lite-darwin-x64.json",
+        "bytes": 411,
+        "sha256": "3e27f19544590785150db89bd865e2d1e64a9f79dc68bc51b1f6ac0b423bac4b"
+      },
+      {
+        "name": "lite-win32-x64.json",
+        "bytes": 415,
+        "sha256": "942003f08f5597098f7f52c39ea192d0acc31927164c764e8219f7951f6fe767"
+      },
+      {
+        "name": "mac-arm64.json",
+        "bytes": 1006,
+        "sha256": "f1b7047065b63456af672f9386e59dca8e79603bdad00c2ed4b0eecb291aea43"
+      },
+      {
+        "name": "mac-light-arm64.json",
+        "bytes": 782,
+        "sha256": "e869a57d50818c519103dcfea4f8d9d68b15b83da4ad982ddeccd8499740f723"
+      },
+      {
+        "name": "mac-light-x64.json",
+        "bytes": 774,
+        "sha256": "c4f7eef5e9c3dea416b23d7d4dd1cf446a5b5be33e748111326200d86502c65e"
+      },
+      {
+        "name": "mac-x64.json",
+        "bytes": 998,
+        "sha256": "05c9da266df0cf3e071f85f3754dd47aa09283ab1e1fcea754222f40b17bb7e5"
+      }
+    ],
+    "channels": [
+      {
+        "channel": "mac",
+        "arch": "arm64",
+        "version": "0.4.9",
+        "minimumSystemVersion": "13.0",
+        "archiveBytes": 126372175,
+        "officialSparkleSignature": true
+      },
+      {
+        "channel": "mac",
+        "arch": "x64",
+        "version": "0.4.9",
+        "minimumSystemVersion": "13.0",
+        "archiveBytes": 134125599,
+        "officialSparkleSignature": true
+      },
+      {
+        "channel": "mac-light",
+        "arch": "arm64",
+        "version": "0.5.4",
+        "minimumSystemVersion": "13.3",
+        "archiveBytes": 10020396,
+        "officialSparkleSignature": true
+      },
+      {
+        "channel": "mac-light",
+        "arch": "x64",
+        "version": "0.5.4",
+        "minimumSystemVersion": "13.3",
+        "archiveBytes": 10406848,
+        "officialSparkleSignature": true
+      }
+    ],
+    "windows": {
+      "version": "0.5.4",
+      "bytes": 9285140,
+      "sha512": "OWKyxbVraT7M4KkCleEFY7UA3fGHDipDf9TflSV1KkdGxjRqPtyF/IIcAFUPfAJZl9PFL6FI780BngHkMYm9zw=="
+    },
+    "privateSigningMaterialRead": false
+  },
+  "windowsTestsCrossCompiled": true,
+  "windowsNativeExecuted": false,
+  "review": "Two findings corrected; follow-up review found no additional actionable issues.",
+  "giteePublished": false,
+  "generatedMacAppCopiesTrashed": 6,
+  "installedUserAppPreserved": "/Applications/轻图.app"
+}

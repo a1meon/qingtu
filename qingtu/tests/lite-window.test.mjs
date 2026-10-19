@@ -1,8 +1,8 @@
 import test from 'node:test';import assert from 'node:assert/strict';
 import {windowOptions,fittedNativeWindow,fitInitialWindow,bindTitlebar,setupNativeMenu} from '../src/lite/window-shell.mjs';
-test('Windows uses a resizable native frame with physical API units; Mac removes the duplicate title row',()=>{
+test('both lightweight platforms remove the duplicate native title row with physical API units',()=>{
  const win=windowOptions('win32'),mac=windowOptions('darwin');
- assert.equal(win.borderless,false);assert.equal(win.resizable,true);assert.equal(win.useLogicalPixels,false,'never mix scaled widths with native physical screen coordinates');
+ assert.equal(win.borderless,true);assert.equal(win.resizable,true);assert.equal(win.useLogicalPixels,false,'never mix scaled widths with native physical screen coordinates');
  assert.equal(mac.borderless,true);assert.equal(mac.resizable,true);assert.equal(mac.useLogicalPixels,false,'Cocoa frame sizes are already points');
  assert.equal(win.injectGlobals,false);assert.equal(mac.injectGlobals,false);
 });
@@ -28,11 +28,11 @@ test('Windows creates no native menu, including no empty HMENU strip; Mac retain
  await setupNativeMenu(N,'win32');assert.deepEqual(calls,[]);
  await setupNativeMenu(N,'darwin');assert.equal(calls.length,1);assert.equal(calls[0][1].menuItems[0].shortcut,'o');assert.equal(calls[0][0].menuItems[0].id,'quit');
 });
-test('Mac toolbar binds after mount, excludes window buttons and restores drag listeners on cleanup',async()=>{
+test('both toolbars bind after mount, exclude dialog descendants and restore drag listeners on cleanup',async()=>{
  const calls=[],listeners=new Map(),buttons=[{}],element={querySelectorAll:()=>buttons,addEventListener:(name,f)=>listeners.set(name,f),removeEventListener:name=>listeners.delete(name)};
  const N={window:{setDraggableRegion:async(e,options)=>calls.push({e,options}),unsetDraggableRegion:async e=>calls.push({unset:e})}};
  const unbind=await bindTitlebar(N,element,'darwin');assert.equal(calls[0].e,element);assert.deepEqual(calls[0].options.exclude,buttons);assert.equal(listeners.has('dblclick'),true);unbind();assert.equal(listeners.has('dblclick'),false);assert.equal(calls[1].unset,element);
- const count=calls.length;await bindTitlebar(N,element,'win32');assert.equal(calls.length,count);
+ const count=calls.length;const cleanup=await bindTitlebar(N,element,'win32');assert.equal(calls.length,count+1);cleanup();
 });
 test('Mac titlebar excludes stable update dialog with buttons added after binding',async()=>{
  const button={},dialog={},listeners=new Map();let excluded;

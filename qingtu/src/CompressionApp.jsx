@@ -6,6 +6,7 @@ import {ImagePreview} from './ImagePreview.jsx';
 import {ToolNavigation} from './ToolNavigation.jsx';
 import {TooltipButton} from './TooltipButton.jsx';
 import {AppUpdates} from './AppUpdates.jsx';
+import {WindowResizeEdges} from './WindowResizeEdges.jsx';
 import {StitchWorkspace} from './stitch/StitchWorkspace.jsx';
 import {CompressionQueue} from './CompressionQueue.jsx';
 import {CompressionName} from './CompressionName.jsx';
@@ -109,6 +110,7 @@ export function CompressionApp(){
  const windowButtons=<div className="window-controls"><button aria-label="最小化" onClick={()=>api.windowAction('minimize')}><Minus size={16}/></button><button aria-label="最大化或还原" onClick={()=>api.windowAction('maximize')}><Square size={13}/></button><button className="window-close" aria-label="关闭窗口" onClick={()=>api.windowAction('close')}><X size={17}/></button></div>;
  const macButtons=isMac&&window.qingtu.windowChrome==='custom-mac'&&<div className="mac-window-controls" role="group" aria-label="窗口操作"><button className="mac-close" aria-label="关闭窗口" title="关闭" onClick={()=>api.windowAction('close')}><X size={9}/></button><button className="mac-minimize" aria-label="最小化" title="最小化" onClick={()=>api.windowAction('minimize')}><Minus size={9}/></button><button className="mac-maximize" aria-label="最大化或还原" title="最大化或还原" onClick={()=>api.windowAction('maximize')}><Square size={7}/></button></div>;
  return <div data-module={module} className={`app ${inspectorOpen?'':'inspector-collapsed'}`} onDragStartCapture={e=>{if(e.target.tagName==='IMG'||e.target.closest('.canvas-card'))blockPreviewDrag(e);}} onDragOver={e=>e.preventDefault()} onDragEnter={e=>{if(isExternalFileTransfer(e.dataTransfer)){depth.current++;setDragging(true);}}} onDragLeave={()=>{if(--depth.current<=0){setDragging(false);depth.current=0;}}} onDrop={e=>{e.preventDefault();depth.current=0;setDragging(false);if(!isExternalFileTransfer(e.dataTransfer)||!e.dataTransfer.files.length)return;if(module==='compress')importFiles(e.dataTransfer.files);else stitch.current?.importFiles(e.dataTransfer.files);}}>
+  <WindowResizeEdges/>
   <header ref={titlebar} className={`titlebar ${isMac?'mac-titlebar':''}`}>
    {macButtons}<div className="brand"><img src="./assets/app-icon.png" alt="" draggable={false}/><strong>轻图</strong></div><AppUpdates busy={processing||loading||deleting||!!batch||stitchBusy} hasImages={items.length>0}/>{desktop&&!isMac&&window.qingtu.windowChrome!=='native'&&windowButtons}
   </header>

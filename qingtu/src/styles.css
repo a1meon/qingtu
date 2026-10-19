@@ -524,9 +524,21 @@ label,h2 { display:block; font-size:16px; font-weight:700; margin-bottom:14px; l
 .rotation-corner-handle[data-rotation-corner="ne"]::before { border-top-width:2px; border-right-width:2px; }
 .rotation-corner-handle[data-rotation-corner="se"]::before { border-bottom-width:2px; border-right-width:2px; }
 .rotation-corner-handle[data-rotation-corner="sw"]::before { border-bottom-width:2px; border-left-width:2px; }
-/* The lightweight macOS host uses the system title bar above the web content. */
+/* Both lightweight hosts use the toolbar as their only title row. */
 .lite-mac .titlebar.mac-titlebar { padding-left:106px; }
 .lite-desktop,.lite-desktop body,.lite-desktop #root { height:100%; overflow:hidden; }
+.lite-win .app { border-radius:12px; }
+.lite-win-maximized .app { border-radius:0; }
+.window-resize-edges { position:fixed; inset:0; pointer-events:none; z-index:20000; }
+.window-resize-edge { position:absolute; pointer-events:auto; touch-action:none; -webkit-app-region:no-drag; }
+.edge-n,.edge-s { left:14px; right:14px; height:5px; cursor:ns-resize; }
+.edge-n { top:0; }.edge-s { bottom:0; }
+.edge-e,.edge-w { top:14px; bottom:14px; width:5px; cursor:ew-resize; }
+.edge-e { right:0; }.edge-w { left:0; }
+.edge-nw,.edge-ne,.edge-sw,.edge-se { width:14px; height:14px; }
+.edge-nw { top:0; left:0; cursor:nwse-resize; }.edge-se { bottom:0; right:0; cursor:nwse-resize; }
+.edge-ne { top:0; right:0; cursor:nesw-resize; }.edge-sw { bottom:0; left:0; cursor:nesw-resize; }
+.lite-win-maximized .window-resize-edges { display:none; }
 .mac-window-controls { position:absolute; left:10px; top:0; height:100%; display:flex; align-items:center; -webkit-app-region:no-drag; }
 .mac-window-controls button { position:relative; width:28px; height:36px; display:grid; place-items:center; border-radius:7px; -webkit-app-region:no-drag; }
 .mac-window-controls button::before { content:''; position:absolute; width:12px; height:12px; border:1px solid #0002; border-radius:50%; }
