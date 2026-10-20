@@ -1,27 +1,18 @@
-import {createPortal} from 'react-dom';
-import {rotateVector,rotatedImageBounds} from '../../engine/image-rotation.mjs';
-import {resizeImageRect} from '../../engine/canvas-transform.mjs';
-import {useCallback,useEffect,useLayoutEffect,useMemo,useRef,useState} from 'react';
+import {useEffect,useMemo,useRef,useState} from 'react';
 import {calculateLayout,snapPosition} from '../../engine/stitch-layout.mjs';
 import {RESIZE_HANDLES,applyCanvasTransform} from '../../engine/canvas-transform.mjs';
 import {snapResizeRect} from '../../engine/transform-snap.mjs';
 import {addFlushHandler} from '../lifecycle.js';
 import {CanvasSplitOverlay} from './CanvasSplitOverlay.jsx';
-import {CornersOut,CornersIn,Minus,Plus,ArrowCounterClockwise} from '@phosphor-icons/react';
-import {placeImageControls,fitCanvasViewport,hasOffscreenImages,resizeCanvasViewport} from './canvas-viewport.js';
+import {CornersOut,CornersIn} from '@phosphor-icons/react';
+import {CONTROL_PANEL_HEIGHT,fitCanvasViewport,hasOffscreenImages} from './canvas-viewport.js';
 
-import {useCanvasNavigation} from './useCanvasNavigation.js';
-
-const EMPTY_CANVAS_CONTENT={width:232,height:218};
-
-export function StitchCanvas({project:sourceProject,layout:sourceLayout,onChange,onResizePreview,onEdit,onContext,onReorder,selected,onSelect,disabled,navigationTarget,navigationDisabled=disabled,preview,children,viewportMode,split,onSplitChange,splitDisabled,cropping,rotationOpen,cropGesture,guides:cropGuides=[],renderControls}){
- const area=useRef(),canvas=useRef(),viewportSizing=useRef(),gesture=useRef(),frame=useRef(),flushRef=useRef(),moveRef=useRef(),endRef=useRef(),cropView=useRef(),[bounds,setBounds]=useState({width:600,height:360,left:0,top:0}),[resizeDraft,setResizeDraft]=useState(null),[overview,setOverview]=useState(null),[navigationHost,setNavigationHost]=useState(null);
- useLayoutEffect(()=>{const host=navigationTarget?.current||null;if(host!==navigationHost)setNavigationHost(host);});
- const controlNodes=useRef(),registerControls=useCallback(nodes=>{controlNodes.current=nodes;},[]);
+export function StitchCanvas({project:sourceProject,layout:sourceLayout,onChange,onResizePreview,onEdit,onContext,onRemove,onReorder,selected,onSelect,disabled,preview,children,split,onSplitChange,splitDisabled,cropping,cropGesture,guides:cropGuides=[],renderControls}){
+ const area=useRef(),canvas=useRef(),gesture=useRef(),frame=useRef(),flushRef=useRef(),moveRef=useRef(),endRef=useRef(),cropView=useRef(),[bounds,setBounds]=useState({width:600,height:360}),[resizeDraft,setResizeDraft]=useState(null),[overview,setOverview]=useState(null);
  const project=resizeDraft||sourceProject,layout=useMemo(()=>resizeDraft?calculateLayout(resizeDraft,{draft:true}):sourceLayout,[resizeDraft,sourceLayout]);
  flushRef.current=(cancelled=false)=>finish(cancelled);moveRef.current=move;endRef.current=end;
  useEffect(()=>addFlushHandler(()=>flushRef.current()),[]);
- useEffect(()=>{const measure=()=>{const rect=area.current.getBoundingClientRect();if(rect.width>0&&rect.height>0)setBounds({width:rect.width,height:rect.height,left:rect.left,top:rect.top});};const observer=new ResizeObserver(measure);observer.observe(area.current);window.addEventListener('scroll',measure,true);window.addEventListener('resize',measure);return()=>{observer.disconnect();window.removeEventListener('scroll',measure,true);window.removeEventListener('resize',measure);cancelAnimationFrame(frame.current);};},[]);
+ useEffect(()=>{const observer=new ResizeObserver(entries=>{const rect=entries[0].contentRect;if(rect.width>0&&rect.height>0)setBounds(rect);});observer.observe(area.current);return()=>{observer.disconnect();cancelAnimationFrame(frame.current);};},[]);
  useEffect(()=>{
   const track=e=>moveRef.current(e),release=e=>endRef.current(e),cancel=e=>endRef.current(e,true);
   const shift=e=>{const g=gesture.current;if(g&&e.key==='Escape'){e.preventDefault();e.stopPropagation();flushRef.current(true);}else if(g&&e.key==='Shift'){g.shift=e.type==='keydown';moveRef.current({pointerId:g.pointerId,clientX:g.lastX,clientY:g.lastY,shiftKey:g.shift});}};
@@ -29,14 +20,7 @@ export function StitchCanvas({project:sourceProject,layout:sourceLayout,onChange
   return()=>{document.removeEventListener('pointermove',track);document.removeEventListener('pointerup',release);document.removeEventListener('pointercancel',cancel);document.removeEventListener('keydown',shift);document.removeEventListener('keyup',shift);};
  },[]);
  const includeImages=project.layout==='free'&&overview===project.id;
- const viewOptions={hasImages:!!project.images.length,editor:split?'split':rotationOpen?'rotate':cropping?'crop':null,includeImages};
- const fit=layout?fitCanvasViewport(bounds,layout,viewOptions):{scale:1,offsetX:0,offsetY:0};
- // Inspector state may change before ResizeObserver delivers its new bounds;
- // use current window dimensions so that later callbacks cannot reapply an old cap.
- const sizing=layout?resizeCanvasViewport(viewportSizing.current,{key:[project.id,layout.width,layout.height,viewportMode,viewOptions.hasImages,includeImages].join(':'),width:window.innerWidth,height:window.innerHeight,scale:fit.scale}):null;
- const fittedView=layout?fitCanvasViewport(bounds,layout,{...viewOptions,maxScale:sizing.maxScale}):fit;
- useLayoutEffect(()=>{viewportSizing.current=sizing;});
- const navigation=useCanvasNavigation({area,projectId:project.id,bounds,fit:fittedView,blocked:navigationDisabled||cropGesture||!!resizeDraft}),naturalView=navigation.view;
+ const naturalView=layout?fitCanvasViewport(bounds,layout,{hasImages:!!project.images.length,editor:split?'split':cropping?'crop':null,includeImages}):{scale:1,offsetX:0,offsetY:0};
  const canReveal=layout&&project.layout==='free'&&(includeImages||hasOffscreenImages(bounds,layout,naturalView));
  if(cropGesture&&!cropView.current)cropView.current={...naturalView,width:layout.width,height:layout.height};
  if(!cropGesture)cropView.current=null;
@@ -44,14 +28,9 @@ export function StitchCanvas({project:sourceProject,layout:sourceLayout,onChange
  const selectedRect=layout?.rects.find(rect=>rect.id===selected),selectedImage=project.images.find(image=>image.id===selected);
  function editAt(event,id){const r=event.currentTarget.getBoundingClientRect();onEdit(id,event.type==='dblclick'&&(event.clientX||event.clientY)?{x:event.clientX,y:event.clientY}:{x:r.x+r.width/2,y:r.y+r.height/2});}
  function showRect(element,rect){if(element)Object.assign(element.style,{left:rect.x*scale+'px',top:rect.y*scale+'px',width:rect.width*scale+'px',height:rect.height*scale+'px'});}
- function showControls(rect){
-  const nodes=controlNodes.current;if(!nodes)return;
-  const box=canvas.current.getBoundingClientRect(),displayed=rotatedImageBounds(rect,selectedImage?.angle||0),floating=placeImageControls(bounds,{x:box.left+displayed.x*scale,y:box.top+displayed.y*scale,width:displayed.width*scale,height:displayed.height*scale},viewOptions.editor);
-  if(nodes.tools)Object.assign(nodes.tools.style,{left:floating.tools.left+'px',top:floating.tools.top+'px'});
- }
  function start(event,rect,handle=null){
   if(disabled||event.button!==0)return;
-  event.preventDefault();event.stopPropagation();onSelect(rect.id);canvas.current.querySelector(`[data-image-id="${rect.id}"]`)?.focus({preventScroll:true});event.currentTarget.setPointerCapture(event.pointerId);
+  event.preventDefault();event.stopPropagation();onSelect(rect.id);event.currentTarget.setPointerCapture(event.pointerId);
   gesture.current={id:rect.id,rect,handle,project,layout,view:{scale,offsetX,offsetY,width:layout.width,height:layout.height},scale,targets:[...layout.rects.filter(r=>r.id!==rect.id),{x:0,y:0,width:layout.width,height:layout.height,edgesOnly:true}],reorder:!handle&&project.layout!=='free',pointerId:event.pointerId,startX:event.clientX,startY:event.clientY,lastX:event.clientX,lastY:event.clientY,shift:event.shiftKey,element:canvas.current.querySelector(`[data-image-id="${rect.id}"]`),ghost:canvas.current.querySelector(`[data-ghost-image-id="${rect.id}"]`)};
  }
  function move(event){
@@ -62,24 +41,21 @@ export function StitchCanvas({project:sourceProject,layout:sourceLayout,onChange
    frame.current=null;if(gesture.current!==g)return;
    canvas.current.dataset.interacting='true';const rect=nextRect(g);
    if(g.handle){const {x,y,width,height}=rect,next=applyCanvasTransform(g.project,{...g.project.positions,[g.id]:{x,y,width,height}},'resize');setResizeDraft(next);onResizePreview?.(next.canvas);}
-   else {showRect(g.element,rect);showRect(g.ghost,rect);showRect(canvas.current.querySelector('.stitch-selection'),rect);showControls(rect);}
+   else {showRect(g.element,rect);showRect(g.ghost,rect);showRect(canvas.current.querySelector('.stitch-selection'),rect);}
    const guides=canvas.current.querySelector('.snap-guides');guides.replaceChildren();
    for(const line of rect.guides||[]){const guide=document.createElement('span');guide.className=`snap-guide ${line.axis}`;guide.style[line.axis==='x'?'left':'top']=line.value*scale+'px';guides.append(guide);}
    if(g.reorder){const target=dropTarget(g),indicator=canvas.current.querySelector('.reorder-indicator');indicator.hidden=!target||target.id===g.id;if(target)Object.assign(indicator.style,{left:target.x*scale+'px',top:target.y*scale+'px',width:target.width*scale+'px',height:target.height*scale+'px'});}
   });
  }
  function nextRect(g){
-  const angle=g.project.images.find(image=>image.id===g.id)?.angle||0;
-  if(g.handle&&angle){const local=rotateVector(g.dx||0,g.dy||0,-angle),next=resizeImageRect(g.rect,g.handle,local.x,local.y,g.shift),delta=rotateVector(next.x+next.width/2-g.rect.x-g.rect.width/2,next.y+next.height/2-g.rect.y-g.rect.height/2,angle);return {...next,x:g.rect.x+g.rect.width/2+delta.x-next.width/2,y:g.rect.y+g.rect.height/2+delta.y-next.height/2,guides:[]};}
   if(g.handle)return snapResizeRect(g.rect,g.handle,g.dx||0,g.dy||0,g.targets,8/g.scale,g.shift,g.project.heightLocked&&g.project.layout==='horizontal'?rect=>({...rect,x:g.rect.x}):undefined);
-  // Reorder only when dropping onto a different image; within the same slot
-  // (or an empty area), move with normal edge/centre snapping.
-  if(g.reorder){const target=dropTarget(g);if(target&&target.id!==g.id)return {...g.rect,x:g.rect.x+(g.dx||0),y:g.rect.y+(g.dy||0)};}
+  if(g.reorder)return {...g.rect,x:g.rect.x+(g.dx||0),y:g.rect.y+(g.dy||0)};
   return {...g.rect,...snapPosition({...g.rect,x:g.rect.x+(g.dx||0),y:g.rect.y+(g.dy||0)},g.targets,8/g.scale)};
  }
  function dropTarget(g){
   const box=canvas.current.getBoundingClientRect(),x=(g.lastX-box.left)/g.scale,y=(g.lastY-box.top)/g.scale;
-  return g.layout.rects.filter(rect=>{const angle=g.project.images.find(image=>image.id===rect.id)?.angle||0,local=rotateVector(x-rect.x-rect.width/2,y-rect.y-rect.height/2,-angle);return Math.abs(local.x)<=rect.width/2&&Math.abs(local.y)<=rect.height/2;}).at(-1)||null;
+  const hit=g.layout.rects.filter(rect=>x>=rect.x&&x<=rect.x+rect.width&&y>=rect.y&&y<=rect.y+rect.height).at(-1);if(hit)return hit;
+  return g.layout.rects.reduce((best,rect)=>{const distance=Math.hypot(x-rect.x-rect.width/2,y-rect.y-rect.height/2);return !best||distance<best.distance?{...rect,distance}:best;},null);
  }
  function end(event,cancelled=false){
   const g=gesture.current;if(!g||event.pointerId!==g.pointerId)return;
@@ -94,16 +70,17 @@ export function StitchCanvas({project:sourceProject,layout:sourceLayout,onChange
   const rect=nextRect(g);
   // React skips unchanged style properties. Restore every temporary gesture
   // value before committing, including axes the final layout keeps unchanged.
-  if(!g.handle){showRect(g.element,g.rect);showRect(g.ghost,g.rect);showRect(canvas.current.querySelector('.stitch-selection'),g.rect);showControls(g.rect);}
+  if(!g.handle){showRect(g.element,g.rect);showRect(g.ghost,g.rect);showRect(canvas.current.querySelector('.stitch-selection'),g.rect);}
   if(cancelled||Math.hypot((g.dx||0)*g.scale,(g.dy||0)*g.scale)<3)return;
-  if(g.reorder){const target=dropTarget(g);if(target&&target.id!==g.id)return onReorder(g.id,target.id);}
+  if(g.reorder){const target=dropTarget(g);if(target&&target.id!==g.id)return onReorder(g.id,target.id);return;}
   const {x,y,width,height}=rect;return onChange({...g.project.positions,[g.id]:{x,y,width,height}},g.handle?'resize':'move');
  }
  function renderLayer(rect,ghost=false){
      const image=project.images.find(i=>i.id===rect.id);
-     return <div data-image-id={!ghost?rect.id:undefined} data-ghost-image-id={ghost?rect.id:undefined} data-canvas-split={split?.id===rect.id?'':undefined} className={`${ghost?'stitch-ghost':'stitch-layer'} movable ${selected===rect.id?'selected':''}`} key={rect.id} style={{left:rect.x*scale,top:rect.y*scale,width:rect.width*scale,height:rect.height*scale,transform:`rotate(${image.angle||0}deg)`}} tabIndex={ghost?undefined:0} role={ghost?undefined:'button'} aria-label={ghost?undefined:`编辑 ${image.name}`} onFocus={()=>onSelect(rect.id)} onPointerDown={e=>start(e,rect)} onClick={()=>onSelect(rect.id)} onContextMenu={event=>{event.preventDefault();if(!disabled)onContext(rect.id,{x:event.clientX,y:event.clientY});}} onDoubleClick={event=>{if(!disabled)editAt(event,rect.id);}} onKeyDown={event=>{
+     return <div data-image-id={!ghost?rect.id:undefined} data-ghost-image-id={ghost?rect.id:undefined} data-canvas-split={split?.id===rect.id?'':undefined} className={`${ghost?'stitch-ghost':'stitch-layer'} movable ${selected===rect.id?'selected':''}`} key={rect.id} style={{left:rect.x*scale,top:rect.y*scale,width:rect.width*scale,height:rect.height*scale}} tabIndex={ghost?undefined:0} role={ghost?undefined:'button'} aria-label={ghost?undefined:`编辑 ${image.name}`} onFocus={()=>onSelect(rect.id)} onPointerDown={e=>start(e,rect)} onClick={()=>onSelect(rect.id)} onContextMenu={event=>{event.preventDefault();if(!disabled)onContext(rect.id,{x:event.clientX,y:event.clientY});}} onDoubleClick={event=>{if(!disabled)editAt(event,rect.id);}} onKeyDown={event=>{
       if(disabled)return;
       if(event.key==='Enter'){event.preventDefault();editAt(event,rect.id);return;}
+      if(event.key==='Delete'||event.key==='Backspace'){event.preventDefault();onRemove(rect.id);return;}
       if(!['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(event.key))return;
       event.preventDefault();
       if(event.altKey){const index=project.images.findIndex(image=>image.id===rect.id),target=project.images[index+(['ArrowLeft','ArrowUp'].includes(event.key)?-1:1)];if(target)onReorder(rect.id,target.id);return;}
@@ -113,10 +90,10 @@ export function StitchCanvas({project:sourceProject,layout:sourceLayout,onChange
      </div>;
  }
  return <div className="stitch-canvas-area" ref={area} tabIndex={-1} onPointerDown={event=>{
-  if(disabled||event.button!==0||event.target.closest('.stitch-layer,.stitch-ghost,.stitch-selection,.inline-image-controls,.inline-image-tools,[data-canvas-split],.canvas-view-fit,.canvas-viewport-controls,.inline-image-editor'))return;
+  if(disabled||event.button!==0||event.target.closest('.stitch-layer,.stitch-ghost,.stitch-selection,.inline-image-controls,[data-canvas-split],.canvas-view-fit'))return;
   onSelect?.(null);event.currentTarget.focus({preventScroll:true});
  }}>
-  {layout?<div ref={canvas} className={`stitch-canvas ${preview?'has-output-preview':''}`} data-interacting={resizeDraft?'true':undefined} data-crop-gesture={cropGesture?'true':undefined} data-canvas-width={layout.width} data-canvas-height={layout.height} style={{'--empty-width':EMPTY_CANVAS_CONTENT.width+'px','--empty-height':EMPTY_CANVAS_CONTENT.height+'px','--empty-scale':Math.min(layout.width*scale/EMPTY_CANVAS_CONTENT.width,layout.height*scale/EMPTY_CANVAS_CONTENT.height),width:layout.width*scale,height:layout.height*scale,transform:`translate(${offsetX}px,${offsetY}px)`}}>
+  {layout?<div ref={canvas} className={`stitch-canvas ${preview?'has-output-preview':''}`} data-interacting={resizeDraft?'true':undefined} data-crop-gesture={cropGesture?'true':undefined} data-canvas-width={layout.width} data-canvas-height={layout.height} style={{width:layout.width*scale,height:layout.height*scale,transform:`translate(${offsetX}px,${offsetY}px)`}}>
    <div className="stitch-ghosts" aria-hidden>{layout.rects.filter(rect=>rect.id===selected).map(rect=>renderLayer(rect,true))}</div>
    <div className="stitch-content">
     {children}
@@ -125,26 +102,14 @@ export function StitchCanvas({project:sourceProject,layout:sourceLayout,onChange
     <div className="snap-guides" aria-hidden/>
    </div>
    <div className="stitch-canvas-edge" aria-hidden/>
-   {selectedRect&&!split&&!cropping&&!rotationOpen&&<div className="stitch-selection" style={{left:selectedRect.x*scale,top:selectedRect.y*scale,width:selectedRect.width*scale,height:selectedRect.height*scale,transform:`rotate(${selectedImage.angle||0}deg)`}}>
+   {selectedRect&&!split&&!cropping&&<div className="stitch-selection" style={{left:selectedRect.x*scale,top:selectedRect.y*scale,width:selectedRect.width*scale,height:selectedRect.height*scale}}>
     {RESIZE_HANDLES.map(handle=><button key={handle} data-handle={handle} className={`resize-handle handle-${handle}`} aria-label={`缩放 ${selectedImage.name} ${handle}`} title="拖动缩放 · Shift 自由比例" disabled={disabled} onPointerDown={e=>start(e,selectedRect,handle)}/>)}
    </div>}
    {split&&selectedRect&&<CanvasSplitOverlay image={selectedImage} rect={selectedRect} scale={scale} value={split} onChange={onSplitChange} disabled={splitDisabled}/>}
    <div className="reorder-indicator" hidden/>
    <div className="snap-guides crop-snap-guides" aria-hidden>{cropGuides.map((line,index)=><span key={index} className={`snap-guide ${line.axis}`} style={{[line.axis==='x'?'left':'top']:line.value*scale}}/>)}</div>
-   {selectedRect&&renderControls&&renderControls((()=>{
-    const left=(bounds.width-layout.width*scale)/2+offsetX,top=(bounds.height-layout.height*scale)/2+offsetY;
-    const displayed=rotatedImageBounds(selectedRect,selectedImage.angle||0);
-    const floating=placeImageControls(bounds,{x:left+displayed.x*scale,y:top+displayed.y*scale,width:displayed.width*scale,height:displayed.height*scale},viewOptions.editor||'crop');
-    return {project,origin:{left:left+bounds.left,top:top+bounds.top},registerElements:registerControls,targets:[...layout.rects.filter(rect=>rect.id!==selected),{x:0,y:0,width:layout.width,height:layout.height,edgesOnly:true}],rect:selectedRect,scale,
-     tools:{left:floating.tools.left+bounds.left,top:floating.tools.top+bounds.top},
-     panel:{...floating.panel,left:floating.panel.left+bounds.left,top:floating.panel.top+bounds.top}};
-   })())}
+   {selectedRect&&renderControls&&renderControls((()=>{const left=(bounds.width-layout.width*scale)/2+offsetX,top=(bounds.height-layout.height*scale)/2+offsetY,clamp=(value,min,max)=>Math.max(min,Math.min(max,value)),x=selectedRect.x*scale,y=selectedRect.y*scale,width=selectedRect.width*scale,height=selectedRect.height*scale;return {project,targets:[...layout.rects.filter(rect=>rect.id!==selected),{x:0,y:0,width:layout.width,height:layout.height,edgesOnly:true}],rect:selectedRect,scale,tools:{left:clamp(x+(width-154)/2,8-left,bounds.width-left-162),top:clamp(y-43,8-top,bounds.height-top-43)},panel:{left:clamp(x+(split?width-300:(width-300)/2),8-left,bounds.width-left-308),top:clamp(y+height+10,48-top,bounds.height-top-CONTROL_PANEL_HEIGHT[split?'split':'crop']-8)}};})())}
   </div>:<div className="stitch-invalid">请调整画布</div>}
-  {layout&&navigationHost&&createPortal(<div className="canvas-viewport-controls" role="group" aria-label="显示区域操作"><button aria-label="缩小视图" title="缩小视图" disabled={navigationDisabled||cropGesture||!!resizeDraft||navigation.zoom<=.1} onClick={()=>navigation.zoomBy(.8)}><Minus size={15}/></button>
-   <output aria-label="视图缩放比例" title="Ctrl/Cmd + 滚轮居中缩放">{Math.round(navigation.zoom*100)}%</output>
-   <button aria-label="放大视图" title="放大视图" disabled={navigationDisabled||cropGesture||!!resizeDraft||navigation.zoom>=8} onClick={()=>navigation.zoomBy(1.25)}><Plus size={15}/></button>
-   <button aria-label="复位视图" title="复位视图 · 适应画布" disabled={navigationDisabled||cropGesture||!!resizeDraft} onClick={navigation.reset}><ArrowCounterClockwise size={16}/></button>
-  </div>,navigationHost)}
-  {canReveal&&<button className="canvas-view-fit" aria-label={includeImages?'聚焦画布':'显示全部图片'} disabled={disabled||cropping||rotationOpen||!!split||!!resizeDraft} onClick={()=>{navigation.reset();setOverview(includeImages?null:project.id);}}>{includeImages?<CornersIn size={16}/>:<CornersOut size={16}/>}<span>{includeImages?'聚焦画布':'显示全部'}</span></button>}
+  {canReveal&&<button className="canvas-view-fit" aria-label={includeImages?'聚焦画布':'显示全部图片'} disabled={disabled||cropping||!!split||!!resizeDraft} onClick={()=>setOverview(includeImages?null:project.id)}>{includeImages?<CornersIn size={16}/>:<CornersOut size={16}/>}<span>{includeImages?'聚焦画布':'显示全部'}</span></button>}
  </div>;
 }

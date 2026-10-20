@@ -28,7 +28,7 @@ export class ProjectStore{
  async import(buffer,name){
   if(!Buffer.isBuffer(buffer)||buffer.length>100*1024*1024)throw new Error('单张图片须小于 100 MB');
   const meta=await sharp(buffer,INPUT_OPTIONS).metadata();
-  if(!SUPPORTED.includes(meta.format)||meta.pages>1||meta.depth!=='uchar')throw new Error('图像编辑支持单帧 8 位 JPEG、PNG、WebP、AVIF、TIFF');
+  if(!SUPPORTED.includes(meta.format)||meta.pages>1||meta.depth!=='uchar')throw new Error('拼接支持单帧 8 位 JPEG、PNG、WebP、AVIF、TIFF');
   const assetId=createHash('sha256').update(buffer).digest('hex');
   try{await fs.access(this.assetFile(assetId));}catch{await atomicWrite(this.assetFile(assetId),buffer);}
   const rotated=[5,6,7,8].includes(meta.orientation);
@@ -36,9 +36,7 @@ export class ProjectStore{
   return {...image,preview:await this.preview(assetId)};
  }
  async readAsset(id){return fs.readFile(this.assetFile(id));}
- // Editor layers are visible immediately, before full composition/encoding.
- // Keep enough pixels for Retina canvas viewing; card thumbnails stay 160px.
- async preview(id){const data=await sharp(await this.readAsset(id),INPUT_OPTIONS).rotate().resize({width:1600,height:1200,fit:'inside',withoutEnlargement:true}).png().toBuffer();return 'data:image/png;base64,'+data.toString('base64');}
+ async preview(id){const data=await sharp(await this.readAsset(id),INPUT_OPTIONS).rotate().resize({width:480,height:360,fit:'inside',withoutEnlargement:true}).png().toBuffer();return 'data:image/png;base64,'+data.toString('base64');}
  async load(id){
   let project;
   try{project=JSON.parse(await fs.readFile(this.file(id),'utf8'));}

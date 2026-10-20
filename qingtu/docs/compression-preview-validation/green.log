@@ -1,9 +1,0 @@
-
-> qingtu@0.4.8 smoke:compression-preview
-> electron desktop/compression-preview-smoke.cjs
-
-Error occurred in handler for 'qingtu:call': Error: 测试：处理失败
-    at s.service.process (/Users/xx/Documents/ChatGPT/图片处理软件/qingtu/desktop/compression-preview-smoke.cjs:9:102)
-    at async /Users/xx/Documents/ChatGPT/图片处理软件/qingtu/desktop/main.cjs:118:58
-    at async Session.<anonymous> (node:electron/js2c/browser_init:1:119972)
-{"passed":true,"offscreen":true,"thumbnailsContainPortraitAndWide":true,"actualCornerBandsVisible":true,"dimmedFullSizeOriginalDuringProcessing":true,"spinnerFollowsComparisonSplit":true,"portraitSpinnerOverImage":true,"processedOnlyPlaceholder":true,"originalViewUnchanged":true,"realResultReplacesPlaceholder":true,"correctPlaceholderAfterImageSwitch":true,"errorStopsSpinner":true,"loading":{"sourceMatches":true,"opacity":0.45,"filter":"blur(1px)","spinner":true,"busy":"true","noActualResult":true}}

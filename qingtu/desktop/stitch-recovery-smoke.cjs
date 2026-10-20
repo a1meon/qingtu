@@ -10,19 +10,19 @@ async function waitFor(win,expression){for(let n=0;n<300;n++){if(await win.webCo
  const phase=process.env.QINGTU_RECOVERY_PHASE;
  console.log('Recovery phase: '+phase);
  const source=path.join(root,'input.png'),exports=path.join(root,'exports');await fs.mkdir(exports,{recursive:true});
- const {win,store}=await start({offscreen:true,hidden:true,projectRoot:path.join(root,'projects'),testFolder:exports,testFiles:[source],onCloseTrace:message=>console.log(message),onCloseError:error=>{console.error(error);app.exit(1);}});
+ const {win,store}=await start({hidden:true,projectRoot:path.join(root,'projects'),testFolder:exports,testFiles:[source],onCloseTrace:message=>console.log(message),onCloseError:error=>{console.error(error);app.exit(1);}});
  win.on('closed',()=>console.log('Window closed'));
  app.on('will-quit',()=>console.log('App quitting'));
  win.webContents.setBackgroundThrottling(false);
  if(phase==='early-close'){win.close();return;}
  const js=expression=>win.webContents.executeJavaScript(expression);
- await waitFor(win,"!!document.querySelector('[aria-label=\"图像编辑\"]')");
- await js("document.querySelector('[aria-label=\"图像编辑\"]').click()");
+ await waitFor(win,"!!document.querySelector('[aria-label=\"图像拼接\"]')");
+ await js("document.querySelector('[aria-label=\"图像拼接\"]').click()");
  if(phase==='write'){await waitFor(win,"!!document.querySelector('[aria-label=\"新建画布\"]')&&!document.querySelector('[aria-label=\"新建画布\"]').disabled");await js("document.querySelector('[aria-label=\"新建画布\"]').click()");}
  await waitFor(win,"!!document.querySelector('.project-name') && !document.querySelector('.project-name').disabled");
  if(phase==='write'){
   console.log('Importing source');
-  await js("document.querySelector('[aria-label=\"添加画布图片\"]').click()");
+  await js("document.querySelector('[aria-label=\"添加拼接图片\"]').click()");
   await waitFor(win,"document.querySelectorAll('.stitch-layer').length===1 && document.querySelector('.save-status').textContent==='已自动保存'");
   const save=store.save.bind(store);store.save=async value=>{await pause(200);return save(value);};
   console.log('Editing then closing');

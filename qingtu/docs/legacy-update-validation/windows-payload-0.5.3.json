@@ -1,7 +1,0 @@
-{
-  "version": "0.5.3",
-  "allPayloadBytesEqual": true,
-  "dpiAwareness": "PerMonitorV2,PerMonitor",
-  "elevation": "asInvoker",
-  "windowsNativeExecuted": false
-}

@@ -1,12 +1,4 @@
-# 自动更新（0.5.1，兼容0.4.x）
-
-0.5.1补齐0.4.x到轻量版的应用内迁移。Windows正式NSIS0.4.3+读取latest.yml，直接安装轻量EXE，保留旧安装目录和用户项目。Mac正式Sparkle基线0.4.4+读取mac-{arch}.json，先安装兼容macOS13.0的完整0.4.9过渡版；过渡版读取独立mac-light-{arch}.json，核对签名和macOS13.3门槛，再由Sparkle原位更新轻量0.5.1。两轮下载、确认重启即可；不要求手动替换DMG。13.0–13.2继续使用完整过渡版。
-
-每个未来latest正式发行版都必须保留旧mac-*、过渡版ZIP分片、mac-light-*、轻量ZIP以及Windows latest.yml/EXE。不可将旧Mac通道直接指向需要新系统的轻量包，也不可省略兼容附件。生产签名公钥不变。使用npm run pack:release生成完整发布目录；npm run pack:lite需要先有pack:update-bridge构建的两份过渡ZIP。
-
-0.4.0/.1未包含更新客户端，0.4.2未建立正式源和签名基线，不能仅修改服务器让它们自动更新。Mac0.4.3仅有专用隔离测试能力，正式安装按是否具备原Sparkle和公钥判断。0.5.0及轻量Mac自己的更新模式仍为检查、验证下载DMG，再明确打开替换。
-
-最新验证与容量处理见release-0.5.1.md。下文保留0.4.6协议及发布历史。
+# 自动更新（0.4.6）
 
 0.4.6 已于 2026-10-15 联合正式发布至 Gitee，Windows x64、Mac arm64/x64 的匿名下载、签名及哈希、latest API 和当前版本不下载检查已通过。用户批准 Mac 采用 Sparkle 和免费 ad-hoc 签名，无需付费 Apple Developer Program。Windows 保留 NSIS 与 electron-updater。
 

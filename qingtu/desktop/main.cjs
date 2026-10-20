@@ -28,7 +28,7 @@ async function start(options={}) {
   ipcMain.handle('qingtu:flushReady',event=>{if(!validSender(event))throw new Error('无效窗口');rendererReady=true;for(const id of flushRequests.keys())win.webContents.send('qingtu:flush',id);});
   const {UpdateController}=require('./update-controller.cjs');
   const {resolveUpdateFeed}=require('./update-source.cjs');
-  const nativeUpdater=options.updater||(process.platform==='darwin'?new (require('./mac-updater.cjs').MacUpdater)({version:app.getVersion(),arch:process.arch,channel:'mac-light',systemVersion:process.getSystemVersion(),publicKey:require('./sparkle-public-key.json').publicKey,cacheRoot:path.join(app.getPath('userData'),'update-parts'),fetcher:(url,request)=>net.fetch(url,request),native:require('./sparkle-native.cjs')}):require('electron-updater').autoUpdater);
+  const nativeUpdater=options.updater||(process.platform==='darwin'?new (require('./mac-updater.cjs').MacUpdater)({version:app.getVersion(),arch:process.arch,publicKey:require('./sparkle-public-key.json').publicKey,cacheRoot:path.join(app.getPath('userData'),'update-parts'),fetcher:(url,request)=>net.fetch(url,request),native:require('./sparkle-native.cjs')}):require('electron-updater').autoUpdater);
   const updater=new UpdateController({version:app.getVersion(),updater:nativeUpdater,canInstall:()=>activeOperations===0,
     resolveFeed:options.resolveUpdateFeed||(async()=>{
       if(!app.isPackaged)return null;
@@ -40,10 +40,6 @@ async function start(options={}) {
         if(!response.ok)throw new Error('发行版服务暂不可用');
         const text=await response.text();if(text.length>1024*1024)throw new Error('发行版信息过大');
         return JSON.parse(text);
-      },async url=>{
-        const response=await net.fetch(url,{signal:AbortSignal.timeout(8000),headers:{Accept:'text/html','Cache-Control':'no-cache'}});
-        if(!response.ok)throw new Error('发行版页面暂不可用');
-        const text=await response.text();if(text.length>1024*1024)throw new Error('发行版信息过大');return text;
       });
       if(feed&&source.provider==='gitee'&&process.platform==='win32'){
         const {ChunkTransport}=require('./chunk-download.cjs');const {GiteeChunkProvider}=require('./chunk-provider.cjs');
@@ -64,8 +60,7 @@ async function start(options={}) {
   };
   function createWindow(){
     rendererReady=false;
-    win=new BrowserWindow({width:1280,height:820,minWidth:980,minHeight:700,...(process.platform==='darwin'?{frame:true,titleBarStyle:'hidden',trafficLightPosition:{x:14,y:18}}:{frame:false}),backgroundColor:'#f0faff',show:!options.hidden,title:'轻图',icon:path.join(__dirname,'../build/icon.png'),webPreferences:{offscreen:options.offscreen===true,preload:path.join(__dirname,'preload.cjs'),contextIsolation:true,nodeIntegration:false,sandbox:true}});
-    if(options.offscreen===true&&options.hidden)require('./smoke-window.cjs').prepareSmokeWindow(win);
+    win=new BrowserWindow({width:1280,height:820,minWidth:980,minHeight:700,...(process.platform==='darwin'?{frame:true,titleBarStyle:'hidden',trafficLightPosition:{x:14,y:18}}:{frame:false}),backgroundColor:'#f0faff',show:!options.hidden,title:'轻图',icon:path.join(__dirname,'../build/icon.png'),webPreferences:{preload:path.join(__dirname,'preload.cjs'),contextIsolation:true,nodeIntegration:false,sandbox:true}});
     win.webContents.setWindowOpenHandler(()=>({action:'deny'}));
     // The renderer's dirty-state effect can lag a committed save by one frame.
     // Only bypass beforeunload after the trusted flush protocol has completed.
@@ -98,7 +93,7 @@ async function start(options={}) {
         if(method==='stitchDelete'){stitching.release(args[0]);return await store.remove(args[0]);}
         if(method==='stitchImport'){const f=args[0];if(!f||typeof f.base64!=='string'||f.base64.length>140*1024*1024)throw new Error('图片数据无效');return await store.import(Buffer.from(f.base64,'base64'),f.name);}
         if(method==='stitchChooseFiles'){
-          const paths=options.testFiles||(await dialog.showOpenDialog(win,{title:'添加画布图片',properties:['openFile','multiSelections'],filters:[{name:'图片',extensions:['jpg','jpeg','png','webp','avif','tif','tiff']}]})).filePaths;
+          const paths=options.testFiles||(await dialog.showOpenDialog(win,{title:'添加拼接图片',properties:['openFile','multiSelections'],filters:[{name:'图片',extensions:['jpg','jpeg','png','webp','avif','tif','tiff']}]})).filePaths;
           const result={items:[],errors:[]};for(const p of paths||[])try{if((await fs.stat(p)).size>100*1024*1024)throw new Error('单张图片须小于 100 MB');result.items.push(await store.import(await fs.readFile(p),path.basename(p)));}catch(e){result.errors.push(path.basename(p)+'：'+e.message);}return result;
         }
         if(method==='stitchPreviews'){if(!Array.isArray(args[0])||args[0].length>100)throw new Error('图片参数无效');const out=[];for(const id of args[0])out.push(await store.preview(id));return out;}
@@ -125,7 +120,6 @@ async function start(options={}) {
     if(method==='checkUpdate')return updater.check(true);
     if(method==='downloadUpdate')return updater.download();
     if(method==='installUpdate'){if(activeOperations)throw new Error('请等待处理和保存完成');await flushRenderer();await store.flush();return updater.install();}
-    if(method==='rename')return service.rename(...args);
     if(method==='remove'){service.remove(args[0]);return true;}
     if(method==='chooseFolder'){
       if(options.testFolder)return {name:path.basename(options.testFolder),path:options.testFolder};

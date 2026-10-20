@@ -15,7 +15,6 @@ class UpdateController extends EventEmitter {
  status(){return {...this.state};}
  set(patch){this.state={...this.state,...patch};this.emit('state',this.status());return this.status();}
  failed(error){
-  if(error?.code==='UPDATE_OS_UNSUPPORTED')return this.set({phase:'error',visible:true,availableVersion:null,failureStage:null,message:error.message});
   const downloading=this.downloading||this.state.phase==='downloading',installing=this.state.phase==='installing'||this.state.failureStage==='install';
   return this.set({failureStage:installing?'install':null,phase:!downloading&&offline(error)?'offline':'error',visible:!!(this.manual||downloading||installing),message:installing?'更新安装失败，请重试':downloading?'下载失败，请重试':offline(error)?'无法连接更新服务，请联网后重试':'检查失败，请稍后重试'});
  }

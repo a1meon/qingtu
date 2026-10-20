@@ -6,10 +6,7 @@ import {ImagePreview} from './ImagePreview.jsx';
 import {ToolNavigation} from './ToolNavigation.jsx';
 import {TooltipButton} from './TooltipButton.jsx';
 import {AppUpdates} from './AppUpdates.jsx';
-import {WindowResizeEdges} from './WindowResizeEdges.jsx';
 import {StitchWorkspace} from './stitch/StitchWorkspace.jsx';
-import {CompressionQueue} from './CompressionQueue.jsx';
-import {CompressionName} from './CompressionName.jsx';
 import {addFlushHandler,flushWork} from './lifecycle.js';
 import {outputFormats,explicitFormat,megabytes} from './export-format.js';
 import {blockPreviewDrag,isExternalFileTransfer} from './file-drop.js';
@@ -18,29 +15,17 @@ const bytesText=b=>b<1000?`${b} B`:b<1000000?`${Math.ceil(b/1000)} KB`:`${Math.c
 const defaults={type:'scale',percent:100,locked:true,anchor:'width',width:3840,height:2160};
 const isMac=desktop&&window.qingtu.platform==='darwin';
 export function CompressionApp(){
- const titlebar=useRef();
- useEffect(()=>{let disposed=false,unbind;Promise.resolve(window.qingtu?.bindTitlebar?.(titlebar.current)).then(cleanup=>{if(disposed)cleanup?.();else unbind=cleanup;}).catch(console.error);return()=>{disposed=true;unbind?.();};},[]);
  const [module,setModule]=useState('stitch'),[stitchBusy,setStitchBusy]=useState(false),[stitchCount,setStitchCount]=useState(0);
- const stitch=useRef(),queue=useRef(),nameEditor=useRef(),exportTask=useRef(Promise.resolve()),deleteTask=useRef(Promise.resolve()),deleteLock=useRef(false),exportLock=useRef(false);
- const [items,setItems]=useState([]),[selectedId,setSelectedId]=useState(null),[loading,setLoading]=useState(false),[deleting,setDeleting]=useState(false),[exportSelection,setExportSelection]=useState(null);
+ const stitch=useRef(),exportTask=useRef(Promise.resolve());
+ const [items,setItems]=useState([]),[selectedId,setSelectedId]=useState(null),[loading,setLoading]=useState(false);
  const [target,setTarget]=useState(10),[unit,setUnit]=useState('MB'),[format,setFormat]=useState('png'),[resize,setResize]=useState(defaults);
  const [output,setOutput]=useState(null),[processing,setProcessing]=useState(false),[error,setError]=useState(''),[notice,setNotice]=useState(null);
  const [view,setView]=useState('compare'),[previewReset,setPreviewReset]=useState(0),[folder,setFolder]=useState(null),[batch,setBatch]=useState(null),[statuses,setStatuses]=useState({}),[dragging,setDragging]=useState(false);
- const [inspectorOpen,setInspectorOpenState]=useState(()=>!window.matchMedia('(max-width:760px)').matches),[inspectorRevision,setInspectorRevision]=useState(0);
- const inspectorManual=useRef(false);
- const setInspectorOpen=value=>{inspectorManual.current=true;setInspectorOpenState(value);setInspectorRevision(revision=>revision+1);};
- useEffect(()=>{
-  const narrow=window.matchMedia('(max-width:760px)'),sync=()=>{if(!inspectorManual.current)setInspectorOpenState(!narrow.matches);};
-  sync();narrow.addEventListener('change',sync);return()=>narrow.removeEventListener('change',sync);
- },[]);
+ const [inspectorOpen,setInspectorOpen]=useState(true);
  useEffect(()=>window.qingtu?.onFlush(flushWork),[]);
- useEffect(()=>addFlushHandler(()=>Promise.all([exportTask.current,deleteTask.current])),[]);
+ useEffect(()=>addFlushHandler(()=>exportTask.current),[]);
  const fileInput=useRef(),cancel=useRef(false),actions=useRef({}),depth=useRef(0);
  const selected=items.find(i=>i.id===selectedId)||items[0];
- const exportItems=items.filter(file=>exportSelection===null||exportSelection.includes(file.id)),exportIds=exportItems.map(file=>file.id);
- function selectExport(id,checked){setExportSelection(previous=>{const ids=items.filter(file=>previous===null||previous.includes(file.id)).map(file=>file.id);return checked?[...new Set([...ids,id])]:ids.filter(value=>value!==id);});}
- async function rename(id,name){const value=await api.rename(id,name);setItems(old=>old.map(file=>file.id===id?{...file,name:value.name}:file));}
- async function openImage(id){try{await nameEditor.current?.flush();setSelectedId(id);return true;}catch(e){setNotice({type:'error',text:e.message});return false;}}
  const size=useMemo(()=>{
   if(!selected)return {width:resize.width,height:resize.height};
   if(resize.type==='scale')return {width:Math.round(selected.width*Number(resize.percent)/100),height:Math.round(selected.height*Number(resize.percent)/100)};
@@ -68,51 +53,32 @@ export function CompressionApp(){
   if(result.errors.length)setNotice({type:'error',text:result.errors.join('；')});
  }
  async function importFiles(files){
-  if(batch||loading||deleting)return;const list=Array.from(files);if(!list.length)return;setLoading(true);setNotice(null);
-  try{await nameEditor.current?.flush();const result={items:[],errors:[]};for(const f of list){try{if(f.size>100*1048576)throw new Error('单张图片须小于 100 MB');const r=await api.importFiles([await readFile(f)]);result.items.push(...r.items);result.errors.push(...r.errors);}catch(e){result.errors.push(f.name+'：'+e.message);}}await accept(result);}
+  if(batch||loading)return;const list=Array.from(files);if(!list.length)return;setLoading(true);setNotice(null);
+  try{const result={items:[],errors:[]};for(const f of list){try{if(f.size>100*1048576)throw new Error('单张图片须小于 100 MB');const r=await api.importFiles([await readFile(f)]);result.items.push(...r.items);result.errors.push(...r.errors);}catch(e){result.errors.push(f.name+'：'+e.message);}}await accept(result);}
   catch(e){setNotice({type:'error',text:e.message});}finally{setLoading(false);if(fileInput.current)fileInput.current.value='';}
  }
- async function add(){if(batch||loading||deleting)return;if(!desktop){fileInput.current.click();return;}setLoading(true);try{await nameEditor.current?.flush();await accept(await api.chooseFiles());}catch(e){setNotice({type:'error',text:e.message});}finally{setLoading(false);}}
- async function removeFiles(ids){
-  if(batch||loading||deleteLock.current||exportLock.current)return;
-  deleteLock.current=true;setDeleting(true);
-  try{
-   await nameEditor.current?.flush();await queue.current?.flush();const removed=[],errors=[];
-   for(const id of [...new Set(ids)]){try{await api.remove(id);removed.push(id);}catch(e){errors.push(e.message);}}
-   setItems(old=>old.filter(file=>!removed.includes(file.id)));setSelectedId(current=>removed.includes(current)?null:current);
-   const remaining=items.filter(file=>!removed.includes(file.id));setExportSelection(previous=>!remaining.length?null:previous===null?null:previous.filter(id=>!removed.includes(id)));
-   setStatuses(old=>Object.fromEntries(Object.entries(old).filter(([id])=>!removed.includes(id))));
-   if(errors.length)setNotice({type:'error',text:errors.join('；')});
-  }catch(e){setNotice({type:'error',text:e.message});}finally{deleteLock.current=false;setDeleting(false);}
- }
- function remove(ids){if(deleteLock.current)return deleteTask.current;const task=removeFiles(ids);deleteTask.current=task;return task;}
+ async function add(){if(batch||loading)return;if(!desktop){fileInput.current.click();return;}setLoading(true);try{await accept(await api.chooseFiles());}catch(e){setNotice({type:'error',text:e.message});}finally{setLoading(false);}}
+ async function remove(id){if(batch)return;await api.remove(id);setItems(old=>old.filter(i=>i.id!==id));if(id===selectedId)setSelectedId(null);}
  async function chooseFolder(){try{const value=await api.chooseFolder();if(value)setFolder(value);return value;}catch(e){setNotice({type:'error',text:e.message});return null;}}
- async function runExport(ids){
-  const files=ids?items.filter(file=>ids.includes(file.id)):[...exportItems];
-  if(!files.length||batch||loading||deleting||(!ids&&error)||exportLock.current)return;
-  const config=structuredClone(settings);exportLock.current=true;cancel.current=false;setBatch({current:0,total:files.length});setNotice(null);setStatuses({});let success=0,failed=0,adjusted=0;
-  try{
-   await nameEditor.current?.flush();await queue.current?.flush();if(!folder&&!await chooseFolder())return;
-   for(let i=0;i<files.length;i++){
-    if(cancel.current)break;const file=files[i];setBatch({current:i+1,total:files.length});setStatuses(old=>({...old,[file.id]:{type:'busy'}}));
-    try{const r=await api.process(file.id,config);await api.save(r.token);success++;if(r.autoResized)adjusted++;setStatuses(old=>({...old,[file.id]:{type:'success',text:`${megabytes(r.bytes)}${r.autoResized?` · ${r.width} × ${r.height}`:''}`}}));}
-    catch(e){failed++;setStatuses(old=>({...old,[file.id]:{type:'error',text:e.message}}));}
-   }
-   setNotice({type:failed?'error':'success',text:`${cancel.current?'已取消，导出':'已导出'} ${success} 张${failed?`，${failed} 张未完成`:''}${adjusted?`，${adjusted} 张已等比调整尺寸`:''}`,reveal:success>0&&desktop});
-  }catch(e){setNotice({type:'error',text:e.message});}finally{exportLock.current=false;setBatch(null);}
+ async function runExportAll(){
+  if(!items.length||batch||loading||error)return;if(!folder&&!await chooseFolder())return;
+  const files=[...items],config=structuredClone(settings);cancel.current=false;setBatch({current:0,total:files.length});setNotice(null);setStatuses({});let success=0,failed=0,adjusted=0;
+  for(let i=0;i<files.length;i++){
+   if(cancel.current)break;const file=files[i];setBatch({current:i+1,total:files.length});setStatuses(old=>({...old,[file.id]:{type:'busy'}}));
+   try{const r=await api.process(file.id,config);await api.save(r.token);success++;if(r.autoResized)adjusted++;setStatuses(old=>({...old,[file.id]:{type:'success',text:`${megabytes(r.bytes)}${r.autoResized?` · ${r.width} × ${r.height}`:''}`}}));}
+   catch(e){failed++;setStatuses(old=>({...old,[file.id]:{type:'error',text:e.message}}));}
+  }
+  setBatch(null);setNotice({type:failed?'error':'success',text:`${cancel.current?'已取消，导出':'已导出'} ${success} 张${failed?`，${failed} 张未完成`:''}${adjusted?`，${adjusted} 张已等比调整尺寸`:''}`,reveal:success>0&&desktop});
  }
- function exportImages(ids){if(exportLock.current)return exportTask.current;const task=runExport(ids);exportTask.current=task;return task;}
- function exportAll(){return exportImages();}
+ function exportAll(){const task=runExportAll();exportTask.current=task;return task;}
  actions.current=module==='compress'?{add,export:exportAll}:{add:()=>stitch.current?.add(),export:()=>stitch.current?.export()};
  function editDimension(field,value){setResize(old=>({...old,type:'pixels',width:size.width,height:size.height,[field]:value,anchor:field}));}
 
  function reset(){setTarget(10);setUnit('MB');setFormat('png');setResize(defaults);setPreviewReset(v=>v+1);setError('');}
  const windowButtons=<div className="window-controls"><button aria-label="最小化" onClick={()=>api.windowAction('minimize')}><Minus size={16}/></button><button aria-label="最大化或还原" onClick={()=>api.windowAction('maximize')}><Square size={13}/></button><button className="window-close" aria-label="关闭窗口" onClick={()=>api.windowAction('close')}><X size={17}/></button></div>;
-
- return <div data-module={module} className={`app ${inspectorOpen?'':'inspector-collapsed'}`} onDragStartCapture={e=>{if(e.target.tagName==='IMG'||e.target.closest('.canvas-card'))blockPreviewDrag(e);}} onDragOver={e=>e.preventDefault()} onDragEnter={e=>{if(isExternalFileTransfer(e.dataTransfer)){depth.current++;setDragging(true);}}} onDragLeave={()=>{if(--depth.current<=0){setDragging(false);depth.current=0;}}} onDrop={e=>{e.preventDefault();depth.current=0;setDragging(false);if(!isExternalFileTransfer(e.dataTransfer)||!e.dataTransfer.files.length)return;if(module==='compress')importFiles(e.dataTransfer.files);else stitch.current?.importFiles(e.dataTransfer.files);}}>
-  <WindowResizeEdges/>
-  <header ref={titlebar} className={`titlebar ${isMac?'mac-titlebar':''}`}>
-   <div className="brand"><img src="./assets/app-icon.png" alt="" draggable={false}/><strong>轻图</strong></div><AppUpdates busy={processing||loading||deleting||!!batch||stitchBusy} hasImages={items.length>0}/>{desktop&&!isMac&&window.qingtu.windowChrome!=='native'&&windowButtons}
+ return <div className={`app ${inspectorOpen?'':'inspector-collapsed'}`} onDragStartCapture={e=>{if(e.target.tagName==='IMG'||e.target.closest('.canvas-card'))blockPreviewDrag(e);}} onDragOver={e=>e.preventDefault()} onDragEnter={e=>{if(isExternalFileTransfer(e.dataTransfer)){depth.current++;setDragging(true);}}} onDragLeave={()=>{if(--depth.current<=0){setDragging(false);depth.current=0;}}} onDrop={e=>{e.preventDefault();depth.current=0;setDragging(false);if(!isExternalFileTransfer(e.dataTransfer)||!e.dataTransfer.files.length)return;if(module==='compress')importFiles(e.dataTransfer.files);else stitch.current?.importFiles(e.dataTransfer.files);}}>
+  <header className={`titlebar ${isMac?'mac-titlebar':''}`}>
+   <div className="brand"><img src="./assets/app-icon.png" alt="" draggable={false}/><strong>轻图</strong></div><AppUpdates busy={processing||loading||!!batch||stitchBusy} hasImages={items.length>0}/>{desktop&&!isMac&&windowButtons}
   </header>
   <input ref={fileInput} className="sr-only" type="file" multiple accept=".jpg,.jpeg,.png,.webp,.avif,.tif,.tiff" aria-label="选择图片文件" onChange={e=>importFiles(e.target.files)}/>
   <main className="workspace">
@@ -121,7 +87,7 @@ export function CompressionApp(){
    <section className="stage" aria-label="图片预览">
     <div className={`preview-workspace ${selected?'has-image':''} ${dragging?'dragging':''}`}>
      <div className="file-toolbar">
-      <div className="compression-name-slot">{selected?<CompressionName key={selected.id} ref={nameEditor} file={selected} onRename={rename} active={module==='compress'} disabled={loading||deleting||!!batch}/>:<span className="file-toolbar-name">未选择图片</span>}</div>
+      <span className="file-toolbar-name">{selected?.name||'未选择图片'}</span>
       <div className="preview-actions">
        <div className="view-switch" role="group" aria-label="预览方式">
         {[{value:'original',label:'原图',aria:'查看原图'},{value:'compare',label:'对比',aria:'对比原图与结果'},{value:'processed',label:'处理后',aria:'查看处理后图片'}].map(option=><button key={option.value} className={view===option.value?'active':''} disabled={!selected} aria-label={option.aria} aria-pressed={view===option.value} onClick={()=>setView(option.value)}>{option.label}</button>)}
@@ -143,7 +109,18 @@ export function CompressionApp(){
       </div>}
      </div>
     </div>
-    <CompressionQueue ref={queue} items={items} currentId={selected?.id} selectedIds={exportIds} selectionExplicit={exportSelection!==null} onOpen={openImage} onAdd={add} onSelect={selectExport} onSelectAll={checked=>setExportSelection(checked?null:[])} onExport={id=>exportImages([id])} onRename={rename} onDelete={remove} statuses={statuses} disabled={loading||deleting||!!batch} active={module==='compress'}/>
+    <div className="queue-region">
+     <div className="queue-toolbar"><span>图片<span className="queue-count">{items.length}</span></span><button className="icon-button queue-clear" aria-label="清空图片" disabled={loading||!!batch||!items.length} onClick={()=>Promise.all(items.map(i=>remove(i.id)))}><Trash size={22} weight="bold"/></button></div>
+     <div className="filmstrip" aria-label="图片队列">
+      {items.map(file=><div className={`film-item ${file.id===selected?.id?'selected':''}`} key={file.id}>
+       <button className="film-select" disabled={!!batch} aria-label={`预览 ${file.name}`} aria-pressed={file.id===selected?.id} onClick={()=>setSelectedId(file.id)}><img src={file.preview} alt={file.name} draggable={false}/></button>
+       <button className="film-remove" disabled={!!batch} aria-label={`移除 ${file.name}`} onClick={()=>remove(file.id)}><X size={14} weight="bold"/></button>
+       <span className="filename" title={file.name}>{file.name}</span>
+       {statuses[file.id]&&<span className={`file-status ${statuses[file.id].type}`} title={statuses[file.id].text}>{statuses[file.id].type==='busy'?'处理中':statuses[file.id].text}</span>}
+      </div>)}
+      <div className="film-item add-item"><button className="add-tile" aria-label="添加图片" onClick={add} disabled={loading||!!batch}><Plus size={38} weight="bold"/></button><span className="filename">添加图片</span></div>
+     </div>
+    </div>
    </section>
    <div className="inspector-shell">
     <aside className="inspector" id="export-inspector" aria-label="导出设置" aria-hidden={!inspectorOpen} inert={!inspectorOpen}>
@@ -177,13 +154,13 @@ export function CompressionApp(){
       {error&&<div className="inline-message error" role="alert"><WarningCircle size={18}/><span>{error}</span></div>}
       <label>输出文件夹</label>
       <button className="folder-control" disabled={!!batch} onClick={chooseFolder} title={folder?.path}><FolderSimple size={24} weight="bold"/><span>{folder?.name||'选择文件夹'}</span></button>
-      <button className="primary export-button" disabled={!exportItems.length||loading||deleting||!!batch||!!error} onClick={exportAll}>{batch?<><SpinnerGap size={22} className="spin"/>导出 {batch.current} / {batch.total}</>:<>导出 {exportItems.length} 张图片</>}</button>
+      <button className="primary export-button" disabled={!items.length||loading||!!batch||!!error} onClick={exportAll}>{batch?<><SpinnerGap size={22} className="spin"/>导出 {batch.current} / {batch.total}</>:<>导出 {items.length} 张图片</>}</button>
       <div className="export-secondary">{batch&&<button className="cancel-button" onClick={()=>{cancel.current=true;}}>取消后续</button>}</div>
      </div>
     </aside>
    </div>
    </div>
-   <div className="module-content" hidden={module!=='stitch'}><StitchWorkspace ref={stitch} active={module==='stitch'} inspectorRevision={inspectorRevision} inspectorOpen={inspectorOpen} setInspectorOpen={setInspectorOpen} onBusy={setStitchBusy} onCount={setStitchCount}/></div>
+   <div className="module-content" hidden={module!=='stitch'}><StitchWorkspace ref={stitch} active={module==='stitch'} inspectorOpen={inspectorOpen} setInspectorOpen={setInspectorOpen} onBusy={setStitchBusy} onCount={setStitchCount}/></div>
   </main>
   {notice&&module==='compress'&&<div className={`notice ${notice.type}`} role={notice.type==='error'?'alert':'status'}>{notice.type==='error'?<WarningCircle size={23} weight="bold"/>:<CheckCircle size={23} weight="fill" className="success-icon"/>}<span>{notice.text}</span>{notice.reveal&&<button onClick={()=>api.revealFolder()}>打开文件夹</button>}<button className="icon-button" aria-label="关闭提示" onClick={()=>setNotice(null)}><X size={18}/></button></div>}
   {dragging&&<div className="drop-overlay"><Plus size={40} weight="bold"/><span>松开以添加图片</span></div>}

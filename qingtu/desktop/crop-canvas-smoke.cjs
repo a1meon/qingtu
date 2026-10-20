@@ -6,7 +6,7 @@ const {createSmoke}=require('./portrait-smoke-helpers.cjs');
 (async()=>{
  const s=await createSmoke('qingtu-crop-canvas-','crop-canvas');
  await s.edit('#stitch-height',240);await s.importFiles(['01-alpine.jpg','02-cabin.jpg'].map(name=>path.resolve('artifacts/stitch-fixtures',name)));
- await s.js("document.querySelectorAll('.stitch-layer')[1].click()");await s.wait("document.querySelectorAll('.stitch-layer')[1].classList.contains('selected')");
+ await s.js("document.querySelectorAll('.stitch-layer')[1].focus()");await s.wait("document.querySelectorAll('.stitch-layer')[1].classList.contains('selected')");
  await s.click('.inline-image-tools button');await s.wait("document.querySelectorAll('.crop-corner-handle').length===4");
  const original=await s.load(),selectedId=await s.js("document.querySelector('.stitch-layer.selected').dataset.imageId"),image=original.images.find(image=>image.id===selectedId),asset=await s.store.readAsset(image.assetId),results=[];
  const paint=()=>s.js('new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)))');

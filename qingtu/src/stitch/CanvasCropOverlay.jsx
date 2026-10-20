@@ -1,7 +1,6 @@
 import {useEffect,useRef} from 'react';
 import {CROP_HANDLES,cropFromDrag} from '../../engine/crop-transform.mjs';
 import {snapCropFromDrag} from '../../engine/transform-snap.mjs';
-import {rotateVector} from '../../engine/image-rotation.mjs';
 import {imageGeometry} from '../../engine/stitch-edits.mjs';
 import {addFlushHandler} from '../lifecycle.js';
 
@@ -21,7 +20,7 @@ export function CanvasCropOverlay({image,project,targets,rect,scale,value,onStar
   if(frame.current)return;
   frame.current=requestAnimationFrame(()=>{frame.current=null;if(gesture.current===drag&&drag.distance>=2){drag.next=calculate(drag);callbacks.current.onPreview(drag.next.edit,drag.next.position,drag.next.guides);}});
  }
- function calculate(drag){const angle=image.angle||0,local=rotateVector((drag.dx||0)/drag.scale,(drag.dy||0)/drag.scale,-angle),result=snapCropFromDrag(drag.project,image.id,drag.value,drag.rect,drag.side,local.x,local.y,angle?[]:drag.targets,8/drag.scale);return angle?{...result,guides:[]}:result;}
+ function calculate(drag){return snapCropFromDrag(drag.project,image.id,drag.value,drag.rect,drag.side,(drag.dx||0)/drag.scale,(drag.dy||0)/drag.scale,drag.targets,8/drag.scale);}
  function finish(cancelled){
   const drag=gesture.current;if(!drag)return;
   gesture.current=null;cancelAnimationFrame(frame.current);frame.current=null;
@@ -39,7 +38,7 @@ export function CanvasCropOverlay({image,project,targets,rect,scale,value,onStar
   const next=cropFromDrag(image,value,rect,edge,horizontal?step*rect.width/source.width:0,horizontal?0:step*rect.height/source.height);
   callbacks.current.onStart(edge);callbacks.current.onPreview(next.edit,next.position);callbacks.current.onEnd(false);
  }
- return <div className="canvas-crop-target" data-canvas-crop style={{left:rect.x*scale,top:rect.y*scale,width:rect.width*scale,height:rect.height*scale,transform:`rotate(${image.angle||0}deg)`}}>
+ return <div className="canvas-crop-target" data-canvas-crop style={{left:rect.x*scale,top:rect.y*scale,width:rect.width*scale,height:rect.height*scale}}>
   {Object.entries(names).map(([side,label])=><button key={side} data-crop-handle={side} className={`crop-edge-handle ${CROP_HANDLES[side].length===2?'crop-corner-handle':''} crop-edge-${side}`} aria-label={`拖动裁剪${label}`} title={`拖动裁剪${label}`} disabled={disabled} onPointerDown={event=>start(event,side)} onKeyDown={event=>key(event,side)}><span/></button>)}
  </div>;
 }

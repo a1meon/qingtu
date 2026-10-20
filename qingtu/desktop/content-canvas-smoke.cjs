@@ -12,6 +12,6 @@ const {createSmoke}=require('./portrait-smoke-helpers.cjs');
  const output=await s.save('height-content-fit');await fs.writeFile(path.join(s.artifact,'project.json'),JSON.stringify(p));
  for(const image of p.images)assert.ok((await s.store.readAsset(image.assetId)).equals(await fs.readFile(sources.find(file=>path.basename(file)===image.name))));
  await s.click('[data-layout=grid]');await s.ready();await s.click('[data-layout=horizontal]');await s.ready();assert.deepEqual((await s.load()).positions,p.positions);assert.deepEqual((await s.load()).canvas,p.canvas);
- await s.win.webContents.reload();await s.wait("!!document.querySelector('[aria-label=\"图像编辑\"]')");await s.click('[aria-label="图像编辑"]');await s.ready();assert.deepEqual((await s.load()).positions,p.positions);
+ await s.win.webContents.reload();await s.wait("!!document.querySelector('[aria-label=\"图像拼接\"]')");await s.click('[aria-label="图像拼接"]');await s.ready();assert.deepEqual((await s.load()).positions,p.positions);
  await s.finish({passed:true,fixedHeight:true,everyImportFitsWidth:true,firstCanvas:first.canvas,secondCanvas:second.canvas,finalCanvas:p.canvas,directDragOrder:true,widthCapKeepsOverflow:true,noAutomaticCrop:true,layoutAndReloadRestore:true,originalsUnchanged:true,output});
 })().catch(error=>{console.error(error);app.exit(1);});

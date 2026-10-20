@@ -4,7 +4,7 @@ import {TooltipButton} from './TooltipButton.jsx';
 
 // Future tools join this registry; they do not change the image workspace.
 const tools=[
- {id:'stitch',label:'图像编辑',icon:Images,enabled:true},
+ {id:'stitch',label:'图像拼接',icon:Images,enabled:true},
  {id:'compress',label:'压缩调整',icon:CompressionIcon,enabled:true}
 ];
 export function ToolNavigation({selected='stitch',onSelect}){

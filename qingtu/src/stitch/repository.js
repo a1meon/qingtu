@@ -1,6 +1,5 @@
 import {api,desktop,readFile} from '../api.js';
 import {canvasThumbnail} from './thumbnail.js';
-import {rotatePreview} from './rotate-preview.js';
 import {DEFAULT_CANVAS} from '../../engine/canvas-limits.mjs';
 import {migrateFixedCanvas} from '../../engine/canvas-migrate.mjs';
 import {enableHeightCanvas} from '../../engine/canvas-height.mjs';
@@ -61,8 +60,7 @@ export const repository={
   }
   if(!previews)return project;
   const ids=[...new Set(project.images.map(i=>i.assetId))],urls=await api.stitchPreviews(ids),byId=new Map(ids.map((id,n)=>[id,urls[n]]));
-  const rotatedPreviews=new Map();
-  return {...project,images:await Promise.all(project.images.map(async image=>{const key=`${image.assetId}:${image.rotation||0}`;if(!rotatedPreviews.has(key))rotatedPreviews.set(key,rotatePreview(byId.get(image.assetId),image.rotation||0));return {...image,preview:await rotatedPreviews.get(key)};}))};
+  return {...project,images:project.images.map(i=>({...i,preview:byId.get(i.assetId)}))};
  },
  async remove(id){
   if(desktop)return api.stitchDelete(id);

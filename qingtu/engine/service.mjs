@@ -10,9 +10,9 @@ const preview=async(buffer,bounds={width:1600,height:1200})=>{
     .png().toBuffer({resolveWithObject:true});
   return {url:'data:image/png;base64,'+data.toString('base64'),width:info.width,height:info.height};
 };
-function exportStem({name,canvas,renamed,output}){
+function exportStem({name,canvas,output}){
   const ext=output.format==='jpeg'?'jpg':output.format;
-  let value=canvas?String(name||'图像'):renamed?name.replace(/\.(?:jpe?g|png|webp|avif|tiff?)$/i,''):path.parse(name).name;
+  let value=canvas?String(name||'图像'):path.parse(name).name;
   if(canvas&&value.toLowerCase().endsWith('.'+ext))value=value.slice(0,-ext.length-1);
   let stem=value.replace(/[<>:"/\\|?*\x00-\x1f]/g,'_').slice(0,120).replace(/[. ]+$/g,'')||(canvas?'图像':'image');
   if(canvas&&/^(con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\.|$)/i.test(stem))stem='_'+stem;
@@ -60,16 +60,9 @@ export class ImageService {
     const result={token,bytes:output.buffer.length,imageBytes:output.imageBytes,paddedBytes:output.paddedBytes,width:output.width,height:output.height,requestedWidth:output.requestedWidth,requestedHeight:output.requestedHeight,autoResized:output.autoResized,scalePercent:output.scalePercent,differenceReference:output.differenceReference,format:output.format,quality:output.quality,lossless:output.lossless,encoding:output.encoding,difference:output.difference,limitBytes:output.limitBytes,unchanged:output.unchanged,preview:outputPreview.url,previewWidth:outputPreview.width,previewHeight:outputPreview.height};
     if(!this.files.has(id)) throw new Error('图片已移除');
     if(file.last) this.results.delete(file.last.result.token);
-    const stored={id,name:file.item.name,renamed:file.item.renamed,output,exportTask:false};this.results.set(token,stored);
+    const stored={id,name:file.item.name,output,exportTask:false};this.results.set(token,stored);
     file.last={key,result};
     const returned=exportTask?this.pinExport(result,stored):result;this.trimPreviews();return returned;
-  }
-  rename(id,name) {
-    const file=this.original(id);
-    if(typeof name!=='string'||!name.trim()||name.length>200||/[<>:"/\\|?*\x00-\x1f]/.test(name)||/^[. ]+$/.test(name))throw new Error('图片名称须为 1–200 个字符，不能包含路径或特殊字符');
-    file.item={...file.item,name:name.trim(),renamed:true};
-    for(const result of this.results.values())if(result.id===id){result.name=file.item.name;result.renamed=true;}
-    return {id,name:file.item.name};
   }
   remove(id) {
     const file=this.files.get(id);

@@ -13,7 +13,7 @@ async function waitFor(win,expr){for(let n=0;n<600;n++){if(await win.webContents
   for(let i=0;i<data.length;i++){seed=(Math.imul(seed,1664525)+1013904223)>>>0;data[i]=seed>>>24;}
   const source=path.join(root,'noisy-alpha.png');await sharp(data,{raw:{width,height,channels:4}}).png().toFile(source);
   const folder=path.join(root,'exports');await fs.mkdir(folder);
-  const {win,service,store}=await start({offscreen:true,testFolder:folder,projectRoot:path.join(root,'projects'),testFiles:[source],hidden:true});
+  const {win,service,store}=await start({testFolder:folder,projectRoot:path.join(root,'projects'),testFiles:[source],hidden:true});
   win.webContents.setBackgroundThrottling(false);
   const js=expr=>win.webContents.executeJavaScript(expr),reports=[];
   const edit=(selector,value)=>js(`(()=>{const input=document.querySelector(${JSON.stringify(selector)});Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(input,${JSON.stringify(String(value))});input.dispatchEvent(new Event('input',{bubbles:true}));})()`);
@@ -26,9 +26,9 @@ async function waitFor(win,expr){for(let n=0;n<600;n++){if(await win.webContents
   await fs.mkdir('artifacts/png-budget',{recursive:true});await win.webContents.capturePage().then(image=>fs.writeFile('artifacts/png-budget/compression-ui.png',image.toPNG()));
   await js("document.querySelector('.export-button').click()");await waitFor(win,"document.querySelector('.notice')?.textContent.includes('1 张已等比调整尺寸')");
   reports.push({module:'compression',width:compression.width,height:compression.height,bytes:compression.bytes,requested:[width,height],actualSizeVisible:true});
-  await js("document.querySelector('[aria-label=\"图像编辑\"]').click()");await waitFor(win,"!!document.querySelector('[aria-label=\"新建画布\"]')&&!document.querySelector('[aria-label=\"新建画布\"]').disabled");await js("document.querySelector('[aria-label=\"新建画布\"]').click()");await waitFor(win,"!!document.querySelector('[aria-label=\"添加画布图片\"]')");await edit('#stitch-width',600);await edit('#stitch-height',240);await js("document.querySelector('[aria-label=\"添加画布图片\"]').click()");
+  await js("document.querySelector('[aria-label=\"图像拼接\"]').click()");await waitFor(win,"!!document.querySelector('[aria-label=\"新建画布\"]')&&!document.querySelector('[aria-label=\"新建画布\"]').disabled");await js("document.querySelector('[aria-label=\"新建画布\"]').click()");await waitFor(win,"!!document.querySelector('[aria-label=\"添加拼接图片\"]')");await edit('#stitch-width',600);await edit('#stitch-height',240);await js("document.querySelector('[aria-label=\"添加拼接图片\"]').click()");
   await waitFor(win,"!!document.querySelector('.stitch-layer')&&!document.querySelector('.project-name').disabled");
-  await js("document.querySelector('[aria-label=\"画布大小单位\"]').click()");await waitFor(win,"!!document.querySelector('[role=option]')");await js("[...document.querySelectorAll('[role=option]')].find(e=>e.textContent==='KB').click()");await edit('#stitch-target',1);
+  await js("document.querySelector('[aria-label=\"拼接大小单位\"]').click()");await waitFor(win,"!!document.querySelector('[role=option]')");await js("[...document.querySelectorAll('[role=option]')].find(e=>e.textContent==='KB').click()");await edit('#stitch-target',1);
   await waitFor(win,"document.querySelector('.stitch-info')?.textContent.includes('等比调整')&&!document.querySelector('.stitch-info')?.textContent.includes('计算中')");
   const text=await js("document.querySelector('.stitch-info').textContent"),project=await store.load((await store.list())[0].id);
   assert.equal(await js("!!document.querySelector('.stitch-output-preview')&&getComputedStyle(document.querySelector('.stitch-layer img')).visibility==='hidden'"),true,'idle canvas displays the decoded small export, not the sharp original thumbnail');

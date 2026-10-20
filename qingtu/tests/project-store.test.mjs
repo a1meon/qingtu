@@ -107,22 +107,3 @@ test('layout memories survive a normal reload and atomic recovery without droppi
  await store.save({...p,name:'later'});await fs.writeFile(store.file(p.id),'interrupted');const recovered=await store.load(p.id);assert.equal(recovered.recovered,true);assert.deepEqual(recovered.layoutStates,p.layoutStates);assert.deepEqual(recovered.layoutCanvases,p.layoutCanvases);
  assert.throws(()=>store.save({...p,layoutStates:{free:{[image.id]:{x:NaN,y:0,width:1,height:1}}}}),/布局记忆/);assert.deepEqual((await store.load(p.id)).layoutStates,p.layoutStates);
 });
-
-test('new imports and reopened canvas layers retain enough pixels for a 750px Retina preview before composition',async t=>{
- const {root,store}=await setup(t),width=1500,height=1000,raw=Buffer.alloc(width*height*4);
- for(let y=0;y<height;y++)for(let x=0;x<width;x++){const offset=(y*width+x)*4;raw[offset]=x%2?255:0;raw[offset+1]=y%2?255:0;raw[offset+2]=128;raw[offset+3]=255;}
- const source=await sharp(raw,{raw:{width,height,channels:4}}).png().toBuffer(),image=await store.import(source,'fine-lines.png');
- for(const preview of [image.preview,await new ProjectStore(root).preview(image.assetId)]){
-  const {data,info}=await sharp(Buffer.from(preview.split(',')[1],'base64')).ensureAlpha().raw().toBuffer({resolveWithObject:true});
-  assert.deepEqual([info.width,info.height],[1500,1000],'the initial layer must not enlarge a thumbnail while composition runs');assert.ok(data.equals(raw),'one-pixel lines survive before the processed preview is ready');
- }
- assert.ok((await store.readAsset(image.assetId)).equals(source));
-});
-
-test('stitch editor previews stay bounded, orient sources correctly and never upscale small originals',async t=>{
- const {store}=await setup(t);
- for(const [width,height,orientation,want] of [[4000,3000,1,[1600,1200]],[3000,4000,1,[900,1200]],[4000,3000,6,[900,1200]],[80,60,1,[80,60]]]){
-  const source=await sharp({create:{width,height,channels:3,background:'#7799aa'}}).jpeg().withMetadata({orientation}).toBuffer(),image=await store.import(source,'oriented.jpg'),meta=await sharp(Buffer.from(image.preview.split(',')[1],'base64')).metadata();
-  assert.deepEqual([meta.width,meta.height],want);assert.ok((await store.readAsset(image.assetId)).equals(source));
- }
-});

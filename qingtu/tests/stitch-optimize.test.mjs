@@ -18,8 +18,8 @@ test('optimization recomputes from originals and preserves order regardless of o
  assert.deepEqual(first,second);assert.deepEqual(Object.keys(first),images.map(image=>image.id));
  assert.equal(first.a.fraction,proportionalHorizontalEdits(originals).a.fraction);
 });
-test('symmetric cropping adapts narrow originals and rejects sub-pixel source content',()=>{
- assert.deepEqual(proportionalHorizontalEdits([{id:'a',width:100,height:100}]),{a:{axis:'vertical',fraction:.3}});
+test('symmetric cropping rejects impossible narrow originals and sub-pixel source content',()=>{
+ assert.throws(()=>proportionalHorizontalEdits([{id:'a',width:100,height:100}]),/不足 2.5/);
  assert.throws(()=>proportionalHorizontalEdits([{id:'a',width:1,height:100},{id:'b',width:100,height:1}]),/不足 1/);
  assert.throws(()=>proportionalHorizontalEdits([]),/添加图片/);
  assert.throws(()=>proportionalHorizontalEdits([{id:'a',width:1.5,height:2}]),/尺寸无效/);
@@ -33,7 +33,7 @@ test('proportional crop exports a strict 5:2 canvas and rejects incompatible use
  for(const longEdge of [5,100,1200,5995]){const layout=calculateLayout({...p,export:{longEdge}});assert.equal(layout.width*2,layout.height*5);}
  for(const longEdge of [1,5999,5998])assert.throws(()=>calculateLayout({...p,export:{longEdge}}),/严格 2.5:1/);
  assert.deepEqual(imageGeometry(originals[0],p.edits.a),{left:3072*p.edits.a.fraction,top:0,width:3072*(20/21),height:4096});
- for(const edit of [{axis:'invalid',fraction:.1},{axis:'horizontal',fraction:.5},{axis:'horizontal',fraction:NaN},{axis:'horizontal',fraction:.1,amount:1}])assert.throws(()=>imageGeometry(originals[0],edit),/数据无效/);
+ for(const edit of [{axis:'vertical',fraction:.1},{axis:'horizontal',fraction:.5},{axis:'horizontal',fraction:NaN},{axis:'horizontal',fraction:.1,amount:1}])assert.throws(()=>imageGeometry(originals[0],edit),/数据无效/);
 });
 test('explicit percentage crops remain editable, resettable and retain visible centres entering free',()=>{
  const p={images:originals,layout:'horizontal',edits:proportionalHorizontalEdits(originals),export:{longEdge:5995}};
