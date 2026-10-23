@@ -1,0 +1,10 @@
+
+> qingtu@0.4.8 smoke:compression-queue
+> electron desktop/compression-queue-smoke.cjs
+
+Error occurred in handler for 'qingtu:call': Error: 图片名称须为 1–200 个字符，不能包含路径或特殊字符
+    at ImageService.rename (file:///Users/xx/Documents/ChatGPT/%E5%9B%BE%E7%89%87%E5%A4%84%E7%90%86%E8%BD%AF%E4%BB%B6/qingtu/engine/service.mjs:69:126)
+    at /Users/xx/Documents/ChatGPT/图片处理软件/qingtu/desktop/main.cjs:123:41
+    at Session.<anonymous> (node:electron/js2c/browser_init:1:119988)
+    at Session.emit (node:events:514:28)
+{"passed":true,"offscreen":true,"checkboxSelectionAndSelectAll":true,"contextMenuThreeActions":true,"doubleClickRenameAndEscape":true,"renameWithoutReprocessing":true,"onlySelectedExported":true,"renamedExport":true,"unselectedContextDeleteIsSingle":true,"selectedContextDeleteIsBatch":true,"toolbarDelete":true,"invalidRenameRecoverable":true,"exportFlushesRename":true,"moduleSwitchFlushesRename":true,"sourceFilesRetained":true,"exportFolder":"/Users/xx/Documents/ChatGPT/图片处理软件/qingtu/artifacts/compression-queue/exports/ad86c19c-9e75-44ba-b871-bf2b142b61f4","saved":["photo-1-qingtu.png","第二张.定稿-qingtu.png"]}

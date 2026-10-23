@@ -1,0 +1,11 @@
+{
+  "passed": true,
+  "offscreen": true,
+  "headerRenameWithoutEncoding": true,
+  "invalidRenameRecoverable": true,
+  "escapeRestoresName": true,
+  "contextSingleExportWithoutChangingSelectionOrPreview": true,
+  "moduleSwitchFlush": true,
+  "contextExportFlushesHeader": true,
+  "sourceFilesRetained": true
+}

@@ -7,11 +7,11 @@ const pause=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 (async()=>{
  const root=process.env.QINGTU_OPTIMIZATION_ROOT;if(!root)throw new Error('Missing isolated optimization root');
  const mode=process.env.QINGTU_OPTIMIZATION_MODE||'optimize',exports=path.join(root,'exports');await fs.mkdir(exports,{recursive:true});
- const {win,store,stitching}=await start({hidden:true,testFolder:exports,projectRoot:path.join(root,'projects'),testFiles:[path.join(root,'source.png')],onCloseError:error=>{console.error(error);app.exit(1);}});
+ const {win,store,stitching}=await start({offscreen:true,hidden:true,testFolder:exports,projectRoot:path.join(root,'projects'),testFiles:[path.join(root,'source.png')],onCloseError:error=>{console.error(error);app.exit(1);}});
  win.webContents.setBackgroundThrottling(false);
  const js=expression=>win.webContents.executeJavaScript(expression);
  async function waitFor(expression){for(let n=0;n<200;n++){if(await js(expression))return;await pause(100);}throw new Error('Timed out: '+expression);}
- await waitFor("!!document.querySelector('[aria-label=\"图像拼接\"]')");await js("document.querySelector('[aria-label=\"图像拼接\"]').click()");
+ await waitFor("!!document.querySelector('[aria-label=\"图像编辑\"]')");await js("document.querySelector('[aria-label=\"图像编辑\"]').click()");
  if(mode!=='optimize'){
   await waitFor("document.querySelectorAll('.stitch-layer').length===2 && document.querySelector('.stitch-info').textContent.includes(' MB') && !document.querySelector('.project-name').disabled");
   let started=false,finished=false,calls=0;
@@ -28,10 +28,10 @@ const pause=ms=>new Promise(resolve=>setTimeout(resolve,ms));
   await js("window.qingtu.windowAction('close')");return;
  }
  await waitFor("!!document.querySelector('[aria-label=\"新建画布\"]')&&!document.querySelector('[aria-label=\"新建画布\"]').disabled");await js("document.querySelector('[aria-label=\"新建画布\"]').click()");
- await waitFor("!document.querySelector('[aria-label=\"添加拼接图片\"]').disabled");
+ await waitFor("!document.querySelector('[aria-label=\"添加画布图片\"]').disabled");
  await js("(()=>{const el=document.querySelector('#stitch-width');Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(el,'1200');el.dispatchEvent(new Event('input',{bubbles:true}));})()");
  await js("(()=>{const el=document.querySelector('#stitch-height');Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(el,'480');el.dispatchEvent(new Event('input',{bubbles:true}));})()");
- await js("document.querySelector('[aria-label=\"添加拼接图片\"]').click()");await waitFor("document.querySelectorAll('.stitch-layer').length===1 && document.querySelector('.save-status').textContent==='已自动保存'");
+ await js("document.querySelector('[aria-label=\"添加画布图片\"]').click()");await waitFor("document.querySelectorAll('.stitch-layer').length===1 && document.querySelector('.save-status').textContent==='已自动保存'");
  await js("window.dispatchEvent(new KeyboardEvent('keydown',{key:'o',ctrlKey:true,bubbles:true}))");await waitFor("document.querySelectorAll('.stitch-layer').length===2 && document.querySelector('.save-status').textContent==='已自动保存'");
  await js("(()=>{for(const [id,value] of [['stitch-width',1200],['stitch-height',480]]){const el=document.getElementById(id);Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(el,String(value));el.dispatchEvent(new Event('input',{bubbles:true}));}})()");
  let started=false,finished=false;

@@ -1,0 +1,12 @@
+AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+
+'图像拼接' !== '图像编辑'
+
+    at /Users/xx/Documents/ChatGPT/图片处理软件/qingtu/desktop/image-rotation-smoke.cjs:6:9 {
+  generatedMessage: true,
+  code: 'ERR_ASSERTION',
+  actual: '图像拼接',
+  expected: '图像编辑',
+  operator: 'strictEqual',
+  diff: 'simple'
+}

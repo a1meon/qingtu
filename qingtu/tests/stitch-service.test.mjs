@@ -193,3 +193,21 @@ test('renamed canvas exports use its complete current name for web and desktop e
  const next=await service.render({...first,name:'画布 12'}),saved=await images.save(next.token,root);assert.equal(path.basename(saved.path),'画布 12-2.png');
  assert.ok((await fs.readFile(path.join(root,'画布 12.png'))).equals(before),'a duplicate name never overwrites an existing export');
 });
+
+test('narrow-image optimization saves and exports centred top-bottom crops with no stretching or padding',async t=>{
+ const {store,images,service}=await setup(t),raw=Buffer.alloc(100*100*4);
+ for(let y=0;y<100;y++)for(let x=0;x<100;x++){const o=(y*100+x)*4;raw[o]=x;raw[o+1]=y;raw[o+2]=180;raw[o+3]=255;}
+ const source=await sharp(raw,{raw:{width:100,height:100,channels:4}}).png().toBuffer(),item=await store.import(source,'square.png');delete item.preview;
+ for(const fixed of [true,false]){
+  const p=optimizeHorizontal({id:'vertical-opt-'+fixed,images:[item],layout:'horizontal',optimization:{specialCrops:{}},...(fixed?{canvasMode:'fixed',canvas:{width:250,height:100},positions:{[item.id]:{x:0,y:0,width:250,height:100}}}:{}),export:{...settings,longEdge:250}});
+  await store.save(p);const restored=await store.load(p.id),r=await service.render(restored),actual=await sharp(images.result(r.token).output.buffer).ensureAlpha().raw().toBuffer();
+  const expected=await sharp(source).resize(250,250,{fit:'fill'}).extract({left:0,top:75,width:250,height:100}).ensureAlpha().raw().toBuffer();
+  assert.deepEqual([r.width,r.height],[250,100]);assert.ok(actual.equals(expected),'centred crop uses the original uniform pixel scale');assert.ok((await store.readAsset(item.assetId)).equals(source));assert.deepEqual(restored.edits,p.edits);
+ }
+});
+
+test('the ready composite retains Retina preview detail instead of replacing clear source layers with a smaller raster',async t=>{
+ const {store,images,service}=await setup(t),item=await solid(store,'fine-preview',1500,1000,'#4477aa');delete item.preview;
+ const p={id:'retina-ready',images:[item],layout:'horizontal',export:{...settings,longEdge:1500}},r=await service.render(p),preview=await sharp(Buffer.from(r.preview.split(',')[1],'base64')).metadata();
+ assert.deepEqual([preview.width,preview.height],[1500,1000]);assert.deepEqual([r.width,r.height],[1500,1000]);assert.ok(images.result(r.token).output.buffer.length<=settings.targetBytes);
+});

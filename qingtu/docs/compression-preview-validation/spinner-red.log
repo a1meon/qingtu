@@ -1,0 +1,13 @@
+
+> qingtu@0.4.8 smoke:compression-preview
+> electron desktop/compression-preview-smoke.cjs
+
+AssertionError [ERR_ASSERTION]: portrait loading indicator stays over the visible image half: {"actual":686.5,"expected":550.875}
+    at /Users/xx/Documents/ChatGPT/图片处理软件/qingtu/desktop/compression-preview-smoke.cjs:17:373 {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: false,
+  expected: true,
+  operator: '==',
+  diff: 'simple'
+}

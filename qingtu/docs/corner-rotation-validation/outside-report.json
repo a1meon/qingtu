@@ -1,0 +1,7 @@
+{
+  "passed": true,
+  "outsideImageClickRetainsSelection": true,
+  "toolbarFollowsOutsideImage": true,
+  "outsideDragBack": true,
+  "leftAndRightClicks": true
+}

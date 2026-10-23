@@ -35,6 +35,7 @@ export function devBridge() {
           result={items:[],errors:[]};
           for(const f of args[0]) try{result.items.push(await service.add(Buffer.from(f.base64,'base64'),f.name));}catch(e){result.errors.push(f.name+'：'+e.message);}
         } else if(method==='process') result=await service.process(...args);
+        else if(method==='rename')result=service.rename(...args);
         else if(method==='remove') {service.remove(args[0]);result=true;}
         else if(method==='chooseFolder') result={name:'预览导出目录',path:path.join(server.config.root,'artifacts/browser-exports')};
         else if(method==='save') {

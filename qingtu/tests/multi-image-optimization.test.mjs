@@ -46,3 +46,11 @@ test('all selected images must match the canvas exactly, and impossible individu
   const before=structuredClone(images);assert.throws(()=>optimizationEdits(images,2.5,{specialCrops:cuts}));assert.deepEqual(images,before);
  }
 });
+
+test('narrow ordinary images crop vertically while the selected special crop remains exact',()=>{
+ const sources=[{id:'a',width:60,height:100},{id:'b',width:60,height:100},{id:'c',width:100,height:100}],options={specialCrops:{c:{enabled:true,topPercent:20,sidePixels:10}}};
+ const before=structuredClone(sources),edits=optimizationEdits(sources,2.5,options);
+ assert.deepEqual(edits.c,{edges:{left:10,right:10,top:20,bottom:0},links:{horizontal:true,vertical:false}});
+ for(const id of ['a','b']){const geometry=imageGeometry(sources.find(i=>i.id===id),edits[id]);assert.ok(Math.abs(geometry.top-10)<1e-9);assert.ok(Math.abs(geometry.height-80)<1e-9);assert.equal(geometry.width,60);}
+ assert.deepEqual(sources,before);
+});

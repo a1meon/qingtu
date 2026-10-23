@@ -1,0 +1,10 @@
+AssertionError [ERR_ASSERTION]: dragging within the same horizontal slot must save the requested vertical position: {"requested":0,"actual":{"x":180,"y":120,"width":90,"height":120}}
+    at moveTo (/Users/xx/Documents/ChatGPT/图片处理软件/qingtu/desktop/image-position-smoke.cjs:14:162)
+    at async /Users/xx/Documents/ChatGPT/图片处理软件/qingtu/desktop/image-position-smoke.cjs:15:2 {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: false,
+  expected: true,
+  operator: '==',
+  diff: 'simple'
+}

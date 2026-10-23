@@ -1,0 +1,376 @@
+{
+  "passed": true,
+  "entirelyOffscreen": true,
+  "offscreenRendering": true,
+  "visible": false,
+  "windowBounds": {
+    "x": 1768,
+    "y": 1238,
+    "width": 1280,
+    "height": 820
+  },
+  "displayBounds": [
+    {
+      "x": 0,
+      "y": 0,
+      "width": 1512,
+      "height": 982
+    }
+  ],
+  "opacity": 0,
+  "noOSFocus": true,
+  "cases": [
+    {
+      "width": 900,
+      "collapsed": false,
+      "inert": false,
+      "canvas": {
+        "x": 135,
+        "y": 212.5,
+        "width": 385,
+        "height": 154,
+        "top": 212.5,
+        "right": 520,
+        "bottom": 366.5,
+        "left": 135
+      },
+      "area": {
+        "x": 119,
+        "y": 152,
+        "width": 417,
+        "height": 275,
+        "top": 152,
+        "right": 536,
+        "bottom": 427,
+        "left": 119
+      },
+      "toggle": {
+        "x": 503,
+        "y": 84,
+        "width": 38,
+        "height": 38,
+        "top": 84,
+        "right": 541,
+        "bottom": 122,
+        "left": 503
+      },
+      "toggleIcon": {
+        "x": 510.5,
+        "y": 91.5,
+        "width": 23,
+        "height": 23,
+        "top": 91.5,
+        "right": 533.5,
+        "bottom": 114.5,
+        "left": 510.5
+      },
+      "optimizer": {
+        "x": 358,
+        "y": 84,
+        "width": 130,
+        "height": 38,
+        "top": 84,
+        "right": 488,
+        "bottom": 122,
+        "left": 358
+      },
+      "buttonLabel": "收起导出设置",
+      "inspectorButtons": 0
+    },
+    {
+      "width": 800,
+      "collapsed": false,
+      "inert": false,
+      "canvas": {
+        "x": 135,
+        "y": 232.5,
+        "width": 285,
+        "height": 114,
+        "top": 232.5,
+        "right": 420,
+        "bottom": 346.5,
+        "left": 135
+      },
+      "area": {
+        "x": 119,
+        "y": 152,
+        "width": 317,
+        "height": 275,
+        "top": 152,
+        "right": 436,
+        "bottom": 427,
+        "left": 119
+      },
+      "toggle": {
+        "x": 403,
+        "y": 84,
+        "width": 38,
+        "height": 38,
+        "top": 84,
+        "right": 441,
+        "bottom": 122,
+        "left": 403
+      },
+      "toggleIcon": {
+        "x": 410.5,
+        "y": 91.5,
+        "width": 23,
+        "height": 23,
+        "top": 91.5,
+        "right": 433.5,
+        "bottom": 114.5,
+        "left": 410.5
+      },
+      "optimizer": {
+        "x": 258,
+        "y": 84,
+        "width": 130,
+        "height": 38,
+        "top": 84,
+        "right": 388,
+        "bottom": 122,
+        "left": 258
+      },
+      "buttonLabel": "收起导出设置",
+      "inspectorButtons": 0
+    },
+    {
+      "width": 761,
+      "collapsed": false,
+      "inert": false,
+      "canvas": {
+        "x": 135,
+        "y": 240.296875,
+        "width": 246,
+        "height": 98.390625,
+        "top": 240.296875,
+        "right": 381,
+        "bottom": 338.6875,
+        "left": 135
+      },
+      "area": {
+        "x": 119,
+        "y": 152,
+        "width": 278,
+        "height": 275,
+        "top": 152,
+        "right": 397,
+        "bottom": 427,
+        "left": 119
+      },
+      "toggle": {
+        "x": 385,
+        "y": 84,
+        "width": 38,
+        "height": 38,
+        "top": 84,
+        "right": 423,
+        "bottom": 122,
+        "left": 385
+      },
+      "toggleIcon": {
+        "x": 392.5,
+        "y": 91.5,
+        "width": 23,
+        "height": 23,
+        "top": 91.5,
+        "right": 415.5,
+        "bottom": 114.5,
+        "left": 392.5
+      },
+      "optimizer": {
+        "x": 240,
+        "y": 84,
+        "width": 130,
+        "height": 38,
+        "top": 84,
+        "right": 370,
+        "bottom": 122,
+        "left": 240
+      },
+      "buttonLabel": "收起导出设置",
+      "inspectorButtons": 0
+    },
+    {
+      "width": 760,
+      "collapsed": true,
+      "inert": true,
+      "canvas": {
+        "x": 104,
+        "y": 160.796875,
+        "width": 616,
+        "height": 246.390625,
+        "top": 160.796875,
+        "right": 720,
+        "bottom": 407.1875,
+        "left": 104
+      },
+      "area": {
+        "x": 88,
+        "y": 135,
+        "width": 648,
+        "height": 298,
+        "top": 135,
+        "right": 736,
+        "bottom": 433,
+        "left": 88
+      },
+      "toggle": {
+        "x": 704,
+        "y": 73,
+        "width": 32,
+        "height": 38,
+        "top": 73,
+        "right": 736,
+        "bottom": 111,
+        "left": 704
+      },
+      "toggleIcon": {
+        "x": 708.5,
+        "y": 80.5,
+        "width": 23,
+        "height": 23,
+        "top": 80.5,
+        "right": 731.5,
+        "bottom": 103.5,
+        "left": 708.5
+      },
+      "optimizer": {
+        "x": 566,
+        "y": 73,
+        "width": 130,
+        "height": 38,
+        "top": 73,
+        "right": 696,
+        "bottom": 111,
+        "left": 566
+      },
+      "buttonLabel": "展开导出设置",
+      "inspectorButtons": 0
+    },
+    {
+      "width": 600,
+      "collapsed": true,
+      "inert": true,
+      "canvas": {
+        "x": 104,
+        "y": 192.796875,
+        "width": 456,
+        "height": 182.390625,
+        "top": 192.796875,
+        "right": 560,
+        "bottom": 375.1875,
+        "left": 104
+      },
+      "area": {
+        "x": 88,
+        "y": 135,
+        "width": 488,
+        "height": 298,
+        "top": 135,
+        "right": 576,
+        "bottom": 433,
+        "left": 88
+      },
+      "toggle": {
+        "x": 544,
+        "y": 73,
+        "width": 32,
+        "height": 38,
+        "top": 73,
+        "right": 576,
+        "bottom": 111,
+        "left": 544
+      },
+      "toggleIcon": {
+        "x": 548.5,
+        "y": 80.5,
+        "width": 23,
+        "height": 23,
+        "top": 80.5,
+        "right": 571.5,
+        "bottom": 103.5,
+        "left": 548.5
+      },
+      "optimizer": {
+        "x": 406,
+        "y": 73,
+        "width": 130,
+        "height": 38,
+        "top": 73,
+        "right": 536,
+        "bottom": 111,
+        "left": 406
+      },
+      "buttonLabel": "展开导出设置",
+      "inspectorButtons": 0
+    },
+    {
+      "width": 375,
+      "collapsed": true,
+      "inert": true,
+      "canvas": {
+        "x": 104,
+        "y": 237.796875,
+        "width": 231,
+        "height": 92.390625,
+        "top": 237.796875,
+        "right": 335,
+        "bottom": 330.1875,
+        "left": 104
+      },
+      "area": {
+        "x": 88,
+        "y": 135,
+        "width": 263,
+        "height": 298,
+        "top": 135,
+        "right": 351,
+        "bottom": 433,
+        "left": 88
+      },
+      "toggle": {
+        "x": 319,
+        "y": 73,
+        "width": 32,
+        "height": 38,
+        "top": 73,
+        "right": 351,
+        "bottom": 111,
+        "left": 319
+      },
+      "toggleIcon": {
+        "x": 323.5,
+        "y": 80.5,
+        "width": 23,
+        "height": 23,
+        "top": 80.5,
+        "right": 346.5,
+        "bottom": 103.5,
+        "left": 323.5
+      },
+      "optimizer": {
+        "x": 181,
+        "y": 73,
+        "width": 130,
+        "height": 38,
+        "top": 73,
+        "right": 311,
+        "bottom": 111,
+        "left": 181
+      },
+      "buttonLabel": "展开导出设置",
+      "inspectorButtons": 0
+    }
+  ],
+  "narrowAutoCollapse": true,
+  "autoRestoreOnWide": true,
+  "manualChoiceSurvivesResize": true,
+  "collapseRefitsReleasedWidth": true,
+  "imageRefitsWithoutProjectChanges": true,
+  "canvasCentred": true,
+  "oneToggleRightOfOptimization": true,
+  "toggleIconCentred": true,
+  "exactNarrowTogglePosition": true,
+  "realMouseToggleWorks": true
+}

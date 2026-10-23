@@ -9,7 +9,7 @@ async function waitFor(win,expr){for(let n=0;n<100;n++){if(await win.webContents
 (async()=>{
  const temp=await fs.mkdtemp(path.join(os.tmpdir(),'qingtu-native-'));
  try{
-  const {win,service}=await start({testFolder:temp,testFiles:[path.join(__dirname,'../public/samples/alpine-lake.jpg')],hidden:true});
+  const {win,service}=await start({offscreen:true,testFolder:temp,testFiles:[path.join(__dirname,'../public/samples/alpine-lake.jpg')],hidden:true});
   win.webContents.setBackgroundThrottling(false);
   const errors=[];
   win.webContents.on('console-message',(_e,level,message)=>{if(level>=3)errors.push(message);});
@@ -29,7 +29,7 @@ async function waitFor(win,expr){for(let n=0;n<100;n++){if(await win.webContents
   await waitFor(win,"document.querySelectorAll('.module-content:not([hidden]) .film-select').length===1 && document.querySelector('.processed-label')?.textContent.startsWith('处理后')");
   await win.webContents.executeJavaScript(`(()=>{const input=document.querySelector('#scale');Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(input,'50');input.dispatchEvent(new Event('input',{bubbles:true}));})()`);
   await waitFor(win,"document.querySelector('.processed-label')?.textContent==='处理中'");
-  assert.equal(await win.webContents.executeJavaScript("!document.querySelector('.compare-image:not(.original-image)')"),true,'pending result must not display the source as a processed image');
+  assert.equal(await win.webContents.executeJavaScript("!document.querySelector('.processed-image')&&!!document.querySelector('.preview-loading-source')&&!!document.querySelector('.preview-loading-spinner .spin')"),true,'pending processing uses a clearly distinguished dimmed source and spinner, without claiming an actual result');
   await waitFor(win,"document.querySelector('.preview-info')?.textContent.includes('768 × 512') && document.querySelector('.processed-label')?.textContent.startsWith('处理后')");
   const file=[...service.files.values()][0].item;
   const original=await win.webContents.executeJavaScript("document.querySelector('.original-image').src");
@@ -77,7 +77,7 @@ async function waitFor(win,expr){for(let n=0;n<100;n++){if(await win.webContents
   assert.equal(await win.webContents.executeJavaScript("document.querySelector('#target-size').value"),'10');
   assert.deepEqual(errors,[]);
   await fs.mkdir(path.join(__dirname,'../artifacts'),{recursive:true});
-  await fs.writeFile(path.join(__dirname,'../artifacts/native-smoke.json'),JSON.stringify({passed:true,emptyStartup:true,defaultMB:10,originalView:true,dragPosition:drag,fieldsWithoutOuterRing:true,smartByteBudget:true,pendingResultDoesNotUseOriginal:true,originalLetterboxIsolated:true,nativeMacButtons:process.platform==='darwin'?win.getWindowButtonPosition():null,result:{...result,path:'temporary exclusive export'},consoleErrors:errors},null,2));
+  await fs.writeFile(path.join(__dirname,'../artifacts/native-smoke.json'),JSON.stringify({passed:true,emptyStartup:true,defaultMB:10,originalView:true,dragPosition:drag,fieldsWithoutOuterRing:true,smartByteBudget:true,pendingShowsDimmedOriginal:true,pendingDoesNotClaimActualResult:true,originalLetterboxIsolated:true,nativeMacButtons:process.platform==='darwin'?win.getWindowButtonPosition():null,result:{...result,path:'temporary exclusive export'},consoleErrors:errors},null,2));
   console.log(JSON.stringify({passed:true,emptyStartup:true,defaultMB:10,originalView:true,bytes:result.bytes,dimensions:[result.width,result.height],rendererNode:false}));
   win.destroy();app.quit();
  }finally{await fs.rm(temp,{recursive:true,force:true});}

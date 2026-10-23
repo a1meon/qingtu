@@ -30,6 +30,7 @@ export const api={
   chooseFiles:()=>call('chooseFiles'),
   importFiles:files=>call('importFiles',files),
   process:(id,settings,options)=>call('process',id,settings,options),
+  rename:(id,name)=>call('rename',id,name),
   remove:id=>call('remove',id),
   chooseFolder:()=>call('chooseFolder'),
   save:async token=>{

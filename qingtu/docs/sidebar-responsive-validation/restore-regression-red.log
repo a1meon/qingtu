@@ -1,0 +1,16 @@
+
+> qingtu@0.4.8 smoke:sidebar-responsive
+> electron desktop/sidebar-responsive-smoke.cjs
+
+AssertionError [ERR_ASSERTION]: automatically collapsed settings reopen when the window grows
+
+true !== false
+
+    at /Users/xx/Documents/ChatGPT/图片处理软件/qingtu/desktop/sidebar-responsive-smoke.cjs:25:29 {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: true,
+  expected: false,
+  operator: 'strictEqual',
+  diff: 'simple'
+}

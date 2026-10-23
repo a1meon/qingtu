@@ -1,3 +1,4 @@
+import {rotatePoseAround} from './image-rotation.mjs';
 import {arrangeImages,arrangeContentImages,appendFixedImages} from './canvas-fixed.mjs';
 import {imageGeometry} from './stitch-edits.mjs';
 import {fitCanvasToContent} from './canvas-fit.mjs';
@@ -60,13 +61,14 @@ export function fitImportedCanvas(project){
  }
  return {...(project.heightLocked?fitHeightCanvas(remembered):fitCanvasToContent(remembered)),layoutStates,layoutCanvases};
 }
-export function splitLayoutStates(states,id,ids,axis,fraction){
+export function splitLayoutStates(states,id,ids,axis,fraction,angle=0){
  if(!states)return states;
  return Object.fromEntries(Object.entries(states).map(([mode,state])=>{
   const p=state[id];if(!p)return [mode,state];
   const next={...state};delete next[id];
   next[ids[0]]={...p,width:axis==='x'?p.width*fraction:p.width,height:axis==='y'?p.height*fraction:p.height};
   next[ids[1]]={x:p.x+(axis==='x'?p.width*fraction:0),y:p.y+(axis==='y'?p.height*fraction:0),width:axis==='x'?p.width*(1-fraction):p.width,height:axis==='y'?p.height*(1-fraction):p.height};
+  if(angle)for(const child of ids)next[child]=rotatePoseAround(next[child],p,angle);
   return [mode,next];
  }));
 }

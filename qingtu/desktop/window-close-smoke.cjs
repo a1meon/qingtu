@@ -1,22 +1,24 @@
+const {prepareSmokeWindow}=require('./smoke-window.cjs');
 const {app}=require('electron');
 const assert=require('node:assert/strict'),fs=require('node:fs/promises'),os=require('node:os'),path=require('node:path');
 const {start}=require('./main.cjs');
 const pause=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 (async()=>{
+ let completed=false;app.on('before-quit',event=>{if(!completed)event.preventDefault();});
  const mode=process.env.QINGTU_CLOSE_MODE||'thumbnail',root=await fs.mkdtemp(path.join(os.tmpdir(),'qingtu-close-')),traces=[],closeErrors=[];
- const {win,store}=await start({hidden:false,projectRoot:path.join(root,'projects'),testFiles:[path.resolve('public/samples/alpine-lake.jpg')],onCloseTrace:step=>{traces.push(step);console.log(step)},onCloseError:error=>{if(mode==='save-error')closeErrors.push(error);else{console.error(error);app.exit(1)}}});
- win.webContents.setBackgroundThrottling(false);win.show();win.focus();
+ const {win,store}=await start({offscreen:true,hidden:true,projectRoot:path.join(root,'projects'),testFiles:[path.resolve('public/samples/alpine-lake.jpg')],onCloseTrace:step=>{traces.push(step);console.log(step)},onCloseError:error=>{if(mode==='save-error')closeErrors.push(error);else{console.error(error);app.exit(1)}}});
+ win.webContents.setBackgroundThrottling(false);prepareSmokeWindow(win);
  const js=x=>win.webContents.executeJavaScript(x),wait=async x=>{for(let n=0;n<200;n++){if(await js(x))return;await pause(50)}throw Error('Timed out: '+x)};
  const timer=setTimeout(async()=>{console.error(JSON.stringify({failure:'Native close did not complete',traces,ui:await js("({save:document.querySelector('.save-status')?.textContent,images:document.querySelectorAll('.stitch-layer').length})").catch(()=>null)}));app.exit(1)},mode==='traffic-light'?60000:20000);
- await wait("!!document.querySelector('[aria-label=\"图像拼接\"]')");await js("document.querySelector('[aria-label=\"图像拼接\"]').click()");
+ await wait("!!document.querySelector('[aria-label=\"图像编辑\"]')");await js("document.querySelector('[aria-label=\"图像编辑\"]').click()");
  await wait("!!document.querySelector('[aria-label=\"新建画布\"]')&&!document.querySelector('[aria-label=\"新建画布\"]').disabled");
- await js("document.querySelector('[aria-label=\"新建画布\"]').click()");await wait("!!document.querySelector('[aria-label=\"添加拼接图片\"]')&&document.querySelector('.save-status').textContent==='已自动保存'");
+ await js("document.querySelector('[aria-label=\"新建画布\"]').click()");await wait("!!document.querySelector('[aria-label=\"添加画布图片\"]')&&document.querySelector('.save-status').textContent==='已自动保存'");
  if(mode!=='empty'){
   await js("(()=>{for(const [id,value] of [['stitch-width',240],['stitch-height',120]]){const e=document.getElementById(id);Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(e,String(value));e.dispatchEvent(new Event('input',{bubbles:true}));}})()");
   // Reproduce the Chromium failure already observed in native smoke runs:
   // loaded, drawable image bytes with a decode() promise that never settles.
   if(mode==='thumbnail')await js("void (HTMLImageElement.prototype.decode=function(){return new Promise(()=>{})})");
-  await js("document.querySelector('[aria-label=\"添加拼接图片\"]').click()");await wait("document.querySelectorAll('.stitch-layer').length===1");
+  await js("document.querySelector('[aria-label=\"添加画布图片\"]').click()");await wait("document.querySelectorAll('.stitch-layer').length===1");
   await wait("[...document.querySelectorAll('.stitch-layer img')].every(i=>i.complete&&i.naturalWidth>0)");
   if(mode==='optimization'){await wait("document.querySelector('.save-status').textContent==='已自动保存'&&!!document.querySelector('.stitch-output-preview')&&!document.querySelector('.project-name').disabled");await js("window.dispatchEvent(new KeyboardEvent('keydown',{key:'o',ctrlKey:true,bubbles:true}))");await wait("document.querySelectorAll('.stitch-layer').length===2");await wait("document.querySelector('.save-status').textContent==='已自动保存'&&!!document.querySelector('.stitch-output-preview')");await js("void (HTMLImageElement.prototype.decode=function(){return new Promise(()=>{})})");await js("document.querySelector('[aria-label=\"一键优化\"]').click()");await wait("!!document.querySelector('.optimization-progress')");}
  }
@@ -31,5 +33,5 @@ const pause=ms=>new Promise(resolve=>setTimeout(resolve,ms));
  if(mode!=='empty'){assert.ok((await store.readAsset(project.images[0].assetId)).equals(await fs.readFile(path.resolve('public/samples/alpine-lake.jpg'))));assert.ok(project.thumbnail?.startsWith('data:image/png;base64,'));}
  if(mode==='card-name')assert.equal(project.name,'关闭时重命名.v1.2','native close flushes the unblurred card name');
  assert.deepEqual(traces,mode==='save-error'?['waiting renderer','waiting renderer','renderer flushed','closing']:['waiting renderer','renderer flushed','closing']);
- const report={passed:true,mode,nativeWindowClose:true,projectAndOriginalSaved:true,saveFailureBlocksClose:mode==='save-error',uncommittedCardNameSaved:mode==='card-name',traces};await fs.mkdir('artifacts',{recursive:true});await fs.writeFile('artifacts/window-close-'+mode+'.json',JSON.stringify(report,null,2));console.log(JSON.stringify(report));await fs.rm(root,{recursive:true,force:true});app.quit();
+ const report={passed:true,mode,runId:process.env.QINGTU_CLOSE_RUN_ID,nativeWindowClose:true,projectAndOriginalSaved:true,saveFailureBlocksClose:mode==='save-error',uncommittedCardNameSaved:mode==='card-name',traces};await fs.mkdir('artifacts',{recursive:true});await fs.writeFile('artifacts/window-close-'+mode+'.json',JSON.stringify(report,null,2));console.log(JSON.stringify(report));await fs.rm(root,{recursive:true,force:true});completed=true;app.quit();
 })().catch(e=>{console.error(e);app.exit(1)});

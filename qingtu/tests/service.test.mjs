@@ -88,3 +88,21 @@ test('an in-flight obsolete preview stops at its encoding boundary while a true 
   const [actual,latest]=await Promise.all([exported,newest]);assert.equal(actual.format,'jpeg');assert.ok(service.result(actual.token));assert.equal(latest.unchanged,true);assert.equal(encodes,2,'only the two running lossless probes finish; obsolete lossy searches never start');
  }finally{release();sharp.prototype.png=png;}
 });
+
+test('compression rename updates cached previews and pinned exports without changing bytes or tokens',async t=>{
+ const root=await fs.mkdtemp(path.join(os.tmpdir(),'qingtu-rename-'));t.after(()=>fs.rm(root,{recursive:true,force:true}));
+ const s=new ImageService(),buffer=await sharp({create:{width:80,height:60,channels:4,background:'#447799'}}).png().toBuffer(),file=await s.add(buffer,'old.png');
+ const settings={...config,format:'png'},preview=await s.process(file.id,settings,{latest:true}),pinned=await s.process(file.id,settings),bytes=s.result(preview.token).output.buffer;
+ const renamed=s.rename(file.id,'产品.定稿.png');assert.equal(renamed.name,'产品.定稿.png');
+ assert.equal((await s.process(file.id,settings,{latest:true})).token,preview.token);
+ assert.equal(s.result(preview.token).output.buffer,bytes);assert.ok(s.original(file.id).buffer.equals(buffer));
+ assert.equal(s.download(preview.token).name,'产品.定稿-qingtu.png');assert.equal(s.download(pinned.token).name,'产品.定稿-qingtu.png');
+ assert.equal(path.basename((await s.save(pinned.token,root)).path),'产品.定稿-qingtu.png');
+ s.rename(file.id,'产品.v2');assert.equal(s.download(preview.token).name,'产品.v2-qingtu.png','literal dots remain when the user enters no image extension');
+ const changed=await s.process(file.id,{...settings,resize:{type:'scale',percent:25}});assert.equal(s.download(changed.token).name,'产品.v2-qingtu.png','fresh encodes retain the renamed stem');
+});
+test('invalid compression names fail without changing the queue or cached output names',async()=>{
+ const s=new ImageService(),buffer=await sharp({create:{width:20,height:20,channels:3,background:'#446688'}}).png().toBuffer(),file=await s.add(buffer,'valid.png');
+ for(const name of ['', '   ','../x','a\\b','a:b','bad\u0000name','x'.repeat(201)])assert.throws(()=>s.rename(file.id,name),/名称/);
+ assert.equal(s.original(file.id).item.name,'valid.png');assert.throws(()=>s.rename('missing','name'),/已移除/);
+});

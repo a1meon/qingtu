@@ -1,0 +1,5 @@
+
+> qingtu@0.4.8 smoke:image-position
+> electron desktop/image-position-smoke.cjs
+
+{"passed":true,"offscreen":true,"threeImages":true,"shrinkMiddleThenMoveTop":true,"arbitraryVerticalPosition":true,"topAndBottomSnapping":true,"otherImagesAndCanvasUnchanged":true,"noEncodingDuringGestures":true,"reopenPreservesPosition":true,"actualExportPixels":true,"reorderRetained":true,"output":{"file":"/Users/xx/Documents/ChatGPT/图片处理软件/qingtu/artifacts/image-position/middle-image-at-top.png","width":450,"height":240,"bytes":843,"limit":30000000}}
