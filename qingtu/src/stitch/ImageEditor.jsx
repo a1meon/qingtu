@@ -7,6 +7,7 @@ import {ImageSplitControls} from './ImageSplitControls.jsx';
 import {ImageRotationControls} from './ImageRotationControls.jsx';
 import {CanvasRotationOverlay} from './CanvasRotationOverlay.jsx';
 import {CanvasCropOverlay} from './CanvasCropOverlay.jsx';
+import {placeImagePanel} from './canvas-viewport.js';
 import {CROP_HANDLES} from '../../engine/crop-transform.mjs';
 
 const empty={left:0,right:0,top:0,bottom:0};
@@ -20,9 +21,19 @@ export const ImageEditor=forwardRef(function ImageEditor({image,value,open,mode=
  const root=useRef(),latest=useRef(draft),touched=useRef(false),prefill=useRef(value==null),pointer=useRef(false),dragBefore=useRef(),cropClick=useRef(),timer=useRef(),frame=useRef(),callbacks=useRef(),flushRef=useRef(),closing=useRef(false),placementRef=useRef(placement);
  if(!pointer.current||rotatingCorner.current)placementRef.current=placement;
  useLayoutEffect(()=>{placement.registerElements?.({tools:toolsRoot.current,panel:panelRoot.current});return()=>placement.registerElements?.(null);},[placement.registerElements,open,mode,hidden]);
- useEffect(()=>{setPanelOffset({x:0,y:0});},[image.id,mode,open]);
- const panelBase=placementRef.current.panel;
- const panelStyle={...panelBase,left:panelBase.left+panelOffset.x,top:panelBase.top+panelOffset.y};
+ const [panelHeight,setPanelHeight]=useState(0);
+ useLayoutEffect(()=>{
+  const panel=panelRoot.current;if(!panel||hidden)return;
+  const measure=()=>setPanelHeight(panel.getBoundingClientRect().height);
+  measure();const observer=new ResizeObserver(measure);observer.observe(panel);
+  return()=>observer.disconnect();
+ },[open,mode,hidden]);
+ useLayoutEffect(()=>{setPanelOffset({x:0,y:0});},[image.id,mode,open]);
+ const panelBase=placeImagePanel(placement.bounds,placementRef.current.panel,panelHeight);
+ const panelStyle={...panelBase,
+  left:Math.max(4,Math.min(panelBase.left+panelOffset.x,window.innerWidth-panelBase.width-4)),
+  top:Math.max(4,Math.min(panelBase.top+panelOffset.y,window.innerHeight-panelHeight-4)),
+ };
  function startPanelDrag(event){
   if(event.button!==0)return;event.preventDefault();event.stopPropagation();event.currentTarget.setPointerCapture(event.pointerId);
   panelDrag.current={id:event.pointerId,x:event.clientX,y:event.clientY,left:panelStyle.left,top:panelStyle.top,before:panelOffset};

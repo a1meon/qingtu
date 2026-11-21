@@ -4,6 +4,12 @@ import path from 'node:path';
 import {ProjectStore} from '../engine/project-store.mjs';
 import {StitchService} from '../engine/stitch-service.mjs';
 
+export function allowsLocalRequest({method,headers}){
+  if(method!=='POST')return false;
+  try{const origin=new URL(headers.origin);return ['http:','https:'].includes(origin.protocol)&&['127.0.0.1','localhost','[::1]'].includes(origin.hostname)&&origin.host===headers.host;}
+  catch{return false;}
+}
+
 export function devBridge() {
   const service=new ImageService();
   const store=new ProjectStore(path.resolve('.cache/browser-stitch-engine'));
@@ -12,7 +18,7 @@ export function devBridge() {
   return {name:'qingtu-local-engine',configureServer(server){
     server.middlewares.use('/__qingtu',async(req,res)=>{
       res.setHeader('Content-Type','application/json');
-      if(req.method!=='POST' || (req.headers.origin && new URL(req.headers.origin).host!==req.headers.host)) {res.statusCode=403;res.end('{}');return;}
+      if(!allowsLocalRequest(req)) {res.statusCode=403;res.end('{}');return;}
       try {
         const chunks=[];let bytes=0;
         for await(const chunk of req) {bytes+=chunk.length;if(bytes>140*1024*1024) throw new Error('图片太大');chunks.push(chunk);}
@@ -37,7 +43,7 @@ export function devBridge() {
         } else if(method==='process') result=await service.process(...args);
         else if(method==='rename')result=service.rename(...args);
         else if(method==='remove') {service.remove(args[0]);result=true;}
-        else if(method==='chooseFolder') result={name:'预览导出目录',path:path.join(server.config.root,'artifacts/browser-exports')};
+        else if(method==='outputFolder'||method==='chooseFolder') result={name:'预览导出目录',path:path.join(server.config.root,'artifacts/browser-exports')};
         else if(method==='save') {
           const folder=path.join(server.config.root,'artifacts/browser-exports');
           await fs.mkdir(folder,{recursive:true});

@@ -40,11 +40,17 @@ export class ProjectStore{
  // Keep enough pixels for Retina canvas viewing; card thumbnails stay 160px.
  async preview(id){const data=await sharp(await this.readAsset(id),INPUT_OPTIONS).rotate().resize({width:1600,height:1200,fit:'inside',withoutEnlargement:true}).png().toBuffer();return 'data:image/png;base64,'+data.toString('base64');}
  async load(id){
-  let project;
-  try{project=JSON.parse(await fs.readFile(this.file(id),'utf8'));}
-  catch(error){try{project=JSON.parse(await fs.readFile(this.file(id,'.backup.json'),'utf8'));project.recovered=true;}catch{throw error;}}
-  this.validate(project);
-  return project;
+  const read=async suffix=>{
+   const project=JSON.parse(await fs.readFile(this.file(id,suffix),'utf8'));
+   this.validate(project);
+   if(project.id!==id)throw new Error('项目文件标识不匹配');
+   return project;
+  };
+  try{return await read('.json');}
+  catch(primaryError){
+   try{return {...await read('.backup.json'),recovered:true};}
+   catch(backupError){throw primaryError.code==='ENOENT'&&backupError.code!=='ENOENT'?backupError:primaryError;}
+  }
  }
  validate(project){
   if(!project||!validId(project.id)||!Array.isArray(project.images)||project.images.length>100)throw new Error('项目数据无效');
@@ -78,9 +84,10 @@ export class ProjectStore{
  async list(){
   await fs.mkdir(path.join(this.root,'projects'),{recursive:true});
   const names=await fs.readdir(path.join(this.root,'projects')),out=[];
-  for(const name of names.filter(n=>n.endsWith('.json')&&!n.endsWith('.backup.json'))){
-   try{const p=await this.load(name.slice(0,-5));out.push({id:p.id,name:p.name,updatedAt:p.updatedAt,count:p.images.length,recovered:p.recovered,thumbnail:p.thumbnail});}
-   catch{out.push({id:name.slice(0,-5),name:'项目恢复失败',error:'项目文件损坏，请保留数据并检查备份'});}
+  const ids=new Set(names.filter(n=>n.endsWith('.json')).map(n=>n.replace(/(?:\.backup)?\.json$/,'')));
+  for(const id of ids){
+   try{const p=await this.load(id);out.push({id:p.id,name:p.name,updatedAt:p.updatedAt,count:p.images.length,recovered:p.recovered,thumbnail:p.thumbnail});}
+   catch{out.push({id,name:'项目恢复失败',error:'项目文件损坏，请保留数据并检查备份'});}
   }return out.sort((a,b)=>(b.updatedAt||0)-(a.updatedAt||0));
  }
  async remove(id){

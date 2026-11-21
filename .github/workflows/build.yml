@@ -37,7 +37,6 @@ jobs:
       - run: npm ci
       - run: node node_modules/electron/install.js
       - run: npm test
-      - run: npm run build
       - run: npm run smoke:desktop
       - run: node scripts/prepare-native.mjs ${{ matrix.native }} ${{ matrix.arch }}
       - if: matrix.target == 'mac'

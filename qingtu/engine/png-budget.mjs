@@ -1,18 +1,8 @@
 import sharp from 'sharp';
 import {encodeFaithfulPng,PngBudgetError} from './png-quality.mjs';
 
-// Resize the whole original raster, never its last candidate. Integer rounding
-// changes either edge by at most one pixel; strict 5:2 canvases stay exact.
-export function pngBudgetDimensions(info,longEdge,{maxRatio}={}){
- const horizontal=info.width>=info.height,originalLong=Math.max(info.width,info.height);
- const strict=info.width*2===info.height*5||info.height*2===info.width*5;
- const unit=strict?5:1;
- longEdge=Math.max(unit,Math.min(originalLong,Math.floor(longEdge/unit)*unit));
- let shortEdge=Math.max(1,Math.round(longEdge*Math.min(info.width,info.height)/originalLong));
- if(strict)shortEdge=longEdge/5*2;
- else if(maxRatio&&longEdge/shortEdge>maxRatio)shortEdge=Math.ceil(longEdge/maxRatio);
- return horizontal?{width:longEdge,height:shortEdge}:{width:shortEdge,height:longEdge};
-}
+import {pngBudgetDimensions} from './image-dimensions.mjs';
+export {pngBudgetDimensions};
 
 export async function encodePngWithinBudget(data,info,target,{maxRatio,...options}={}){
  const check=()=>{if(options.isObsolete?.())throw new Error('预览参数已更新');};

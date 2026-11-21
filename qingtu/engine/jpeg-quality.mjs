@@ -8,21 +8,25 @@ export async function encodeJpeg(data,info,target,{isObsolete}={}){
  // repeating mozjpeg's trellis/progressive optimisation during every probe.
  const full=await encode(100,'4:4:4');
  if(full.length<=target)return {buffer:full,quality:100,lossless:false,encoding:'JPG',chromaSubsampling:'4:4:4',mozjpeg:false};
- async function fitting(chromaSubsampling){
+ async function fitting(chromaSubsampling,mozjpeg){
   let low=1,high=100,best;
-  while(low<=high){const quality=Math.floor((low+high)/2),buffer=await encode(quality,chromaSubsampling);if(buffer.length<=target){best={buffer,quality,chromaSubsampling};low=quality+1;}else high=quality-1;}
+  while(low<=high){const quality=Math.floor((low+high)/2),buffer=await encode(quality,chromaSubsampling,mozjpeg);if(buffer.length<=target){best={buffer,quality,chromaSubsampling};low=quality+1;}else high=quality-1;}
   if(!best)return null;
   const decoded=await sharp(best.buffer).raw().toBuffer();
-  return {...best,mozjpeg:false,difference:pixelDifference(data,decoded,info.channels)};
+  return {...best,mozjpeg,difference:pixelDifference(data,decoded,info.channels)};
  }
  // A tight budget can make 4:4:4 require stronger luminance quantisation.
  // Compare actual decoded pixels rather than assuming its quality number wins.
- const settled=await Promise.allSettled([fitting('4:4:4'),fitting('4:2:0')]);
- for(const result of settled)if(result.status==='rejected')throw result.reason;
- const candidates=settled.map(result=>result.value).filter(Boolean);
+ const collect=async mozjpeg=>{
+  const results=await Promise.all(['4:4:4','4:2:0'].map(chroma=>fitting(chroma,mozjpeg)));
+  return results.filter(Boolean);
+ };
+ let candidates=await collect(false);
+ if(!candidates.length)candidates=await collect(true);
  if(!candidates.length)throw new Error('当前尺寸无法达到此体积，请增加大小上限');
  candidates.sort((a,b)=>a.difference.rmse-b.difference.rmse||a.difference.maxError-b.difference.maxError);
  const fast=candidates[0];
+ if(fast.mozjpeg)return {...fast,lossless:false,encoding:'JPG'};
  // Fast probes locate the useful range. Refine only that range with mozjpeg
  // so a tight ceiling does not trade away detail just to finish sooner.
  const chromaSubsampling=fast.chromaSubsampling;

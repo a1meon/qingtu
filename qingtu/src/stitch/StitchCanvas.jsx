@@ -12,16 +12,29 @@ import {placeImageControls,fitCanvasViewport,hasOffscreenImages,resizeCanvasView
 
 import {useCanvasNavigation} from './useCanvasNavigation.js';
 
-const EMPTY_CANVAS_CONTENT={width:232,height:218};
+function emptyCanvasStyle(layout,scale,bounds){
+ const width=Math.min(layout.width*scale,bounds.width),height=Math.min(layout.height*scale,bounds.height);
+ return {'--empty-width':'232px','--empty-height':'218px','--empty-scale':.9*Math.min(width/232,height/218)};
+}
 
 export function StitchCanvas({project:sourceProject,layout:sourceLayout,onChange,onResizePreview,onEdit,onContext,onReorder,selected,onSelect,disabled,navigationTarget,navigationDisabled=disabled,preview,children,viewportMode,split,onSplitChange,splitDisabled,cropping,rotationOpen,cropGesture,guides:cropGuides=[],renderControls}){
- const area=useRef(),canvas=useRef(),viewportSizing=useRef(),gesture=useRef(),frame=useRef(),flushRef=useRef(),moveRef=useRef(),endRef=useRef(),cropView=useRef(),[bounds,setBounds]=useState({width:600,height:360,left:0,top:0}),[resizeDraft,setResizeDraft]=useState(null),[overview,setOverview]=useState(null),[navigationHost,setNavigationHost]=useState(null);
+ const area=useRef(),canvas=useRef(),viewportSizing=useRef(),gesture=useRef(),frame=useRef(),flushRef=useRef(),moveRef=useRef(),endRef=useRef(),cropView=useRef(),[bounds,setBounds]=useState({width:600,height:360,left:0,top:0,windowHeight:window.innerHeight}),[resizeDraft,setResizeDraft]=useState(null),[overview,setOverview]=useState(null),[navigationHost,setNavigationHost]=useState(null);
  useLayoutEffect(()=>{const host=navigationTarget?.current||null;if(host!==navigationHost)setNavigationHost(host);});
  const controlNodes=useRef(),registerControls=useCallback(nodes=>{controlNodes.current=nodes;},[]);
  const project=resizeDraft||sourceProject,layout=useMemo(()=>resizeDraft?calculateLayout(resizeDraft,{draft:true}):sourceLayout,[resizeDraft,sourceLayout]);
  flushRef.current=(cancelled=false)=>finish(cancelled);moveRef.current=move;endRef.current=end;
  useEffect(()=>addFlushHandler(()=>flushRef.current()),[]);
- useEffect(()=>{const measure=()=>{const rect=area.current.getBoundingClientRect();if(rect.width>0&&rect.height>0)setBounds({width:rect.width,height:rect.height,left:rect.left,top:rect.top});};const observer=new ResizeObserver(measure);observer.observe(area.current);window.addEventListener('scroll',measure,true);window.addEventListener('resize',measure);return()=>{observer.disconnect();window.removeEventListener('scroll',measure,true);window.removeEventListener('resize',measure);cancelAnimationFrame(frame.current);};},[]);
+ useLayoutEffect(()=>{
+  const measure=()=>{
+   const rect=area.current.getBoundingClientRect();
+   if(rect.width&&rect.height)setBounds({width:rect.width,height:rect.height,left:rect.left,top:rect.top,windowHeight:window.innerHeight,navigation:navigationHost?.getBoundingClientRect()});
+  };
+  measure();const observer=new ResizeObserver(measure);observer.observe(area.current);
+  if(navigationHost)observer.observe(navigationHost);
+  window.addEventListener('scroll',measure,true);window.addEventListener('resize',measure);
+  return()=>{observer.disconnect();window.removeEventListener('scroll',measure,true);window.removeEventListener('resize',measure);};
+ },[navigationHost]);
+ useEffect(()=>()=>cancelAnimationFrame(frame.current),[]);
  useEffect(()=>{
   const track=e=>moveRef.current(e),release=e=>endRef.current(e),cancel=e=>endRef.current(e,true);
   const shift=e=>{const g=gesture.current;if(g&&e.key==='Escape'){e.preventDefault();e.stopPropagation();flushRef.current(true);}else if(g&&e.key==='Shift'){g.shift=e.type==='keydown';moveRef.current({pointerId:g.pointerId,clientX:g.lastX,clientY:g.lastY,shiftKey:g.shift});}};
@@ -44,10 +57,17 @@ export function StitchCanvas({project:sourceProject,layout:sourceLayout,onChange
  const selectedRect=layout?.rects.find(rect=>rect.id===selected),selectedImage=project.images.find(image=>image.id===selected);
  function editAt(event,id){const r=event.currentTarget.getBoundingClientRect();onEdit(id,event.type==='dblclick'&&(event.clientX||event.clientY)?{x:event.clientX,y:event.clientY}:{x:r.x+r.width/2,y:r.y+r.height/2});}
  function showRect(element,rect){if(element)Object.assign(element.style,{left:rect.x*scale+'px',top:rect.y*scale+'px',width:rect.width*scale+'px',height:rect.height*scale+'px'});}
+ function imageControlsAt(rect,origin){
+  const displayed=rotatedImageBounds(rect,selectedImage?.angle||0);
+  return placeImageControls(bounds,{
+   x:origin.left+displayed.x*scale,y:origin.top+displayed.y*scale,
+   width:displayed.width*scale,height:displayed.height*scale,
+  },viewOptions.editor);
+ }
  function showControls(rect){
   const nodes=controlNodes.current;if(!nodes)return;
-  const box=canvas.current.getBoundingClientRect(),displayed=rotatedImageBounds(rect,selectedImage?.angle||0),floating=placeImageControls(bounds,{x:box.left+displayed.x*scale,y:box.top+displayed.y*scale,width:displayed.width*scale,height:displayed.height*scale},viewOptions.editor);
-  if(nodes.tools)Object.assign(nodes.tools.style,{left:floating.tools.left+'px',top:floating.tools.top+'px'});
+  const {tools}=imageControlsAt(rect,canvas.current.getBoundingClientRect());
+  if(nodes.tools)Object.assign(nodes.tools.style,{left:tools.left+'px',top:tools.top+'px'});
  }
  function start(event,rect,handle=null){
   if(disabled||event.button!==0)return;
@@ -116,7 +136,7 @@ export function StitchCanvas({project:sourceProject,layout:sourceLayout,onChange
   if(disabled||event.button!==0||event.target.closest('.stitch-layer,.stitch-ghost,.stitch-selection,.inline-image-controls,.inline-image-tools,[data-canvas-split],.canvas-view-fit,.canvas-viewport-controls,.inline-image-editor'))return;
   onSelect?.(null);event.currentTarget.focus({preventScroll:true});
  }}>
-  {layout?<div ref={canvas} className={`stitch-canvas ${preview?'has-output-preview':''}`} data-interacting={resizeDraft?'true':undefined} data-crop-gesture={cropGesture?'true':undefined} data-canvas-width={layout.width} data-canvas-height={layout.height} style={{'--empty-width':EMPTY_CANVAS_CONTENT.width+'px','--empty-height':EMPTY_CANVAS_CONTENT.height+'px','--empty-scale':Math.min(layout.width*scale/EMPTY_CANVAS_CONTENT.width,layout.height*scale/EMPTY_CANVAS_CONTENT.height),width:layout.width*scale,height:layout.height*scale,transform:`translate(${offsetX}px,${offsetY}px)`}}>
+  {layout?<div ref={canvas} className={`stitch-canvas ${preview?'has-output-preview':''}`} data-interacting={resizeDraft?'true':undefined} data-crop-gesture={cropGesture?'true':undefined} data-canvas-width={layout.width} data-canvas-height={layout.height} style={{...(!project.images.length&&emptyCanvasStyle(layout,scale,bounds)),width:layout.width*scale,height:layout.height*scale,transform:`translate(${offsetX}px,${offsetY}px)`}}>
    <div className="stitch-ghosts" aria-hidden>{layout.rects.filter(rect=>rect.id===selected).map(rect=>renderLayer(rect,true))}</div>
    <div className="stitch-content">
     {children}
@@ -132,17 +152,13 @@ export function StitchCanvas({project:sourceProject,layout:sourceLayout,onChange
    <div className="reorder-indicator" hidden/>
    <div className="snap-guides crop-snap-guides" aria-hidden>{cropGuides.map((line,index)=><span key={index} className={`snap-guide ${line.axis}`} style={{[line.axis==='x'?'left':'top']:line.value*scale}}/>)}</div>
    {selectedRect&&renderControls&&renderControls((()=>{
-    const left=(bounds.width-layout.width*scale)/2+offsetX,top=(bounds.height-layout.height*scale)/2+offsetY;
-    const displayed=rotatedImageBounds(selectedRect,selectedImage.angle||0);
-    const floating=placeImageControls(bounds,{x:left+displayed.x*scale,y:top+displayed.y*scale,width:displayed.width*scale,height:displayed.height*scale},viewOptions.editor||'crop');
-    return {project,origin:{left:left+bounds.left,top:top+bounds.top},registerElements:registerControls,targets:[...layout.rects.filter(rect=>rect.id!==selected),{x:0,y:0,width:layout.width,height:layout.height,edgesOnly:true}],rect:selectedRect,scale,
-     tools:{left:floating.tools.left+bounds.left,top:floating.tools.top+bounds.top},
-     panel:{...floating.panel,left:floating.panel.left+bounds.left,top:floating.panel.top+bounds.top}};
+    const origin={left:bounds.left+(bounds.width-layout.width*scale)/2+offsetX,top:bounds.top+(bounds.height-layout.height*scale)/2+offsetY};
+    return {project,origin,bounds,registerElements:registerControls,targets:[...layout.rects.filter(rect=>rect.id!==selected),{x:0,y:0,width:layout.width,height:layout.height,edgesOnly:true}],rect:selectedRect,scale,...imageControlsAt(selectedRect,origin)};
    })())}
   </div>:<div className="stitch-invalid">请调整画布</div>}
-  {layout&&navigationHost&&createPortal(<div className="canvas-viewport-controls" role="group" aria-label="显示区域操作"><button aria-label="缩小视图" title="缩小视图" disabled={navigationDisabled||cropGesture||!!resizeDraft||navigation.zoom<=.1} onClick={()=>navigation.zoomBy(.8)}><Minus size={15}/></button>
+  {layout&&navigationHost&&createPortal(<div className="canvas-viewport-controls" role="group" aria-label="显示区域操作"><button aria-label="缩小视图" title="缩小视图" disabled={navigationDisabled||cropGesture||!!resizeDraft||navigation.zoom<=.1} onClick={()=>navigation.step(-1)}><Minus size={15}/></button>
    <output aria-label="视图缩放比例" title="Ctrl/Cmd + 滚轮居中缩放">{Math.round(navigation.zoom*100)}%</output>
-   <button aria-label="放大视图" title="放大视图" disabled={navigationDisabled||cropGesture||!!resizeDraft||navigation.zoom>=8} onClick={()=>navigation.zoomBy(1.25)}><Plus size={15}/></button>
+   <button aria-label="放大视图" title="放大视图" disabled={navigationDisabled||cropGesture||!!resizeDraft||navigation.zoom>=8} onClick={()=>navigation.step(1)}><Plus size={15}/></button>
    <button aria-label="复位视图" title="复位视图 · 适应画布" disabled={navigationDisabled||cropGesture||!!resizeDraft} onClick={navigation.reset}><ArrowCounterClockwise size={16}/></button>
   </div>,navigationHost)}
   {canReveal&&<button className="canvas-view-fit" aria-label={includeImages?'聚焦画布':'显示全部图片'} disabled={disabled||cropping||rotationOpen||!!split||!!resizeDraft} onClick={()=>{navigation.reset();setOverview(includeImages?null:project.id);}}>{includeImages?<CornersIn size={16}/>:<CornersOut size={16}/>}<span>{includeImages?'聚焦画布':'显示全部'}</span></button>}

@@ -27,7 +27,7 @@ const pause=ms=>new Promise(resolve=>setTimeout(resolve,ms));
   win.once('closed',()=>{if(!finished||calls!==1){console.error('Busy retry lost the original '+mode+' operation');app.exit(1);}});
   await js("window.qingtu.windowAction('close')");return;
  }
- await waitFor("!!document.querySelector('[aria-label=\"新建画布\"]')&&!document.querySelector('[aria-label=\"新建画布\"]').disabled");await js("document.querySelector('[aria-label=\"新建画布\"]').click()");
+ await waitFor("!!document.querySelector('[aria-label=\"新建图像\"]')&&!document.querySelector('[aria-label=\"新建图像\"]').disabled");await js("document.querySelector('.blank-canvas-button').click()");
  await waitFor("!document.querySelector('[aria-label=\"添加画布图片\"]').disabled");
  await js("(()=>{const el=document.querySelector('#stitch-width');Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(el,'1200');el.dispatchEvent(new Event('input',{bubbles:true}));})()");
  await js("(()=>{const el=document.querySelector('#stitch-height');Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(el,'480');el.dispatchEvent(new Event('input',{bubbles:true}));})()");

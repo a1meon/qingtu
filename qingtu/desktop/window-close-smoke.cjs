@@ -11,8 +11,8 @@ const pause=ms=>new Promise(resolve=>setTimeout(resolve,ms));
  const js=x=>win.webContents.executeJavaScript(x),wait=async x=>{for(let n=0;n<200;n++){if(await js(x))return;await pause(50)}throw Error('Timed out: '+x)};
  const timer=setTimeout(async()=>{console.error(JSON.stringify({failure:'Native close did not complete',traces,ui:await js("({save:document.querySelector('.save-status')?.textContent,images:document.querySelectorAll('.stitch-layer').length})").catch(()=>null)}));app.exit(1)},mode==='traffic-light'?60000:20000);
  await wait("!!document.querySelector('[aria-label=\"图像编辑\"]')");await js("document.querySelector('[aria-label=\"图像编辑\"]').click()");
- await wait("!!document.querySelector('[aria-label=\"新建画布\"]')&&!document.querySelector('[aria-label=\"新建画布\"]').disabled");
- await js("document.querySelector('[aria-label=\"新建画布\"]').click()");await wait("!!document.querySelector('[aria-label=\"添加画布图片\"]')&&document.querySelector('.save-status').textContent==='已自动保存'");
+ await wait("!!document.querySelector('[aria-label=\"新建图像\"]')&&!document.querySelector('[aria-label=\"新建图像\"]').disabled");
+ await js("document.querySelector('.blank-canvas-button').click()");await wait("document.querySelector('[aria-label=\"添加画布图片\"]')?.disabled===false&&document.querySelector('.save-status').textContent==='已自动保存'");
  if(mode!=='empty'){
   await js("(()=>{for(const [id,value] of [['stitch-width',240],['stitch-height',120]]){const e=document.getElementById(id);Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(e,String(value));e.dispatchEvent(new Event('input',{bubbles:true}));}})()");
   // Reproduce the Chromium failure already observed in native smoke runs:

@@ -1,7 +1,18 @@
 const {app}=require('electron'),assert=require('node:assert/strict'),path=require('node:path');
 const {createSmoke}=require('./portrait-smoke-helpers.cjs');
 (async()=>{
- const s=await createSmoke('qingtu-empty-canvas-','empty-canvas'),cases=[];
+ const s=await createSmoke('qingtu-empty-canvas-','empty-canvas',{createCanvas:false}),cases=[];
+ const entry=await s.js(`(()=>{
+  const illustration=document.querySelector('.stitch-create-empty .empty-illustration');
+  const [open,create]=Array.from(document.querySelectorAll('.stitch-start-actions button'),button=>button.getBoundingClientRect());
+  return {artWidth:illustration.getBoundingClientRect().width,originalWidth:illustration.offsetWidth,
+   openTop:open.top,createTop:create.top,openHeight:open.height,createHeight:create.height};
+ })()`);
+ assert.equal(entry.artWidth,entry.originalWidth,'the entry illustration uses its original responsive size');
+ assert.equal(entry.openTop,entry.createTop);
+ assert.equal(entry.openHeight,entry.createHeight);
+ await s.click('.stitch-create-empty .blank-canvas-button');
+ await s.wait("document.querySelector('.fixed-empty .import-button')?.disabled===false");
  s.win.webContents.debugger.attach('1.3');
  try{
   await s.win.webContents.debugger.sendCommand('Emulation.setFocusEmulationEnabled',{enabled:true});
@@ -9,7 +20,7 @@ const {createSmoke}=require('./portrait-smoke-helpers.cjs');
    await s.win.webContents.debugger.sendCommand('Emulation.setDeviceMetricsOverride',{width,height,deviceScaleFactor:1,mobile:false});
    // The narrow-width inspector overlays the work area; collapse it as a user
    // would so the central import action is reachable on that layout.
-   if(width<=760)await s.click('[aria-label="收起导出设置"]');
+   if(width<=760&&await s.js("!!document.querySelector('.stitch-stage [aria-label=收起导出设置]')"))await s.click('.stitch-stage [aria-label="收起导出设置"]');
    for(const [canvasWidth,canvasHeight] of [[5995,2398],[1200,1200],[240,600]]){
     await s.edit('#stitch-width',canvasWidth);await s.edit('#stitch-height',canvasHeight);
     await s.wait(`Number(document.querySelector('.stitch-canvas').dataset.canvasWidth)===${canvasWidth}&&Number(document.querySelector('.stitch-canvas').dataset.canvasHeight)===${canvasHeight}&&document.querySelector('.save-status').textContent==='已自动保存'`);
@@ -20,8 +31,9 @@ const {createSmoke}=require('./portrait-smoke-helpers.cjs');
     const {button:b,canvas:c}=geometry;
     assert.ok(b.left>=c.left&&b.right<=c.right&&b.top>=c.top&&b.bottom<=c.bottom,JSON.stringify(cases.at(-1)));
     assert.ok(geometry.imageShown&&geometry.plusShown,'artwork and plus must remain visible even in a tiny canvas');assert.ok(b.width>0&&b.height>0);assert.ok(geometry.hit,'the middle and bottom of the button are not clipped');
-    const i=geometry.image;assert.ok(i.top>=c.top&&i.bottom<b.top&&i.left>=c.left&&i.right<=c.right,'visible illustration fits without overlapping the button');assert.ok(Math.abs(i.width/b.width-160/200)<.001&&Math.abs(i.height/b.height-125/40)<.001,'the picture and button scale by the same factor');
-    const previous=cases.slice(0,-1).find(item=>item.canvasWidth===canvasWidth&&item.canvasHeight===canvasHeight);if(previous)assert.ok(Math.abs(b.width/c.width-previous.geometry.button.width/previous.geometry.canvas.width)<.001,'the whole group scales with the same canvas across window sizes');
+    const i=geometry.image;assert.ok(i.top>=c.top&&i.bottom<b.top&&i.left>=c.left&&i.right<=c.right,'visible illustration fits without overlapping the button');assert.ok(Math.abs(i.width/b.width-160/200)<.001&&Math.abs(i.height/b.height-125/40)<.001,'original mascot and button retain their proportions');
+    assert.ok(Math.abs(b.width-180*Math.min(c.width/232,c.height/218))<1,'group is 90% of its original fitted size');
+
    }
   }
   await s.win.webContents.debugger.sendCommand('Emulation.clearDeviceMetricsOverride');

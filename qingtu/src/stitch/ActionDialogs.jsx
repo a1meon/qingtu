@@ -1,13 +1,8 @@
-import {useEffect,useRef,useState} from 'react';
-import {createPortal} from 'react-dom';
+import {useState} from 'react';
+import {Modal} from '../Modal.jsx';
 import {ArrowCounterClockwise,Trash,CheckCircle,WarningCircle} from '@phosphor-icons/react';
 import {OptimizeIcon} from './OptimizeIcon.jsx';
 
-function Modal({children,label,onCancel,className=''}){
- const dialog=useRef();
- useEffect(()=>{const target=document.activeElement;dialog.current.showModal();return()=>{dialog.current?.close();if(target?.isConnected)target.focus();};},[]);
- return createPortal(<dialog ref={dialog} className={`stitch-dialog ${className}`} aria-label={label} onCancel={event=>{event.preventDefault();onCancel?.();}}>{children}</dialog>,document.body);
-}
 export function ConfirmDialog({request,onCancel,onConfirm}){
  const [working,setWorking]=useState(false),[error,setError]=useState('');
  const Icon=request.danger?Trash:ArrowCounterClockwise;

@@ -126,3 +126,14 @@ test('stitch editor previews stay bounded, orient sources correctly and never up
   assert.deepEqual([meta.width,meta.height],want);assert.ok((await store.readAsset(image.assetId)).equals(source));
  }
 });
+
+test('a valid backup remains discoverable when the primary is invalid, mismatched or absent',async t=>{
+ const {store}=await setup(t),image=await store.import(await fixture(),'source.png');
+ const value=project(image);await store.save(value);await store.save({...value,name:'later'});
+ for(const invalid of [{...value,images:null},{...value,id:'other-project'},null]){
+  if(invalid)await fs.writeFile(store.file(value.id),JSON.stringify(invalid));else await fs.unlink(store.file(value.id));
+  const recovered=await store.load(value.id);
+  assert.equal(recovered.id,value.id);assert.equal(recovered.recovered,true);assert.equal(recovered.name,value.name);
+  const list=await store.list();assert.equal(list.length,1);assert.equal(list[0].id,value.id);
+ }
+});

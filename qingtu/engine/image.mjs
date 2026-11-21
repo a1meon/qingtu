@@ -8,23 +8,8 @@ sharp.concurrency(2);
 export const INPUT_OPTIONS = { limitInputPixels: 100_000_000, failOn: 'warning' };
 export const SUPPORTED = ['jpeg','png','webp','avif','heif','tiff'];
 
-export function dimensions(meta, resize = {type:'scale',percent:100}) {
-  let width, height;
-  if (resize.type === 'scale') {
-    const percent = Number(resize.percent);
-    if (!Number.isFinite(percent) || percent <= 0 || percent > 400) throw new Error('缩放比例须为 0.1–400%');
-    width = Math.max(1, Math.round(meta.width * percent / 100));
-    height = Math.max(1, Math.round(meta.height * percent / 100));
-  } else {
-    width = Number(resize.width); height = Number(resize.height);
-    if (resize.locked) {
-      if (resize.anchor === 'height') width = Math.round(height * meta.width / meta.height);
-      else height = Math.round(width * meta.height / meta.width);
-    }
-  }
-  if (![width,height].every(v => Number.isInteger(v) && v > 0 && v <= 16384) || width * height > 100_000_000) throw new Error('尺寸须为 1–16384 像素，且总像素不超过 1 亿');
-  return {width,height};
-}
+import {dimensions} from './image-dimensions.mjs';
+export {dimensions};
 
 function stripJpegMetadata(buffer) {
   const chunks = [buffer.subarray(0,2)];

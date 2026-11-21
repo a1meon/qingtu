@@ -17,8 +17,14 @@ const {createSmoke}=require('./portrait-smoke-helpers.cjs');
    await s.click('.stitch-layer');const before=await geometry();
    for(const mode of ['裁剪','旋转','分割']){
     await s.click(`[aria-label="${mode}"]`);await s.wait("!!document.querySelector('.image-editor')");await settled();same(before,await geometry());
-    const bounds=await s.js("(()=>{const p=document.querySelector('.image-editor').getBoundingClientRect(),a=document.querySelector('.stitch-layer').getBoundingClientRect();return {panel:p.toJSON(),image:a.toJSON()}})()");
-    assert.ok(Math.abs(bounds.panel.top-bounds.image.bottom-(mode==='旋转'?18:10))<1&&Math.abs(bounds.panel.x+bounds.panel.width/2-bounds.image.x-bounds.image.width/2)<1,JSON.stringify({width,mode,bounds}));
+    const boxes=await s.js(`Object.fromEntries(Object.entries({panel:'.image-editor',image:'.stitch-layer',area:'.stitch-canvas-area',nav:'.canvas-viewport-controls'}).map(([name,selector])=>[name,document.querySelector(selector).getBoundingClientRect().toJSON()]))`);
+    const {panel,image,area,nav}=boxes,naturalTop=image.bottom+(mode==='旋转'?18:10);
+    assert.ok(panel.left>=area.left-1&&panel.right<=area.right+1&&panel.top>=0&&panel.bottom<=height,JSON.stringify({width,mode,boxes}));
+    assert.ok(panel.right<=nav.left||panel.left>=nav.right||panel.bottom<=nav.top||panel.top>=nav.bottom,'zoom controls remain accessible');
+    const centredLeft=image.left+(image.width-panel.width)/2;
+    if(centredLeft>=area.left&&centredLeft+panel.width<=nav.left-4){
+     assert.ok(Math.abs(panel.left-centredLeft)<1&&Math.abs(panel.top-naturalTop)<1,'panel follows the image when space permits');
+    }
     if(mode==='裁剪'){
      const old=await s.js("document.querySelector('.image-editor').getBoundingClientRect().toJSON()"),p=await s.js("(()=>{const r=document.querySelector('.image-panel-grip').getBoundingClientRect();return {x:r.x+r.width/2,y:r.y+r.height/2}})()");
      for(const event of [{type:'mousePressed',...p,button:'left',buttons:1,clickCount:1},{type:'mouseMoved',x:p.x-24,y:p.y-24,buttons:1},{type:'mouseReleased',x:p.x-24,y:p.y-24,button:'left',buttons:0,clickCount:1}])await s.win.webContents.debugger.sendCommand('Input.dispatchMouseEvent',event);
@@ -34,5 +40,5 @@ const {createSmoke}=require('./portrait-smoke-helpers.cjs');
   }
  }finally{s.win.webContents.debugger.detach();}
  assert.equal(s.calls(),calls,'opening or moving controls never encodes');const after=await s.load();assert.deepEqual(after.positions,project.positions);assert.deepEqual(after.edits,project.edits);assert.deepEqual(after.canvas,project.canvas);assert.deepEqual(after.export,project.export);
- await s.finish({passed:true,offscreen:true,canvasAndImageUnchangedAcrossAllEditors:true,floatingControlsBelowImageWithoutClamping:true,dragAndRealInputHitTests:true,noEncodingOrProjectChanges:true,report});
+ await s.finish({passed:true,offscreen:true,canvasAndImageUnchangedAcrossAllEditors:true,visibleParametersAndNavigation:true,dragAndRealInputHitTests:true,noEncodingOrProjectChanges:true,report});
 })().catch(error=>{console.error(error);app.exit(1)});

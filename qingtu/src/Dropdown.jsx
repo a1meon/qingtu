@@ -1,8 +1,9 @@
-import {useEffect,useRef,useState} from 'react';
+import {useEffect,useId,useRef,useState} from 'react';
 import {createPortal} from 'react-dom';
 import {CaretDown,Check} from '@phosphor-icons/react';
 
-export function Dropdown({id,label,value,options,onChange,disabled=false,className='',maxHeight=Infinity}){
+export function Dropdown({id:providedId,label,value,options,onChange,disabled=false,className='',maxHeight=Infinity}){
+ const generatedId=useId(),id=providedId||generatedId;
  const [open,setOpen]=useState(false),[position,setPosition]=useState(null),[active,setActive]=useState(0);
  const trigger=useRef(),menu=useRef(),optionRefs=useRef([]);
  useEffect(()=>{if(disabled)setOpen(false);},[disabled]);

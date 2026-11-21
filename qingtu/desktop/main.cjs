@@ -13,7 +13,24 @@ async function start(options={}) {
   const stitching=new StitchService(store,service);
   const root=path.join(__dirname,'../dist/client');
   const index=path.join(root,'index.html');
-  let folder=options.testFolder||null,samplePromise,win;
+  const folders=new Map();
+  const {loadExportFolders}=await import('../engine/export-folders.mjs');
+  const lastFolders=await loadExportFolders(store.root);
+  const scopeOf=value=>value==='stitch'?'stitch':'compression';
+  const picturesFolder=app.getPath('pictures');
+  const defaultFolder=path.join(picturesFolder,'轻图output');
+  async function outputFolder(scope){
+    if(options.testFolder)return options.testFolder;
+    if(!folders.has(scope)){
+      const previous=lastFolders.customFolder(scope,picturesFolder);
+      const available=previous&&(await fs.stat(previous).catch(()=>null))?.isDirectory();
+      // A choice made while checking the previous path takes precedence.
+      if(!folders.has(scope))folders.set(scope,available?previous:defaultFolder);
+    }
+    return folders.get(scope);
+  }
+  const describeFolder=folder=>({name:path.basename(folder),path:folder});
+  let samplePromise,win;
   let activeOperations=0,startupChecked=false,chunkTransport,closeApproved=false,closePending=false,quitRequested=false,rendererReady=false;
   app.on('before-quit',()=>{quitRequested=true;});
   const flushRequests=new Map();
@@ -93,7 +110,7 @@ async function start(options={}) {
         if(method==='stitchDelete'){stitching.release(args[0]);return await store.remove(args[0]);}
         if(method==='stitchImport'){const f=args[0];if(!f||typeof f.base64!=='string'||f.base64.length>140*1024*1024)throw new Error('图片数据无效');return await store.import(Buffer.from(f.base64,'base64'),f.name);}
         if(method==='stitchChooseFiles'){
-          const paths=options.testFiles||(await dialog.showOpenDialog(win,{title:'添加画布图片',properties:['openFile','multiSelections'],filters:[{name:'图片',extensions:['jpg','jpeg','png','webp','avif','tif','tiff']}]})).filePaths;
+          const paths=options.testFiles||(await dialog.showOpenDialog(win,{title:args[0]==='open'?'打开图片':'添加图片',properties:['openFile','multiSelections'],filters:[{name:'图片',extensions:['jpg','jpeg','png','webp','avif','tif','tiff']}]})).filePaths;
           const result={items:[],errors:[]};for(const p of paths||[])try{if((await fs.stat(p)).size>100*1024*1024)throw new Error('单张图片须小于 100 MB');result.items.push(await store.import(await fs.readFile(p),path.basename(p)));}catch(e){result.errors.push(path.basename(p)+'：'+e.message);}return result;
         }
         if(method==='stitchPreviews'){if(!Array.isArray(args[0])||args[0].length>100)throw new Error('图片参数无效');const out=[];for(const id of args[0])out.push(await store.preview(id));return out;}
@@ -123,16 +140,36 @@ async function start(options={}) {
     if(method==='rename')return service.rename(...args);
     if(method==='remove'){service.remove(args[0]);return true;}
     if(method==='chooseFolder'){
-      if(options.testFolder)return {name:path.basename(options.testFolder),path:options.testFolder};
-      const {canceled,filePaths}=await dialog.showOpenDialog(win,{title:'选择保存位置',defaultPath:folder||app.getPath('pictures'),properties:['openDirectory','createDirectory']});
+      const scope=scopeOf(args[0]),current=await outputFolder(scope);
+      if(options.testFolder)return describeFolder(current);
+      const exists=(await fs.stat(current).catch(()=>null))?.isDirectory();
+      const {canceled,filePaths}=await dialog.showOpenDialog(win,{title:'选择保存位置',defaultPath:exists?current:picturesFolder,properties:['openDirectory','createDirectory']});
       if(canceled)return null;
-      folder=filePaths[0];return {name:path.basename(folder),path:folder};
+      const folder=filePaths[0];folders.set(scope,folder);return describeFolder(folder);
     }
     if(method==='save'){
-      if(!folder)throw new Error('请先选择保存位置');
-      activeOperations++;try{return await service.save(args[0],folder);}finally{activeOperations--;}
+      const scope=scopeOf(args[1]);
+      activeOperations++;
+      try{
+        const folder=await outputFolder(scope);
+        const usedDefault=path.relative(defaultFolder,folder)==='';
+        const result=await service.save(args[0],folder,{createFolder:usedDefault});
+        await lastFolders.record(scope,result.path,usedDefault);
+        return {...result,folder};
+      }finally{activeOperations--;}
     }
-    if(method==='revealFolder'){if(folder)await shell.openPath(folder);return true;}
+    if(method==='outputFolder')return describeFolder(await outputFolder(scopeOf(args[0])));
+    if(method==='exportHistory')return lastFolders.list(scopeOf(args[0]),args[1]);
+    if(method==='revealFolder'){
+      const scope=scopeOf(args[0]);
+      const folder=args.length>1?await lastFolders.folderFor(scope,args[1]):lastFolders.get(scope);
+      if(!folder)throw new Error('此模块还没有成功导出过图片');
+      const info=await fs.stat(folder).catch(()=>null);
+      if(!info?.isDirectory())throw new Error('无法访问上次输出的文件夹，请检查目录是否已移动或删除');
+      const error=await shell.openPath(folder);
+      if(error)throw new Error('无法打开输出文件夹：'+error);
+      return true;
+    }
     if(method==='windowAction'){
       if(args[0]==='minimize')win.minimize();
       else if(args[0]==='maximize'){if(win.isMaximized())win.unmaximize();else win.maximize();}
@@ -148,7 +185,7 @@ async function start(options={}) {
     {label:'窗口',submenu:[{role:'minimize'},{role:'zoom'}]}
   ]));
   createWindow();
-  app.on('activate',()=>{if(BrowserWindow.getAllWindows().length===0){service.files.clear();service.results.clear();service.totalBytes=0;samplePromise=null;folder=null;closeApproved=false;createWindow();}});
+  app.on('activate',()=>{if(BrowserWindow.getAllWindows().length===0){service.files.clear();service.results.clear();service.totalBytes=0;samplePromise=null;folders.clear();closeApproved=false;createWindow();}});
   app.on('window-all-closed',()=>{if(process.platform!=='darwin'||options.hidden||quitRequested)app.quit();});
   app.on('will-quit',()=>{chunkTransport?.close();nativeUpdater.close?.();});
   return {win,service,updater,store,stitching};

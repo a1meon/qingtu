@@ -10,12 +10,14 @@ export function CanvasCards({projects,currentId,onOpen,onCreate,onClear,onContex
   <div className="filmstrip canvas-cards" aria-label="图像画布">
    {projects.map(project=><div key={project.id} className={`film-item canvas-card ${project.id===currentId?'selected':''}`} onContextMenu={event=>{if(event.target.closest('input'))return;event.preventDefault();if(!disabled)onContext(project.id,{x:event.clientX,y:event.clientY});}}>
     <button className="film-select canvas-card-open" aria-label={`打开画布 ${canvasName(project.name)}`} aria-pressed={project.id===currentId} disabled={disabled} draggable={false} onClick={()=>onOpen(project.id)}>
-     {project.thumbnail?<img src={project.thumbnail} loading="lazy" decoding="async" draggable={false} alt={`${canvasName(project.name)}画布预览`}/>:<ImageSquare size={35} weight="duotone"/>}
+     {project.thumbnail
+      ? <img src={project.thumbnail} loading="lazy" decoding="async" draggable={false} alt={`${canvasName(project.name)}画布预览`}/>
+      : <ImageSquare size={35} weight="duotone"/>}
     </button>
     {eligible.has(project.id)&&<label className="canvas-export-select" title="选择导出"><input type="checkbox" aria-label={`选择导出 ${canvasName(project.name)}`} checked={chosen.has(project.id)} disabled={disabled} onChange={event=>onSelectExport(project.id,event.target.checked)}/></label>}
     <CanvasCardName project={project} editing={renamingId===project.id} disabled={disabled} onStart={onRenameStart} onRename={onRename} onEnd={onRenameEnd}/>
    </div>)}
-   <div className="film-item add-item"><button className="add-tile" aria-label="新建画布" disabled={disabled} onClick={onCreate}><Plus size={38} weight="bold"/></button><span className="filename">新建画布</span></div>
+   <div className="film-item add-item"><button className="add-tile" aria-label="新建图像" disabled={disabled} onClick={onCreate}><Plus size={38} weight="bold"/></button><span className="filename">新建图像</span></div>
   </div>
  </div>;
 }
