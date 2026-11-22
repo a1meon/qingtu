@@ -33,7 +33,7 @@ async function digest(stream) {
 }
 
 async function verifyRemote(base, file) {
-  const response = await fetch(base + file.name, {signal: AbortSignal.timeout(1200000)});
+  const response = await fetch(base + file.name, {signal: AbortSignal.timeout(3600000)});
   if (!response.ok) throw new Error('CNB 匿名下载失败 ' + file.name + ' HTTP ' + response.status);
   if (await digest(response.body) !== await digest(createReadStream(file.path))) {
     throw new Error('CNB 附件摘要不一致 ' + file.name);
@@ -54,7 +54,7 @@ async function upload(releaseId, file) {
   }
   const response = await fetch(target, {
     method: 'PUT', headers: {'Content-Type': 'application/octet-stream', 'Content-Length': String(file.size)},
-    body: createReadStream(file.path), duplex: 'half', redirect: 'error', signal: AbortSignal.timeout(1200000)
+    body: createReadStream(file.path), duplex: 'half', redirect: 'error', signal: AbortSignal.timeout(3600000)
   });
   if (!response.ok) throw new Error('附件上传 HTTP ' + response.status);
   await response.arrayBuffer();
