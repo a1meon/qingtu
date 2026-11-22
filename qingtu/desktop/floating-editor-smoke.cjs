@@ -12,9 +12,20 @@ const {createSmoke}=require('./portrait-smoke-helpers.cjs');
  s.win.webContents.debugger.attach('1.3');
  try{
   await s.win.webContents.debugger.sendCommand('Emulation.setFocusEmulationEnabled',{enabled:true});
-  for(const [width,height] of [[1280,820],[1024,650],[740,650],[400,650],[1280,820]]){
+  for(const [width,height] of [[1280,820],[1280,640],[1024,650],[740,650],[400,650],[1280,820]]){
    await s.win.webContents.debugger.sendCommand('Emulation.setDeviceMetricsOverride',{width,height,deviceScaleFactor:1,mobile:false});await settled();
-   await s.click('.stitch-layer');const before=await geometry();
+   const clearSelection=async()=>{
+    await s.js("document.querySelector('.stitch-canvas-area').dispatchEvent(new PointerEvent('pointerdown',{bubbles:true,button:0}))");
+    await s.wait("!document.querySelector('.inline-image-tools')");await settled();
+   };
+   await clearSelection();
+   const before=await geometry();
+   await s.click('.stitch-layer');await s.wait("!!document.querySelector('.inline-image-tools')");await settled();
+   same(before,await geometry());
+   await s.click('[aria-label="放大视图"]');await settled();const magnified=await geometry();
+   await clearSelection();same(magnified,await geometry());
+   await s.click('.stitch-layer');await settled();same(magnified,await geometry());
+   await s.click('[aria-label="复位视图"]');await settled();same(before,await geometry());
    for(const mode of ['裁剪','旋转','分割']){
     await s.click(`[aria-label="${mode}"]`);await s.wait("!!document.querySelector('.image-editor')");await settled();same(before,await geometry());
     const boxes=await s.js(`Object.fromEntries(Object.entries({panel:'.image-editor',image:'.stitch-layer',area:'.stitch-canvas-area',nav:'.canvas-viewport-controls'}).map(([name,selector])=>[name,document.querySelector(selector).getBoundingClientRect().toJSON()]))`);

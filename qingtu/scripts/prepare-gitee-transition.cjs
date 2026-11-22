@@ -11,8 +11,8 @@ const sources = require('../desktop/update-source.json');
 const {publicKey} = require('../desktop/sparkle-public-key.json');
 
 async function prepareTransition(previous) {
-  const version = '0.5.0';
-  if (require('../package.json').version !== version) throw new Error('此脚本仅用于 Gitee 的一次性 0.5.0 迁移');
+  // The legacy client discovers the pinned Gitee tag, then reads the target version from these files.
+  const {version} = require('../package.json');
   await verifyFullRelease();
   const source = path.resolve('release', 'v' + version);
   const output = path.resolve('release', 'gitee-transition-v' + version + (previous ? '-refresh' : ''));

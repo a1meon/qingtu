@@ -8,7 +8,11 @@ const {createSmoke}=require('./portrait-smoke-helpers.cjs');
  const same=(a,b)=>{for(const k of ['x','y','width','height'])assert.ok(Math.abs(a[k]-b[k])<.1,`${k}: ${JSON.stringify({a,b})}`);},centre=(a,b)=>{assert.ok(Math.abs(a.x+a.width/2-b.x-b.width/2)<.1);assert.ok(Math.abs(a.y+a.height/2-b.y-b.height/2)<.1);};
  const anchor=async()=>{
   const menu=await rect('.inline-image-tools'),image=await rect('.stitch-layer'),area=await rect('.stitch-canvas-area');
-  const x=Math.max(area.left,Math.min(image.left+(image.width-menu.width)/2,area.right-menu.width));
+  const name=await rect('.stitch-stage .project-name'),actions=await rect('.stitch-stage .preview-actions');
+  const separateRow=await s.js("document.querySelector('.stitch-stage .file-toolbar').hasAttribute('data-tools-row')");
+  const inHeader=!separateRow&&menu.top<Math.max(name.bottom,actions.bottom)+4;
+  const left=inHeader?Math.max(area.left,name.right+4):area.left,right=inHeader?Math.min(area.right,actions.left-4):area.right;
+  const x=Math.max(left,Math.min(image.left+(image.width-menu.width)/2,right-menu.width));
   const y=Math.max(area.top-menu.height-4,Math.min(image.top-43,area.bottom-menu.height));
   assert.ok(Math.abs(menu.left-x)<1&&Math.abs(menu.top-y)<1,JSON.stringify({menu,image,area}));
  };
@@ -51,7 +55,8 @@ const {createSmoke}=require('./portrait-smoke-helpers.cjs');
    assert.ok((await rect('.stitch-layer')).top<viewport.top);
    const menu=await rect('.inline-image-tools');
    assert.ok(Math.abs(viewport.top-menu.bottom-4)<1,'docked toolbar leaves four pixels above the display');
-   assert.ok(menu.top>=(await rect('.stitch-stage .preview-actions')).bottom,'toolbar clears the workspace actions');
+   const actions=await rect('.stitch-stage .preview-actions');
+   assert.ok(menu.top>=actions.bottom||menu.right<=actions.left-3,'toolbar clears the workspace actions');
   }
  }
  const reachable=await s.js(`Array.from(document.querySelectorAll('.inline-image-tools button'),button=>{

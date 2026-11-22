@@ -315,7 +315,7 @@ export const StitchWorkspace=forwardRef(function StitchWorkspace({active,inspect
      </div>
     </div>
     {project?.images.length?<>
-     <div className={`canvas-area stitch-image-area${editingImage?' has-image-tools':''}`}><div className="canvas-content"><div className="stitch-editing-surface">
+     <div className="canvas-area stitch-image-area"><div className="canvas-content"><div className="stitch-editing-surface">
       <StitchCanvas viewRevision={viewRevision} navigationTarget={navigationSlot} navigationDisabled={busy||!!angleDraft} viewportMode={`${inspectorRevision}:${inspectorOpen}`} project={displayProject} layout={layout} preview={!cropDraft&&!splitDraft&&!angleDraft&&output?output.preview:null} selected={selected} onSelect={selectImage} onEdit={editImage} onContext={contextImage} onReorder={reorder} onChange={(positions,operation)=>update(p=>applyCanvasTransform(p,positions,operation))} onResizePreview={setTransformCanvas} renderControls={imageControls} cropping={!!selected&&editing===selected&&imageMode==='crop'&&!splitDraft} rotationOpen={!!selected&&editing===selected&&imageMode==='rotate'} cropGesture={!!cropDraft?.gesture} split={splitDraft} onSplitChange={value=>setSplitDraft({...value,id:editing})} disabled={busy||!!cropDraft||!!splitDraft||!!angleDraft} splitDisabled={busy}/>
      </div>
      <div className="preview-info stitch-info" aria-live="polite">

@@ -314,8 +314,8 @@ body:has(.stitch-canvas[data-interacting="reorder"]) > :is(.image-tools-portal,.
 .canvas-area { flex:1; min-height:0; min-width:0; display:flex; align-items:center; justify-content:center; padding:14px 20px 26px; overflow:hidden; }
 .stitch-stage:has(.stitch-image-area) .file-toolbar { height:54px; }
 .canvas-area.stitch-image-area { padding-block:4px 10px; }
-/* A selected layer can dock its 39px toolbar just above the viewport. */
-.canvas-area.stitch-image-area.has-image-tools { padding-top:38px; }
+/* On narrow headers the toolbar needs a second row, even before selection. */
+.stitch-stage:has(.stitch-image-area) .file-toolbar[data-tools-row] { height:88px; padding-bottom:34px; }
 .empty-state { display:flex; align-items:center; flex-direction:column; gap:18px; transform:translateY(-3px); }
 .empty-illustration { width:360px; height:280px; margin:-30px 0; object-fit:contain; user-select:none; pointer-events:none; }
 .primary { height:60px; display:flex; align-items:center; justify-content:center; gap:14px; border:2px solid #14a7ef; border-radius:20px; background:var(--blue); color:#fff; font-size:20px; font-weight:800; box-shadow:0 5px 0 var(--blue-edge); transform:translateY(0); transition:transform 190ms var(--spring),box-shadow 130ms,background 140ms,border-color 140ms; }

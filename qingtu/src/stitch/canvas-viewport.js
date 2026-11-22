@@ -18,15 +18,22 @@ export function resizeCanvasViewport(previous,{key,width,height,scale}){
  return {key,width,height,maxScale,scale:Math.min(scale,maxScale)};
 }
 
+export const imageToolbarWidth=154;
+
 // The image and the visible editor bounds use the same CSS pixel coordinates.
 export function placeImageControls(bounds,rect,mode='crop'){
  const rotation=mode==='rotate',panelWidth=rotation?220:300,centerX=rect.x+rect.width/2;
- const toolbarWidth=154,toolbarHeight=39,left=bounds.left??0,top=bounds.top??0;
+ const toolbarWidth=imageToolbarWidth,toolbarHeight=39,left=bounds.left??0,top=bounds.top??0;
  const dockedTop=top-toolbarHeight-4;
+ const toolsTop=Math.max(dockedTop,Math.min(rect.y-(rotation?59:43),top+bounds.height-toolbarHeight));
+ const slot=bounds.toolbarSlot;
+ const inHeader=slot&&toolsTop<slot.bottom;
+ const minX=inHeader?Math.max(left,slot.left):left;
+ const maxX=inHeader?Math.min(left+bounds.width,slot.right):left+bounds.width;
  return {
   tools:{
-   left:Math.max(left,Math.min(centerX-toolbarWidth/2,left+bounds.width-toolbarWidth)),
-   top:Math.max(dockedTop,Math.min(rect.y-(rotation?59:43),top+bounds.height-toolbarHeight)),
+   left:Math.max(minX,Math.min(centerX-toolbarWidth/2,maxX-toolbarWidth)),
+   top:toolsTop,
   },
   panel:{left:centerX-panelWidth/2,top:rect.y+rect.height+(rotation?18:10),width:panelWidth},
  };

@@ -8,7 +8,7 @@ import {snapResizeRect} from '../../engine/transform-snap.mjs';
 import {addFlushHandler} from '../lifecycle.js';
 import {CanvasSplitOverlay} from './CanvasSplitOverlay.jsx';
 import {ZoomControls} from '../ZoomControls.jsx';
-import {applyCanvasCamera,canvasPanContent,placeImageControls,fitCanvasViewport,resizeCanvasViewport} from './canvas-viewport.js';
+import {applyCanvasCamera,canvasPanContent,placeImageControls,fitCanvasViewport,resizeCanvasViewport,imageToolbarWidth} from './canvas-viewport.js';
 
 import {useCanvasNavigation} from './useCanvasNavigation.js';
 
@@ -24,16 +24,26 @@ export function StitchCanvas({project:sourceProject,layout:sourceLayout,onChange
  const project=resizeDraft||sourceProject,layout=useMemo(()=>resizeDraft?calculateLayout(resizeDraft,{draft:true}):sourceLayout,[resizeDraft,sourceLayout]);
  flushRef.current=(cancelled=false)=>finish(cancelled);moveRef.current=move;endRef.current=end;
  useEffect(()=>addFlushHandler(()=>flushRef.current()),[]);
+ const hasImages=sourceProject.images.length>0;
  useLayoutEffect(()=>{
+  const header=area.current.closest('.preview-workspace')?.querySelector('.file-toolbar');
+  const name=header?.querySelector('.project-name'),actions=header?.querySelector('.preview-actions');
   const measure=()=>{
+   let toolbarSlot;
+   if(name&&actions&&hasImages){
+    const left=name.getBoundingClientRect().right+4,right=actions.getBoundingClientRect().left-4;
+    const separateRow=right-left<imageToolbarWidth;
+    header.toggleAttribute('data-tools-row',separateRow);
+    if(!separateRow)toolbarSlot={left,right,bottom:Math.max(name.getBoundingClientRect().bottom,actions.getBoundingClientRect().bottom)+4};
+   }
    const rect=area.current.getBoundingClientRect();
-   if(rect.width&&rect.height)setBounds({width:rect.width,height:rect.height,left:rect.left,top:rect.top,windowHeight:window.innerHeight,navigation:navigationHost?.getBoundingClientRect()});
+   if(rect.width&&rect.height)setBounds({width:rect.width,height:rect.height,left:rect.left,top:rect.top,toolbarSlot,windowHeight:window.innerHeight,navigation:navigationHost?.getBoundingClientRect()});
   };
   measure();const observer=new ResizeObserver(measure);observer.observe(area.current);
-  if(navigationHost)observer.observe(navigationHost);
+  for(const node of [navigationHost,name,actions])if(node)observer.observe(node);
   window.addEventListener('scroll',measure,true);window.addEventListener('resize',measure);
-  return()=>{observer.disconnect();window.removeEventListener('scroll',measure,true);window.removeEventListener('resize',measure);};
- },[navigationHost]);
+  return()=>{observer.disconnect();header?.removeAttribute('data-tools-row');window.removeEventListener('scroll',measure,true);window.removeEventListener('resize',measure);};
+ },[navigationHost,hasImages]);
  useEffect(()=>()=>cancelAnimationFrame(frame.current),[]);
  useEffect(()=>{
   const track=e=>moveRef.current(e),release=e=>endRef.current(e),cancel=e=>endRef.current(e,true);

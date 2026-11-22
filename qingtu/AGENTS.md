@@ -40,6 +40,8 @@ Build app UI in `src/`. Keep `.openai/hosting.json`, `worker/index.js`, `scripts
 
 - Both export panels have a slightly narrower width and show thumbnails of the exported images in history. Successful export and canvas-reset notices use the same 15-second timeout. Compression shows extensionless editable names and supports preview zoom in original, comparison and processed views. At 100%, fit and centre the entire editor canvas within both the available width and height, including on import and after resetting the view. Show source and encoded output sizes at every window width.
 
+- Selecting or deselecting an image must preserve its on-screen bounds and zoom. Use the free space in the header for the floating toolbar, reserving a second row independently of selection only when the toolbar cannot fit.
+
 - In 图像编辑, centre the selected-image toolbar above its picture while space permits. When the image top moves above the visible editing area during zoom or drag, leave a 4px gap between the toolbar bottom and the top edge of the editing area. Leave clearance below the workspace actions and keep the buttons horizontally reachable. Let the toolbar follow the image again when it moves back into view. Crop, split and rotation parameter cards follow the image bottom while it is visible. When zoom or drag takes that edge out of view, dock the card 4px below the editing area. Keep the entire card and zoom controls reachable in narrow windows.
 
 - In 图像编辑, keep the fitted canvas centred in the visible editing area so opposite edges leave view together. Change zoom by 25 percentage points per button press, within 10%–800%, and keep Ctrl/Cmd+wheel and trackpad pinch continuous for fine adjustment.
