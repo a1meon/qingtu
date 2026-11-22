@@ -103,7 +103,7 @@ async function mirror(tag, verifyOnly = false) {
   if (release.tag_name !== tag) throw new Error('CNB 发布标记与标签不匹配');
   const sumFile = 'SHA256SUMS-' + version + '.txt';
   const temp = await fs.mkdtemp(path.join(os.tmpdir(),'qingtu-release-'));
-  const gh = args => execFileSync('gh', args, {encoding:'utf8',maxBuffer:32*1024*1024});
+  const gh = (args, input) => execFileSync('gh', args, {input,encoding:'utf8',maxBuffer:32*1024*1024});
   const releases = () => JSON.parse(gh(['api','--paginate','--slurp','repos/' + repo + '/releases?per_page=100'])).flat();
   const find = () => releases().find(r => r.tag_name === tag);
   try {
@@ -130,8 +130,11 @@ async function mirror(tag, verifyOnly = false) {
     if (!verifyOnly) {
       let dest = find();
       if (!dest) {
-        gh(['release','create',tag,'--repo',repo,'--verify-tag','--draft','--title','轻图 '+version,'--notes-file',path.join(__dirname,'..','docs','releases',tag+'.md')]);
-        dest = find();
+        gh(['api', 'repos/' + repo + '/git/ref/tags/' + tag]);
+        const notes = await fs.readFile(path.join(__dirname, '..', 'docs', 'releases', tag + '.md'), 'utf8');
+        // The release list can briefly omit a newly created draft. Use the creation response.
+        dest = JSON.parse(gh(['api', '--method', 'POST', 'repos/' + repo + '/releases', '--input', '-'],
+          JSON.stringify({tag_name: tag, name: '轻图 ' + version, body: notes, draft: true})));
       }
       if (!dest || dest.prerelease) throw new Error('GitHub 发行状态异常');
       const existing = new Map(dest.assets.map(a => [a.name,a]));
@@ -144,7 +147,13 @@ async function mirror(tag, verifyOnly = false) {
         gh(['release','upload',tag,path.join(temp,name),'--repo',repo]);
       }
       if (dest.draft) {
-        const uploaded = find()?.assets || [];
+        const assetPath = 'repos/' + repo + '/releases/' + dest.id + '/assets?per_page=100';
+        let uploaded;
+        for (let attempt = 0; attempt < 8; attempt++) {
+          uploaded = JSON.parse(gh(['api', '--paginate', '--slurp', assetPath])).flat();
+          if (uploaded.length >= sums.size && uploaded.every(asset => asset.digest)) break;
+          await new Promise(resolve => setTimeout(resolve, 1500));
+        }
         sameAssets(new Set(sums.keys()), new Set(uploaded.map(a => a.name)));
         if (uploaded.some(a => a.state !== 'uploaded' || a.digest !== 'sha256:' + sums.get(a.name))) throw new Error('GitHub 草稿附件校验失败');
         gh(['release','edit',tag,'--repo',repo,'--draft=false']);
