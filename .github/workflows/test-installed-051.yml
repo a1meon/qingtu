@@ -4,11 +4,26 @@ on:
     branches: ['codex/verify-windows-0.5.1']
 permissions:
   contents: read
+  actions: read
 jobs:
   installed-upgrade:
     runs-on: windows-latest
     timeout-minutes: 25
     steps:
+      - name: Read the previous integration result
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh run view 45058435680 --repo a1meon/qingtu --log-failed > "$RUNNER_TEMP/old-result.txt"
+          python - <<'PYLOG'
+          import os,pathlib,re
+          lines=pathlib.Path(os.environ['RUNNER_TEMP'],'old-result.txt').read_text(encoding='utf-8').splitlines()
+          for line in lines[-32:]:
+              clean=re.sub(r'\x1b\[[0-9;]*m','',line).split('Z ',1)[-1].strip()
+              if clean and not clean.startswith(('##','shell:','env:','QT_TEST','Run ')):
+                  print('::notice title=Earlier Windows installation test::'+clean.replace('%','%25')[:500])
+          PYLOG
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
@@ -40,5 +55,20 @@ jobs:
             Start-Sleep -Seconds 2
           } while ((Get-Date) -lt $limit)
           if ($file.VersionInfo.ProductVersion -notmatch '^0\.5\.1(\.|$)') { throw 'The installed app did not reach 0.5.1' }
-          Get-Process | Where-Object { $_.Path -eq $env:QT_TEST_EXE } | Stop-Process -Force
-          ./qingtu/scripts/test-windows-single-instance.ps1 -Executable $env:QT_TEST_EXE
+          Write-Host "Updated executable verified at $env:QT_TEST_EXE, version $($file.VersionInfo.ProductVersion)"
+          $restartLimit = (Get-Date).AddSeconds(60)
+          do {
+            $reopened = @(Get-Process -Name '轻图' -ErrorAction SilentlyContinue | Where-Object { $_.Path -eq $env:QT_TEST_EXE -and $_.MainWindowHandle -ne 0 })
+            if ($reopened.Count -eq 1) { break }
+            Start-Sleep -Milliseconds 300
+          } while ((Get-Date) -lt $restartLimit)
+          if ($reopened.Count -ne 1) { throw 'The updated executable did not reopen a window' }
+          $app = $reopened[0]
+          [void]$app.CloseMainWindow()
+          if (-not $app.WaitForExit(30000)) { throw 'The updated window did not quit normally' }
+          try {
+            ./qingtu/scripts/test-windows-single-instance.ps1 -Executable $env:QT_TEST_EXE
+          } catch {
+            Write-Host "::error title=Single-instance test::$($_.Exception.Message)"
+            throw
+          }
