@@ -1,0 +1,44 @@
+name: Test the published Windows 0.5.0 incremental upgrade
+on:
+  push:
+    branches: ['codex/verify-windows-0.5.1']
+permissions:
+  contents: read
+jobs:
+  installed-upgrade:
+    runs-on: windows-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Install the official 0.5.0 baseline
+        shell: pwsh
+        run: |
+          $name = 'Qingtu-0.5.0-win-x64.exe'
+          $downloads = Join-Path $env:USERPROFILE 'Downloads'
+          New-Item -Force -ItemType Directory $downloads | Out-Null
+          $installer = Join-Path $downloads $name
+          curl.exe -fLsS --retry 4 --max-time 900 "https://github.com/a1meon/qingtu/releases/download/v0.5.0/$name" -o $installer
+          if ($LASTEXITCODE -ne 0 -or (Get-FileHash $installer).Hash -ne '87d0afbd0fc7cb439a81b849196bbc279b0ad9746bdf637c9da65dcac7b38703') { throw 'Published baseline checksum mismatch' }
+          $dest = Join-Path $env:RUNNER_TEMP 'QingtuInstallTest'
+          $setup = Start-Process $installer -ArgumentList "/S /D=$dest" -PassThru -Wait
+          if ($setup.ExitCode -ne 0) { throw "Setup exited $($setup.ExitCode)" }
+          $exe = Join-Path $dest '轻图.exe'
+          if ((Get-Item $exe).VersionInfo.ProductVersion -notmatch '^0\.5\.0(\.|$)') { throw 'Expected 0.5.0' }
+          "QT_TEST_EXE=$exe" >> $env:GITHUB_ENV
+      - name: Check, download the incremental patch, and install through the shipped app
+        run: node .github/test-installed-051.cjs
+      - name: Verify the replaced executable and single-instance behavior
+        shell: pwsh
+        run: |
+          $limit = (Get-Date).AddMinutes(4)
+          do {
+            $file = Get-Item $env:QT_TEST_EXE -ErrorAction SilentlyContinue
+            if ($file -and $file.VersionInfo.ProductVersion -match '^0\.5\.1(\.|$)') { break }
+            Start-Sleep -Seconds 2
+          } while ((Get-Date) -lt $limit)
+          if ($file.VersionInfo.ProductVersion -notmatch '^0\.5\.1(\.|$)') { throw 'The installed app did not reach 0.5.1' }
+          Get-Process | Where-Object { $_.Path -eq $env:QT_TEST_EXE } | Stop-Process -Force
+          ./qingtu/scripts/test-windows-single-instance.ps1 -Executable $env:QT_TEST_EXE
