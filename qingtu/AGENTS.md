@@ -10,6 +10,8 @@ Build app UI in `src/`. Keep `.openai/hosting.json`, `worker/index.js`, `scripts
 
 ## User-approved product constraints (latest feedback overrides earlier designs)
 
+- Windows shortcuts open one instance of 轻图 per user profile. Reopening the app brings its existing editing window forward, including when it is minimized or still starting.
+
 - Follow the root AGENTS.md for every source push and formal release. Check and download from Tencent CNB first with same-version GitHub Releases failover. Publish complete installers and incremental patches. Gitee hosts release notes and download links.
 
 - Keep routine desktop updates lightweight. Prefer verified incremental downloads for Windows and both Mac architectures, with complete installers, backwards-compatible reading of old multipart metadata, existing package checks and explicit restart.
@@ -210,3 +212,5 @@ The bullets below record earlier decisions; where they mention derived bounds, d
 - Required checks: npm test, npm run build, npm run smoke:desktop, npm run smoke:ui; additional npm run smoke:canvas, npm run smoke:canvas-fit, npm run smoke:canvas-resize, npm run smoke:crop, npm run smoke:split, npm run smoke:recovery, npm run smoke:optimization, npm run smoke:png-budget, npm run verify:quality and npm run verify:png-budget (run verify:quality first to create fixtures). UI smoke must exercise actual stitching, original copies and autosave. Run native Electron smoke processes sequentially to avoid shared Chromium cache locks. Windows native development checks are available here; Mac native runtime and packaged installers have not been verified in this workspace. Do not rotate the embedded Mac public key or invent missing signing material.
 
 - Mac/Windows 0.4.5 formally published at https://gitee.com/a1meon_admin/halframe-releases/releases/tag/v0.4.5 after 89 tests and native Apple Silicon packaged-source export checks. Anonymous Gitee downloads of both Mac ZIPs passed authenticated manifest, full SHA512 and official Sparkle archive signature checks. The real Windows NsisUpdater downloaded and verified its full installer. Latest API and all current-version no-download checks passed. New Windows executable embeds the ICO's 6 sizes; both Mac ICNS assets match the generated icon. Intel native execution and Windows native installation remain untested; keep the user's running 0.4.4 app and queue untouched. Current preview stays detached on port 4173.
+
+- 图像编辑修改画布像素或比例后以 100% 重新适配当前预览宽高。底部体积变化始终保持单行，窄窗口优先保留完整的体积读数。选中图层时给浮动工具栏预留操作空间。

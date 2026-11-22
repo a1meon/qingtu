@@ -1,7 +1,7 @@
 // Keep display fitting independent of the currently open floating editor.
-export function fitCanvasViewport(bounds,layout,{hasImages=false,canvasSizing='content',maxScale=Infinity}={}){
+export function fitCanvasViewport(bounds,layout,{hasImages=false,maxScale=Infinity}={}){
  // The 22px corner handles need 12px at each edge to remain fully clickable.
- const verticalInset=!hasImages?16:canvasSizing==='content'?12:44;
+ const verticalInset=hasImages?12:16;
  const scale=Math.max(Number.MIN_VALUE,Math.min(maxScale,Math.max(1,bounds.width-32)/layout.width,Math.max(1,bounds.height-2*verticalInset)/layout.height));
  return {scale,offsetX:0,offsetY:0};
 }

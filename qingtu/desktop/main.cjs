@@ -195,4 +195,9 @@ async function start(options={}) {
   return {win,service,updater,store,stitching};
 }
 module.exports={start};
-if(require.main===module)start().catch(error=>{dialog.showErrorBox('轻图启动失败',error.message);app.quit();});
+if (require.main === module) {
+  const startup = process.platform === 'win32'
+    ? require('./windows-launch.cjs').launchWindows(app, start)
+    : start();
+  startup.catch(error => { dialog.showErrorBox('轻图启动失败', error.message); app.quit(); });
+}

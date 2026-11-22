@@ -13,6 +13,13 @@ test('100% fits the entire imported canvas inside both viewport edges',()=>{
   assert.deepEqual([view.offsetX,view.offsetY],[0,0]);
  }
 });
+test('manually sized and preset canvases fill the same available height as imports',()=>{
+ const bounds={width:700,height:360},layout={width:1000,height:1000};
+ for(const canvasSizing of ['content','manual']){
+  const fit=fitCanvasViewport(bounds,layout,{hasImages:true,canvasSizing});
+  assert.equal(fit.scale*layout.height,336);
+ }
+});
 test('opening any image editor preserves the canvas scale and position',()=>{
  for(const height of [226,360,556])for(const editor of ['crop','split','rotate']){
   const bounds={width:545,height},layout={width:1200,height:480};

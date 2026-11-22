@@ -53,6 +53,9 @@ jobs:
           APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
       - if: matrix.target == 'win'
         run: npx electron-builder --config build/update-builder.json --win nsis zip --x64 --publish never
+      - if: matrix.target == 'win'
+        shell: pwsh
+        run: ./scripts/test-windows-single-instance.ps1 -Executable './release/win-unpacked/轻图.exe'
       - run: node scripts/prepare-full-release.cjs ${{ matrix.native }} ${{ matrix.arch }}
       - uses: actions/upload-artifact@v4
         with:

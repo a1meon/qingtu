@@ -255,7 +255,11 @@ export const StitchWorkspace=forwardRef(function StitchWorkspace({active,inspect
  async function setGrid(changes,group){try{await settleEditor();await update(p=>{const grid={...p.grid,...changes};try{return p.canvasSizing==='content'?arrangeContentImages(p,'grid',grid):arrangeImages(p,'grid',grid);}catch(e){if(e.message.includes('行列'))return {...p,grid};throw e;}},group);}catch(e){setNotice(e.message);}}
  function editDimension(field,event){
   const value=event.target.value;
-  return update(p=>editCanvasDimension(p,field,value),inputGroup(event));
+  const before=getCurrent()?.canvas;
+  const saved=update(p=>editCanvasDimension(p,field,value),inputGroup(event));
+  const after=getCurrent()?.canvas;
+  if(after?.width>0&&after.height>0&&(before?.width!==after.width||before?.height!==after.height))setViewRevision(revision=>revision+1);
+  return saved;
  }
  async function setPreset(value){
   const owner=getCurrent()?.id;
@@ -263,7 +267,7 @@ export const StitchWorkspace=forwardRef(function StitchWorkspace({active,inspect
    await settleEditor();
    if(getCurrent()?.id!==owner)return;
    const saved=update(p=>selectCanvasPreset(p,value));
-   if(value==='original')setViewRevision(revision=>revision+1);
+   setViewRevision(revision=>revision+1);
    await saved;
   }catch(e){setNotice(e.message);}
  }
@@ -311,13 +315,12 @@ export const StitchWorkspace=forwardRef(function StitchWorkspace({active,inspect
      </div>
     </div>
     {project?.images.length?<>
-     <div className="canvas-area stitch-image-area"><div className="canvas-content"><div className="stitch-editing-surface">
+     <div className={`canvas-area stitch-image-area${editingImage?' has-image-tools':''}`}><div className="canvas-content"><div className="stitch-editing-surface">
       <StitchCanvas viewRevision={viewRevision} navigationTarget={navigationSlot} navigationDisabled={busy||!!angleDraft} viewportMode={`${inspectorRevision}:${inspectorOpen}`} project={displayProject} layout={layout} preview={!cropDraft&&!splitDraft&&!angleDraft&&output?output.preview:null} selected={selected} onSelect={selectImage} onEdit={editImage} onContext={contextImage} onReorder={reorder} onChange={(positions,operation)=>update(p=>applyCanvasTransform(p,positions,operation))} onResizePreview={setTransformCanvas} renderControls={imageControls} cropping={!!selected&&editing===selected&&imageMode==='crop'&&!splitDraft} rotationOpen={!!selected&&editing===selected&&imageMode==='rotate'} cropGesture={!!cropDraft?.gesture} split={splitDraft} onSplitChange={value=>setSplitDraft({...value,id:editing})} disabled={busy||!!cropDraft||!!splitDraft||!!angleDraft} splitDisabled={busy}/>
      </div>
      <div className="preview-info stitch-info" aria-live="polite">
-      <PreviewMetrics dimensionLabel="画布" dimensions={visibleCanvas||layout||output} sources={project.images} sourceBytes={originalBytes(project.images)} output={output} processing={processing} status={cropDraft||splitDraft||transformCanvas||angleDraft?'编辑中…':undefined} multiple={project.images.length>1} selectedImage={editingImage}/>
+      <PreviewMetrics dimensionLabel={layout?.rects.some(r=>r.autoCrop)?'画布 · 9:16 居中裁切':'画布'} dimensions={visibleCanvas||layout||output} sources={project.images} sourceBytes={originalBytes(project.images)} output={output} processing={processing} status={cropDraft||splitDraft||transformCanvas||angleDraft?'编辑中…':undefined} multiple={project.images.length>1} selectedImage={editingImage}/>
       {!visibleCanvas&&!layout&&!output&&calculation.error&&<span>{calculation.error}</span>}
-      {layout?.rects.some(r=>r.autoCrop)&&<span>9:16 居中裁切</span>}
 
       <span className="canvas-navigation-slot" ref={navigationSlot}/>
      </div></div></div>

@@ -73,9 +73,25 @@ const {createSmoke}=require('./portrait-smoke-helpers.cjs');
   assert.ok(Math.abs(withPanel.imageRatio-withoutPanel.imageRatio)<.001,'source image scales with the canvas');
   const savedAfter=await s.load();for(const key of ['canvas','positions','export'])assert.deepEqual(savedAfter[key],savedBefore[key],'display fitting preserves saved '+key);
   await s.capture('image-collapsed-fit.png');
-
-
-
+  await s.click('[aria-label="放大视图"]');
+  await s.wait("document.querySelector('.canvas-viewport-controls output').textContent==='125%'");
+  await s.edit('#stitch-height',420);await s.ready();
+  await s.wait("document.querySelector('.canvas-viewport-controls output').textContent==='100%'");
+  await s.js("document.querySelector('.stitch-canvas-area').dispatchEvent(new PointerEvent('pointerdown',{bubbles:true,button:0}))");
+  for(const width of [980,761,375]){
+   await resize(width);
+   const measured=await s.js(`(()=>{
+    const stage=document.querySelector('.stitch-stage'),rect=selector=>stage.querySelector(selector).getBoundingClientRect();
+    const area=rect('.stitch-canvas-area'),canvas=rect('.stitch-canvas'),header=rect('.file-toolbar');
+    const size=rect('.size-comparison'),dims=rect('.preview-dimensions'),bar=rect('.preview-info');
+    return {topGap:area.top-header.bottom,fit:Math.min(area.width-32,(area.height-24)*canvas.width/canvas.height),width:canvas.width,
+     sizeLeft:size.left,dimsRight:dims.right,sizeRight:size.right,barRight:bar.right,
+     rowDistance:Math.abs(size.top+size.height/2-dims.top-dims.height/2)};
+   })()`);
+   assert.ok(measured.topGap<=6&&Math.abs(measured.fit-measured.width)<1,JSON.stringify(measured));
+   assert.ok(measured.rowDistance<1&&measured.dimsRight<=measured.sizeLeft+1&&measured.sizeRight<=measured.barRight+1,JSON.stringify(measured));
+  }
+  await s.capture('narrow-single-line-footer.png');
  }finally{if(s.win.webContents.debugger.isAttached())s.win.webContents.debugger.detach();}
  await s.finish({passed:true,entirelyOffscreen:true,offscreenRendering:true,visible:s.win.isVisible(),windowBounds,displayBounds,opacity:0,noOSFocus:true,cases,narrowAutoCollapse:true,autoRestoreOnWide:true,manualChoiceSurvivesResize:true,collapseRefitsReleasedWidth:true,imageRefitsWithoutProjectChanges:true,canvasCentred:true,collapseInHeading:true,expandBesideOptimization:true,toggleIconCentred:true,realMouseToggleWorks:true});
 })().catch(error=>{console.error(error);app.exit(1)});
