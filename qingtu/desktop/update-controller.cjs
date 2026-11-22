@@ -1,8 +1,8 @@
 const {EventEmitter}=require('node:events');
 const offline=error=>/ENOTFOUND|EAI_AGAIN|ETIMEDOUT|ECONN|ERR_(INTERNET_DISCONNECTED|NETWORK_CHANGED|NAME_NOT_RESOLVED|CONNECTION|TIMED_OUT)/.test(`${error?.code||''} ${error?.message||''}`);
 class UpdateController extends EventEmitter {
- constructor({version,updater,resolveFeed,canInstall=()=>true}){
-  super();this.updater=updater;this.resolveFeed=resolveFeed;this.canInstall=canInstall;
+ constructor({version,updater,resolveFeed,development=false,canInstall=()=>true}){
+  super();this.development=development;this.updater=updater;this.resolveFeed=resolveFeed;this.canInstall=canInstall;
   this.state={version,phase:'idle',visible:false,availableVersion:null,percent:0};
   updater.autoDownload=false;updater.autoInstallOnAppQuit=false;updater.allowPrerelease=false;updater.allowDowngrade=false;
   updater.on('update-available',info=>this.set({phase:'available',availableVersion:info.version,visible:true}));
@@ -19,6 +19,7 @@ class UpdateController extends EventEmitter {
   return this.set({failureStage:installing?'install':null,phase:!downloading&&offline(error)?'offline':'error',visible:!!(this.manual||downloading||installing),message:installing?'更新安装失败，请重试':downloading?'下载失败，请重试':offline(error)?'无法连接更新服务，请联网后重试':'检查失败，请稍后重试'});
  }
  check(manual=false){
+  if(this.development)return Promise.resolve(this.set({phase:'development',visible:manual}));
   this.manual=!!(manual||this.checking&&this.manual);
   if(['available','downloading','ready','installing'].includes(this.state.phase))return Promise.resolve(this.set({visible:manual||this.state.visible}));
   if(this.checking){if(manual)this.set({visible:true});return this.checking;}

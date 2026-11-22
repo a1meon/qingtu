@@ -53,3 +53,10 @@ test('asynchronous native startup enters installation state and failures are han
  const {controller,adapter}=make();await controller.check(true);await controller.download();let reject;adapter.quitAndInstall=()=>new Promise((_,r)=>reject=r);
  const installing=controller.install();assert.equal(controller.status().phase,'installing');assert.throws(()=>controller.install(),/下载/);reject(new Error('native failed'));await assert.rejects(installing,/native failed/);assert.equal(controller.status().phase,'error');assert.match(controller.status().message,/安装/);
 });
+
+test('development preview identifies itself on manual check without calling the release service',async()=>{
+ const {controller,adapter}=make({development:true,resolveFeed:()=>assert.fail('preview fetched remote release')});
+ assert.equal((await controller.check(false)).visible,false);
+ const result=await controller.check(true);
+ assert.equal(result.phase,'development');assert.equal(result.visible,true);assert.equal(adapter.checks,0);
+});

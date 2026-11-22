@@ -2,7 +2,7 @@ const {app}=require('electron'),assert=require('node:assert/strict'),path=requir
 const {createSmoke}=require('./portrait-smoke-helpers.cjs');
 (async()=>{
  const s=await createSmoke('qingtu-canvas-selection-','canvas-selection');
- await s.edit('#stitch-height',180);await s.importFiles([path.resolve('public/samples/alpine-lake.jpg'),path.resolve('public/samples/forest-cabin.jpg')]);await s.edit('#stitch-width',450);await s.ready();await s.click('[data-layout=free]');await s.ready();
+ await s.edit('#stitch-height',180);await s.importFiles([path.resolve('public/samples/alpine-lake.jpg'),path.resolve('public/samples/forest-cabin.jpg')]);await s.click('[aria-label=解锁画布宽高比例]');await s.edit('#stitch-width',450);await s.ready();await s.click('[data-layout=free]');await s.ready();
  const selection=()=>s.js("document.querySelectorAll('.stitch-layer.selected').length"),visibleGhosts=()=>s.js("[...document.querySelectorAll('.stitch-ghost')].filter(e=>getComputedStyle(e).visibility!=='hidden'&&getComputedStyle(e).display!=='none'&&Number(getComputedStyle(e).opacity)>0).map(e=>e.dataset.ghostImageId)");
  async function clickPoint(point){s.win.webContents.debugger.attach('1.3');try{for(const type of ['mousePressed','mouseReleased'])await s.win.webContents.debugger.sendCommand('Input.dispatchMouseEvent',{type,...point,button:'left',buttons:type==='mousePressed'?1:0,clickCount:1});}finally{s.win.webContents.debugger.detach()}await s.js('new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)))');}
  // Resize through the real handle, then shrink the canvas so pixels extend past it.

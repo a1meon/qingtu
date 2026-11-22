@@ -1,6 +1,6 @@
 import {forwardRef,useEffect,useImperativeHandle,useRef,useState} from 'react';
 import {ArrowCounterClockwise,CaretUp,CaretDown} from '@phosphor-icons/react';
-import {normalizeImageAngle} from '../../engine/image-rotation.mjs';
+import {normalizeImageAngle,snapRotationAngle} from '../../engine/image-rotation.mjs';
 
 export const ImageRotationControls=forwardRef(function ImageRotationControls({image,disabled,onRotate,onPreview,onCommit,onGesture},ref){
  const value=normalizeImageAngle((image.rotation||0)+(image.angle||0)),[draft,setDraft]=useState(String(value)),[error,setError]=useState('');
@@ -28,24 +28,26 @@ export const ImageRotationControls=forwardRef(function ImageRotationControls({im
   }
   return flush().catch(error=>{setError(error.message);});
  }
- function previewRange(x){
+ function previewRange(x,shift){
   const g=rangeGesture.current;if(!g)return;
   const fraction=Math.max(0,Math.min(1,(x-g.rect.left-8)/Math.max(1,g.rect.width-16)));
-  change(String(Math.round((fraction*360-180)*10)/10));
+  g.x=x;const angle=fraction*360-180;
+  change(String(shift?snapRotationAngle(angle):Math.round(angle*10)/10));
  }
  function startRange(event){
   if(disabled||event.button!==0)return;event.preventDefault();suppressedRange.current=null;rangeGesture.current={id:event.pointerId,rect:event.currentTarget.getBoundingClientRect()};
-  startRotation();event.currentTarget.focus({preventScroll:true});event.currentTarget.setPointerCapture(event.pointerId);previewRange(event.clientX);
+  startRotation();event.currentTarget.focus({preventScroll:true});event.currentTarget.setPointerCapture(event.pointerId);previewRange(event.clientX,event.shiftKey);
  }
  function endRange(event,cancelled=false){
   if(suppressedRange.current===event.pointerId){suppressedRange.current=null;return;}
-  if(rangeGesture.current?.id!==event.pointerId)return;if(!cancelled)previewRange(event.clientX);rangeGesture.current=null;return endRotation(cancelled,event.pointerId);
+  if(rangeGesture.current?.id!==event.pointerId)return;if(!cancelled)previewRange(event.clientX,event.shiftKey);rangeGesture.current=null;return endRotation(cancelled,event.pointerId);
  }
- rangeActions.current={endRange,move:event=>{if(rangeGesture.current?.id===event.pointerId&&event.buttons!==0)previewRange(event.clientX);},cancel:()=>{if(rangeGesture.current===null)return false;const {id}=rangeGesture.current;rangeGesture.current=null;suppressedRange.current=id;endRotation(true,id);return true;}};
+ rangeActions.current={endRange,shift:held=>{if(rangeGesture.current)previewRange(rangeGesture.current.x,held);},move:event=>{if(rangeGesture.current?.id===event.pointerId&&event.buttons!==0)previewRange(event.clientX,event.shiftKey);},cancel:()=>{if(rangeGesture.current===null)return false;const {id}=rangeGesture.current;rangeGesture.current=null;suppressedRange.current=id;endRotation(true,id);return true;}};
  useEffect(()=>{
-  const move=event=>rangeActions.current.move(event),end=event=>rangeActions.current.endRange(event,event.type==='pointercancel'),key=event=>{if(event.key==='Escape'&&rangeActions.current.cancel()){event.preventDefault();event.stopPropagation();}};
-  document.addEventListener('pointermove',move);document.addEventListener('pointerup',end);document.addEventListener('pointercancel',end);document.addEventListener('keydown',key,true);
-  return()=>{document.removeEventListener('pointermove',move);document.removeEventListener('pointerup',end);document.removeEventListener('pointercancel',end);document.removeEventListener('keydown',key,true);};
+  const move=event=>rangeActions.current.move(event),end=event=>rangeActions.current.endRange(event,event.type==='pointercancel'),key=event=>{if(event.key==='Shift')rangeActions.current.shift(event.type==='keydown');
+   if(event.key==='Escape'&&rangeActions.current.cancel()){event.preventDefault();event.stopPropagation();}};
+  document.addEventListener('pointermove',move);document.addEventListener('pointerup',end);document.addEventListener('pointercancel',end);document.addEventListener('keydown',key,true);document.addEventListener('keyup',key,true);
+  return()=>{document.removeEventListener('pointermove',move);document.removeEventListener('pointerup',end);document.removeEventListener('pointercancel',end);document.removeEventListener('keydown',key,true);document.removeEventListener('keyup',key,true);};
  },[]);
  function stepAngle(delta){const current=latest.current.trim()&&Number.isFinite(Number(latest.current))?Number(latest.current):value;change(String(normalizeImageAngle(current+delta)));finish();}
  useImperativeHandle(ref,()=>({flush,startRotation,previewRotation:angle=>change(String(angle)),endRotation}));

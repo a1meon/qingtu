@@ -1,10 +1,12 @@
 import {AlphaAction,ColorSpace,FilterType,ImageMagick,MagickColors,MagickFormat,MagickGeometry,MagickImageCollection,MagickReadSettings} from '@imagemagick/magick-wasm';
 import {prepareBoundedPixels,pixelDifference} from '../../engine/pixel-difference.mjs';
-import {dimensions,pngBudgetDimensions} from '../../engine/image-dimensions.mjs';
+import {adaptivePng} from '../../engine/adaptive-png.mjs';
+import {deflatePixels,exactIndexedPng} from '../../engine/indexed-png.mjs';
+import {dimensions} from '../../engine/image-dimensions.mjs';
 
 const animationError='暂不支持动画或多页图片，以免丢失帧';
 const ascii=(bytes,offset,length)=>String.fromCharCode(...bytes.subarray(offset,offset+length));
-function inputFormat(bytes){
+export function inputFormat(bytes){
   if(bytes[0]===0xff&&bytes[1]===0xd8)return 'jpeg';
   if(bytes[0]===137&&ascii(bytes,1,3)==='PNG'){
     const view=new DataView(bytes.buffer,bytes.byteOffset,bytes.byteLength);
@@ -62,9 +64,7 @@ export function preview(bytes){
     return {preview:write(image,'png'),previewWidth:image.width,previewHeight:image.height};
   });
 }
-function boundedPng(image,target){
-  const {width,height}=image,channels=image.hasAlpha?4:3;
-  const data=image.getPixels(p=>p.toByteArray(0,0,width,height,channels===4?'RGBA':'RGB'));
+function boundedPng(data,{width,height,channels},target){
   const pixels=prepareBoundedPixels(data,{width,height,channels});
   const settings=new MagickReadSettings({width,height,depth:8,format:channels===4?MagickFormat.Rgba:MagickFormat.Rgb});
   // Always compare to the unmodified output-size raster. Quantisation never touches alpha.
@@ -81,42 +81,51 @@ function boundedPng(image,target){
   }}
   return best;
 }
-function fitPng(image,target,maxRatio){
+function fitPng(image,target){
   const full=write(image,'png'),size={width:image.width,height:image.height};
   if(full.size<=target)return {blob:full,...size};
-  const bounded=boundedPng(image,target);if(bounded)return bounded;
-  const long=Math.max(size.width,size.height),unit=size.width*2===size.height*5||size.height*2===size.width*5?5:1;
-  let low=0,high=long,best,estimate=long*Math.sqrt(target/full.size)*.98;
-  for(let n=0;high-low>unit;n++){
-    let edge=Math.floor(estimate/unit)*unit;
-    if(edge<=low||edge>=high)edge=Math.max(unit,Math.floor((low+high)/2/unit)*unit);
-    const candidate=pngBudgetDimensions(size,edge,{maxRatio});
-    const blob=image.clone(copy=>{resize(copy,candidate);return write(copy,'png');});
-    if(blob.size<=target){best={blob,...candidate};low=edge;}else high=edge;
-    if(best&&(n>=4||best.blob.size>=.985*target))break;
-    estimate=edge*Math.sqrt(target/blob.size)*.99;
-  }
-  if(!best)throw new Error('此字节上限小于有效 PNG 文件所需体积，请提高大小上限');
-  return best;
+  const channels=image.hasAlpha?4:3;
+  const data=image.getPixels(p=>p.toByteArray(0,0,size.width,size.height,channels===4?'RGBA':'RGB'));
+  return {raster:new Uint8Array(data),channels,...size,losslessBytes:full.size};
 }
 function fitJpeg(image,target){
   image.backgroundColor=MagickColors.White;image.alpha(AlphaAction.Remove);
   const attempt=quality=>{image.quality=quality;return {blob:write(image,'jpeg'),quality};};
   let best=attempt(100);
   if(best.blob.size>target){
-    best=attempt(1);if(best.blob.size>target)throw new Error('当前尺寸无法达到此体积，请增加大小上限或缩小尺寸');
+    best=attempt(1);if(best.blob.size>target)throw new Error('当前尺寸无法达到此体积，请提高大小上限');
     let low=2,high=99;
     while(low<=high){const q=Math.floor((low+high)/2),candidate=attempt(q);if(candidate.blob.size<=target){best=candidate;low=q+1;}else high=q-1;}
   }
   return {...best,width:image.width,height:image.height};
 }
-export async function encode(file,meta,settings,{maxRatio}={}){
+export async function encode(file,meta,settings){
   const limitBytes=Number(settings.targetBytes),format=settings.format;
   if(!Number.isInteger(limitBytes)||limitBytes<64||limitBytes>100000000)throw new Error('大小须为 64 字节–100 MB');
   if(!['jpeg','png'].includes(format))throw new Error('输出格式支持 JPG 和 PNG');
   const size=dimensions(meta,settings.resize),unchanged=format===meta.format&&file.size<=limitBytes&&size.width===meta.width&&size.height===meta.height;
   if(!unchanged&&meta.depth>8)throw new Error('高位深图片暂不支持尺寸或格式转换');
   const bytes=new Uint8Array(await file.arrayBuffer());
-  const output=unchanged?{blob:file,...size}:oriented(bytes,image=>{resize(image,size);return format==='png'?fitPng(image,limitBytes,maxRatio):fitJpeg(image,limitBytes);});
-  return {...output,...preview(unchanged?bytes:new Uint8Array(await output.blob.arrayBuffer())),bytes:output.blob.size,imageBytes:output.blob.size,paddedBytes:0,format,limitBytes,unchanged,lossless:output.lossless??(unchanged||format==='png'),encoding:format==='jpeg'?'JPG':output.lossless===false?'全彩高保真 PNG':'全彩无损 PNG',requestedWidth:size.width,requestedHeight:size.height,autoResized:output.width!==size.width||output.height!==size.height,scalePercent:100*Math.min(output.width/size.width,output.height/size.height)};
+  let output=unchanged?{blob:file,...size}:oriented(bytes,image=>{resize(image,size);return format==='png'?fitPng(image,limitBytes):fitJpeg(image,limitBytes);});
+  if(output.raster){
+    const {raster,channels,losslessBytes}=output;
+    const info={...size,channels};
+    const exact=await exactIndexedPng(raster,info,limitBytes,deflatePixels);
+    const faithful=exact
+      ? {blob:new Blob([exact],{type:'image/png'}),...size,encoding:'无损调色板 PNG',lossless:true}
+      : boundedPng(raster,info,limitBytes);
+    if(faithful)output=faithful;
+    else {
+      const raw=new MagickReadSettings({...size,depth:8,format:channels===4?MagickFormat.Rgba:MagickFormat.Rgb});
+      const adaptive=await adaptivePng(raster,info,limitBytes,{
+        losslessBytes,deflate:deflatePixels,
+        encodeRgb:pixels=>ImageMagick.read(pixels,raw,image=>{
+          image.strip();return image.write(channels===4?MagickFormat.Png32:MagickFormat.Png24,bytes=>new Uint8Array(bytes));
+        }),
+      });
+      output={blob:new Blob([adaptive.bytes],{type:'image/png'}),...size,encoding:adaptive.encoding,lossless:false};
+    }
+  }
+  const encoded=unchanged?bytes:new Uint8Array(await output.blob.arrayBuffer());
+  return {...output,...preview(encoded),bytes:encoded.length,imageBytes:encoded.length,paddedBytes:0,format,limitBytes,unchanged,lossless:output.lossless??(unchanged||format==='png'),encoding:output.encoding||(format==='jpeg'?'JPG':output.lossless===false?'全彩高保真 PNG':'全彩无损 PNG'),requestedWidth:size.width,requestedHeight:size.height,autoResized:false,scalePercent:100};
 }

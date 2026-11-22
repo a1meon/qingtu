@@ -65,7 +65,7 @@ test('atomic project backups restore the complete percentage-crop generation aft
  const p={...project(image),images:[image,{...image,id:'second-image'},{...image,id:'third-image'}]};
  const optimized=optimizeHorizontal(p);await store.save(optimized);await store.save({...optimized,name:'新名称'});
  await fs.writeFile(store.file(p.id),'interrupted');await fs.writeFile(store.file(p.id,'.partial.tmp'),'{');
- const restored=await new ProjectStore(root).load(p.id);assert.equal(restored.recovered,true);assert.deepEqual(restored.edits,optimized.edits);assert.deepEqual(restored.edits['third-image'].edges,{left:100,right:100,top:90,bottom:0});assert.deepEqual(restored.export,optimized.export);assert.deepEqual(restored.images,p.images);assert.ok((await store.readAsset(image.assetId)).equals(source));
+ const restored=await new ProjectStore(root).load(p.id);assert.equal(restored.recovered,true);assert.deepEqual(restored.edits,optimized.edits);assert.deepEqual(restored.edits['second-image'].edges,{left:100,right:100,top:90,bottom:0});assert.deepEqual(restored.export,optimized.export);assert.deepEqual(restored.images,p.images);assert.ok((await store.readAsset(image.assetId)).equals(source));
 });
 
 test('optimization parameters remain independent per project and survive interrupted saves',async t=>{

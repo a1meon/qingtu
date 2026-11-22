@@ -1,3 +1,4 @@
+import {canvasRatioLimit} from './canvas-limits.mjs';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import {createHash,randomUUID} from 'node:crypto';
@@ -7,6 +8,7 @@ import {validateImportSizes} from './import-sizes.mjs';
 import {INPUT_OPTIONS,SUPPORTED} from './image.mjs';
 import {imageGeometry} from './stitch-edits.mjs';
 import {validateImportOrder} from './stitch-reset.mjs';
+import {defaultCanvasName,nameOrDefault} from './output-name.mjs';
 import {originalBytes} from './image-source.mjs';
 import {validateLayoutStates} from './canvas-layout-state.mjs';
 
@@ -32,7 +34,7 @@ export class ProjectStore{
   const assetId=createHash('sha256').update(buffer).digest('hex');
   try{await fs.access(this.assetFile(assetId));}catch{await atomicWrite(this.assetFile(assetId),buffer);}
   const rotated=[5,6,7,8].includes(meta.orientation);
-  const image={id:randomUUID(),assetId,name:path.basename(String(name).replaceAll('\\','/')).slice(0,200),width:rotated?meta.height:meta.width,height:rotated?meta.width:meta.height,bytes:buffer.length};
+  const image={id:randomUUID(),assetId,format:meta.format,name:path.basename(String(name).replaceAll('\\','/')).slice(0,200),width:rotated?meta.height:meta.width,height:rotated?meta.width:meta.height,bytes:buffer.length};
   return {...image,preview:await this.preview(assetId)};
  }
  async readAsset(id){return fs.readFile(this.assetFile(id));}
@@ -55,6 +57,7 @@ export class ProjectStore{
  validate(project){
   if(!project||!validId(project.id)||!Array.isArray(project.images)||project.images.length>100)throw new Error('项目数据无效');
   optimizationSettings(project.optimization);
+  canvasRatioLimit(project.sourceCanvas);
   validateImportSizes(project);
   validateImportOrder(project);
   validateLayoutStates(project);
@@ -86,15 +89,15 @@ export class ProjectStore{
   const names=await fs.readdir(path.join(this.root,'projects')),out=[];
   const ids=new Set(names.filter(n=>n.endsWith('.json')).map(n=>n.replace(/(?:\.backup)?\.json$/,'')));
   for(const id of ids){
-   try{const p=await this.load(id);out.push({id:p.id,name:p.name,updatedAt:p.updatedAt,count:p.images.length,recovered:p.recovered,thumbnail:p.thumbnail});}
+   try{const p=await this.load(id);out.push({id:p.id,name:nameOrDefault(p.name,defaultCanvasName(p)),updatedAt:p.updatedAt,count:p.images.length,recovered:p.recovered,thumbnail:p.thumbnail});}
    catch{out.push({id,name:'项目恢复失败',error:'项目文件损坏，请保留数据并检查备份'});}
   }return out.sort((a,b)=>(b.updatedAt||0)-(a.updatedAt||0));
  }
- async remove(id){
+ async remove(id,retained=[]){
   await this.pending;await fs.rm(this.file(id),{force:true});await fs.rm(this.file(id,'.backup.json'),{force:true});
   // Originals outside this store are never touched. Keep copied assets that
   // still belong to any committed project or backup.
-  const referenced=new Set();
+  const referenced=new Set(retained);
   const names=await fs.readdir(path.join(this.root,'projects'));
   for(const name of names.filter(n=>n.endsWith('.json')))try{for(const image of JSON.parse(await fs.readFile(path.join(this.root,'projects',name))).images)referenced.add(image.assetId);}catch{return true;}
   for(const name of await fs.readdir(path.join(this.root,'assets')).catch(()=>[]))if(/^[a-f0-9]{64}$/.test(name)&&!referenced.has(name))await fs.rm(this.assetFile(name));

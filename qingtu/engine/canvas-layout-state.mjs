@@ -43,7 +43,7 @@ export function switchCanvasLayout(project,type){
  if(type===project.layout)return project;
  const remembered=rememberCanvasLayout(project),state=remembered.layoutStates?.[type];
  let next;
- const savedCanvas=remembered.layoutCanvases?.[type];
+ const savedCanvas=remembered.canvasSizing!=='manual'&&remembered.layoutCanvases?.[type];
  if(state)next={...remembered,layout:type,...(savedCanvas?{canvas:{width:savedCanvas.width,height:savedCanvas.height},canvasSizing:savedCanvas.sizing,export:{...remembered.export,longEdge:savedCanvas.longEdge??Math.max(savedCanvas.width,savedCanvas.height)}}:{}),positions:restore(remembered,state)};
  else try{next=remembered.canvasSizing==='content'?arrangeContentImages(remembered,type):arrangeImages(remembered,type);}catch(error){if(type!=='grid'||!error.message.includes('行列'))throw error;next={...remembered,layout:type};}
  return rememberCanvasLayout(next);
@@ -51,10 +51,14 @@ export function switchCanvasLayout(project,type){
 // Imported pictures are shared across layouts. Refit each visited layout with
 // its own preserved relative poses, without loading or decoding other images.
 export function fitImportedCanvas(project){
- const remembered=rememberCanvasLayout(project),layoutStates={},layoutCanvases={};
+ const remembered=rememberCanvasLayout(project);
+ if(project.canvasSizing==='manual')return remembered;
+ const layoutStates={},layoutCanvases={};
  for(const mode of Object.keys(remembered.layoutStates||{})){
   const edge=remembered.layoutCanvases?.[mode]?.longEdge??remembered.export?.longEdge;
-  const saved=remembered.layoutCanvases?.[mode],base={...remembered,layout:mode,...(saved?{canvas:{width:saved.width,height:saved.height}}:{}),canvasSizing:'content',export:{...remembered.export,longEdge:edge}};
+  const saved=remembered.layoutCanvases?.[mode];
+  if(saved?.sizing==='manual'){layoutStates[mode]=remembered.layoutStates[mode];layoutCanvases[mode]=saved;continue;}
+  const base={...remembered,layout:mode,...(saved?{canvas:{width:saved.width,height:saved.height}}:{}),canvasSizing:'content',export:{...remembered.export,longEdge:edge}};
   const source={...base,positions:restore(base,remembered.layoutStates[mode])},next=project.heightLocked?fitHeightCanvas(source):fitCanvasToContent(source);
   layoutStates[mode]=Object.fromEntries(next.images.map(image=>[image.id,fullPose(next,image)]));
   layoutCanvases[mode]={...next.canvas,sizing:'content',longEdge:edge};

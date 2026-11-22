@@ -17,17 +17,17 @@ for(const format of ['jpeg','png','webp','avif','tiff']){
   assert.deepEqual([meta.format,meta.width,meta.height],['png',20,10]);assert.ok(output.bytes<=10000);
  });
 }
-test('browser keeps a fitting original, respects byte limits and preserves strictly proportional PNG output',async()=>{
+test('browser keeps a fitting original, respects byte limits and preserves requested pixel dimensions',async()=>{
  const photo=await readFile(new URL('../public/samples/alpine-lake.jpg',import.meta.url));
  const file=new Blob([photo]),{meta}=await inspect(file);
  const original=await encode(file,meta,{format:'jpeg',targetBytes:photo.length});
  assert.equal(original.unchanged,true);assert.equal(original.blob,file);
  const resize={type:'pixels',locked:false,width:250,height:100};
- for(const format of ['jpeg','png']){
-  const result=await encode(file,meta,{format,targetBytes:2000,resize});assert.ok(result.bytes<=2000);
+ for(const [format,targetBytes] of [['jpeg',2000],['png',2000],['png',100000]]){
+  const result=await encode(file,meta,{format,targetBytes,resize});assert.ok(result.bytes<=targetBytes);
   const actual=await sharp(Buffer.from(await result.blob.arrayBuffer())).metadata();
   assert.equal(actual.format,format);assert.equal(actual.width,result.width);assert.equal(actual.height,result.height);
-  if(format==='png'){assert.equal(actual.isPalette,false);assert.ok(result.autoResized);assert.equal(actual.width*2,actual.height*5);}
+  if(format==='png'){if(targetBytes===2000)assert.equal(result.lossless,false);assert.equal(result.autoResized,false);assert.deepEqual([actual.width,actual.height],[250,100]);}
  }
 });
 
@@ -60,4 +60,30 @@ test('a multi-page TIFF is rejected before generating a single-frame preview',as
  const bytes=await sharp(Buffer.alloc(40*40*3,100),{raw:{width:40,height:40,channels:3,pageHeight:20}}).tiff().toBuffer();
  assert.equal((await sharp(bytes).metadata()).pages,2);
  await assert.rejects(inspect(new Blob([bytes])),/多页/);
+});
+
+test('old minimum settings never inflate a fitting JPG or PNG',async()=>{
+ const {processImage}=await import('../engine/image.mjs');
+ for(const format of ['png','jpeg']){
+  const source=await sharp({create:{width:60,height:45,channels:4,background:'#28ace488'}})[format]().withMetadata().toBuffer();
+  const file=new Blob([source]),{meta}=await inspect(file);
+  const settings={mode:'smart',format,minimumBytes:50000000,targetBytes:30000000};
+  const native=await processImage(source,settings),web=await encode(file,meta,settings);
+  assert.deepEqual(native.buffer,source);assert.deepEqual(Buffer.from(await web.blob.arrayBuffer()),source);
+  assert.ok(native.unchanged&&web.unchanged);
+ }
+});
+
+test('5999 is inclusive and oversized compression outputs fit that long edge on both backends',async()=>{
+ const {processImage}=await import('../engine/image.mjs');
+ for(const [width,height,w,h] of [[5998,200,5998,200],[5999,200,5999,200],[6000,200,5999,200],[400,7200,333,5999]]){
+  const source=await sharp({create:{width,height,channels:3,background:'#d78942'}}).jpeg().toBuffer();
+  const file=new Blob([source]),{meta}=await inspect(file),settings={mode:'smart',format:'jpeg',targetBytes:30000000};
+  const native=await processImage(source,settings),web=await encode(file,meta,settings);
+  for(const [output,buffer] of [[native,native.buffer],[web,Buffer.from(await web.blob.arrayBuffer())]]){
+   assert.deepEqual([output.width,output.height],[w,h]);
+   const saved=await sharp(buffer).metadata();assert.deepEqual([saved.width,saved.height],[w,h]);
+   if(width===w&&height===h)assert.deepEqual(buffer,source);
+  }
+ }
 });

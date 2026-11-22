@@ -1,6 +1,6 @@
 import {messageForUser} from './errors.js';
 import {initialBrowserFolder,chooseBrowserFolder,writeBrowserFile} from './browser-output-folder.js';
-import {recordDownload,downloads,lastBrowserFolder} from './browser-download-history.js';
+import {recordDownload,downloads,downloadThumbnail,lastBrowserFolder} from './browser-download-history.js';
 import appPackage from '../package.json';
 export const desktop=!!window.qingtu;
 export const staticBrowser=import.meta.env.PROD&&!desktop;
@@ -18,7 +18,7 @@ export const api={
   stitchList:()=>call('stitchList'),
   stitchLoad:id=>call('stitchLoad',id),
   stitchSave:project=>call('stitchSave',project),
-  stitchDelete:id=>call('stitchDelete',id),
+  stitchDelete:(id,retained)=>call('stitchDelete',id,retained),
   stitchImport:file=>call('stitchImport',file),
   stitchChooseFiles:mode=>call('stitchChooseFiles',mode),
   stitchPreviews:ids=>call('stitchPreviews',ids),
@@ -47,12 +47,13 @@ export const api={
        const a=document.createElement('a');a.href=url;a.download=result.name;a.click();
        setTimeout(()=>URL.revokeObjectURL(url),30000);
       }
-      await recordDownload(scope,result.name,folder).catch(error=>console.warn('未能保存下载记录',error.message));
+      await recordDownload(scope,result.name,folder,blob).catch(error=>console.warn('未能保存下载记录',error.message));
     }
     return result;
   },
   outputFolder:async scope=>desktop?call('outputFolder',scope):(await lastBrowserFolder(scope).catch(()=>null))||initialBrowserFolder(),
   exportHistory:(scope,page)=>desktop?call('exportHistory',scope,page):downloads(scope,page),
+  exportThumbnail:(scope,id)=>desktop?call('exportThumbnail',scope,id):downloadThumbnail(scope,id),
   revealExport:(scope,id)=>call('revealFolder',scope,id),
   revealFolder:(scope='compression')=>desktop?call('revealFolder',scope):Promise.resolve(),
   windowAction:action=>desktop?call('windowAction',action):Promise.resolve()

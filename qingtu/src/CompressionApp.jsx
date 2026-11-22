@@ -1,27 +1,35 @@
+import {AspectRatioButton} from './AspectRatioButton.jsx';
+import {MAX_EDGE} from '../engine/canvas-limits.mjs';
 import {useEffect,useMemo,useRef,useState} from 'react';
-import {Plus,LinkSimple,LinkSimpleBreak,X,Minus,Square,ArrowCounterClockwise,ImageSquare,SpinnerGap,CheckCircle,WarningCircle,Trash,SidebarSimple} from '@phosphor-icons/react';
+import {Plus,X,Minus,Square,ImageSquare,SpinnerGap,CheckCircle,WarningCircle,Trash} from '@phosphor-icons/react';
 import {api,desktop,readFile} from './api.js';
 import {OutputFolder,useOutputFolder} from './OutputFolder.jsx';
 import {Dropdown} from './Dropdown.jsx';
+import {usePngBudgetRange} from './usePngBudgetRange.js';
+import {dimensions} from '../engine/image-dimensions.mjs';
+import {useSuccessTimeout} from './useSuccessTimeout.js';
+import {PreviewMetrics} from './PreviewMetrics.jsx';
 import {ImagePreview} from './ImagePreview.jsx';
 import {ToolNavigation} from './ToolNavigation.jsx';
-import {TooltipButton} from './TooltipButton.jsx';
+import {InspectorHeading,InspectorToggle} from './InspectorHeading.jsx';
 import {AppUpdates} from './AppUpdates.jsx';
 import {StitchWorkspace} from './stitch/StitchWorkspace.jsx';
 import {CompressionQueue} from './CompressionQueue.jsx';
 import {CompressionName} from './CompressionName.jsx';
 import {addFlushHandler,flushWork} from './lifecycle.js';
-import {outputFormats,explicitFormat,formatFileSize,sizeChangeLabel} from './export-format.js';
+import {outputFormats} from './export-format.js';
 import {blockPreviewDrag,isExternalFileTransfer} from './file-drop.js';
+import {nameOrDefault} from '../engine/output-name.mjs';
 
+const displayName=name=>nameOrDefault(name.replace(/(?<=.)\.(?:jpe?g|png|webp|avif|tiff?)$/i,''));
 const defaults={type:'scale',percent:100,locked:true,anchor:'width',width:3840,height:2160};
 const isMac=desktop&&window.qingtu.platform==='darwin';
 function validateSettings(target,{targetBytes,resize}){
  if(!Number.isInteger(Number(target))||Number(target)<1||targetBytes>100000000)return '请输入 1–100 MB 或 1–100000 KB 的整数';
  if(resize.type==='scale')return Number(resize.percent)>=0.1&&Number(resize.percent)<=400?'':'缩放比例须为 0.1–400%';
  const sides=resize.locked?[resize[resize.anchor]]:[resize.width,resize.height];
- const valid=sides.every(side=>Number.isInteger(Number(side))&&Number(side)>=1&&Number(side)<=16384);
- return valid?'':'尺寸须为 1–16384 像素';
+ const valid=sides.every(side=>Number.isInteger(Number(side))&&Number(side)>=1&&Number(side)<=MAX_EDGE);
+ return valid?'':'尺寸须为 1–5999 像素';
 }
 export function CompressionApp(){
  const [module,setModule]=useState('stitch'),[stitchBusy,setStitchBusy]=useState(false),[stitchCount,setStitchCount]=useState(0);
@@ -30,6 +38,7 @@ export function CompressionApp(){
  const [target,setTarget]=useState(10),[unit,setUnit]=useState('MB'),[format,setFormat]=useState('png'),[resize,setResize]=useState(defaults);
  const [preview,setPreview]=useState(null),[processing,setProcessing]=useState(false),[error,setError]=useState(''),[notice,setNotice]=useState(null);
  const folder=useOutputFolder('compression',text=>setNotice({type:'error',text}));
+ const [zoomSlot,setZoomSlot]=useState(null);
  const [view,setView]=useState('compare'),[previewReset,setPreviewReset]=useState(0),[batch,setBatch]=useState(null),[statuses,setStatuses]=useState({}),[dragging,setDragging]=useState(false);
  const [inspectorOpen,setInspectorOpenState]=useState(()=>!window.matchMedia('(max-width:760px)').matches),[inspectorRevision,setInspectorRevision]=useState(0);
  const inspectorManual=useRef(false);
@@ -44,37 +53,62 @@ export function CompressionApp(){
  const selected=items.find(i=>i.id===selectedId)||items[0];
  const exportItems=items.filter(file=>exportSelection===null||exportSelection.includes(file.id)),exportIds=exportItems.map(file=>file.id);
  function selectExport(id,checked){setExportSelection(previous=>{const ids=items.filter(file=>previous===null||previous.includes(file.id)).map(file=>file.id);return checked?[...new Set([...ids,id])]:ids.filter(value=>value!==id);});}
- async function rename(id,name){const value=await api.rename(id,name);setItems(old=>old.map(file=>file.id===id?{...file,name:value.name}:file));}
+ async function rename(id,name){const value=await api.rename(id,name);setItems(old=>old.map(file=>file.id===id?{...file,name:displayName(value.name)}:file));}
  async function openImage(id){try{await nameEditor.current?.flush();setSelectedId(id);return true;}catch(e){setNotice({type:'error',text:e.message});return false;}}
  const size=useMemo(()=>{
   if(!selected)return {width:resize.width,height:resize.height};
-  if(resize.type==='scale')return {width:Math.round(selected.width*Number(resize.percent)/100),height:Math.round(selected.height*Number(resize.percent)/100)};
-  if(resize.locked)return resize.anchor==='height'?{width:Math.round(Number(resize.height)*selected.width/selected.height),height:resize.height}:{width:resize.width,height:Math.round(Number(resize.width)*selected.height/selected.width)};
-  return {width:resize.width,height:resize.height};
+  try{return dimensions(selected,resize);}
+  catch{return {width:resize.width,height:resize.height};}
  },[selected?.id,resize]);
- const settings=useMemo(()=>({mode:'smart',targetBytes:Math.floor(Number(target)*(unit==='MB'?1000000:1000)),format:explicitFormat(format),resize}),[target,unit,format,resize]);
- const settingsError=validateSettings(target,settings);
+ const settings=useMemo(()=>({mode:'smart',targetBytes:Math.floor(Number(target)*(unit==='MB'?1000000:1000)),format,resize}),[target,unit,format,resize]);
+ const pngSizes=exportItems.flatMap(file=>{
+  if(format!=='png')return [];
+  try{const pixels=dimensions(file,resize);
+   if(file.format==='png'&&file.bytes<=settings.targetBytes&&pixels.width===file.width&&pixels.height===file.height)return [];
+   return [pixels];
+  }catch{return [];}
+ });
+ const pngRange=usePngBudgetRange(pngSizes,settings.targetBytes);
+ const settingsError=validateSettings(target,settings)||pngRange.message;
  const key=JSON.stringify(settings);
  const output=preview && preview.fileId===selected?.id && preview.key===key && !batch ? preview.result : null;
- const scale=resize.type==='scale'?resize.percent:selected?Math.round(Number(size.width)/selected.width*1000)/10:100;
+ const scaleLimited=resize.type==='scale'&&selected&&Math.max(selected.width,selected.height)*Number(resize.percent)/100>MAX_EDGE;
+ const scale=scaleLimited?Math.round(MAX_EDGE/Math.max(selected.width,selected.height)*1000)/10:resize.type==='scale'?resize.percent:selected?Math.round(Number(size.width)/selected.width*1000)/10:100;
  useEffect(()=>{
   let live=true;setPreview(null);setError('');
   if(settingsError){setError(settingsError);setProcessing(false);return;}
   if(!selected||batch){setProcessing(false);return;}
+  if(pngRange.checking){setProcessing(true);return;}
   setProcessing(true);
   const timer=setTimeout(()=>api.process(selected.id,settings,{latest:true}).then(result=>{
    if(live)setPreview({fileId:selected.id,key,result});
   }).catch(e=>live&&setError(e.message)).finally(()=>live&&setProcessing(false)),300);
   return()=>{live=false;clearTimeout(timer);};
- },[selected?.id,key,!!batch]);
- useEffect(()=>{if(notice?.type==='success'){const t=setTimeout(()=>setNotice(null),7000);return()=>clearTimeout(t);}},[notice]);
+ },[selected?.id,key,!!batch,settingsError,pngRange.checking]);
+ useSuccessTimeout(notice,setNotice);
  useEffect(()=>{
-  const handler=e=>{if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==='o'){e.preventDefault();actions.current.add?.();}if((e.metaKey||e.ctrlKey)&&e.shiftKey&&e.key.toLowerCase()==='s'){e.preventDefault();actions.current.export?.();}};
-  window.addEventListener('keydown',handler);const cleanup=window.qingtu?.onMenu(action=>{if(document.querySelector('dialog[open]'))return;return action==='import'?actions.current.add?.():actions.current.export?.();});
+  const textEditing=target=>target?.closest?.('textarea,[contenteditable]:not([contenteditable="false"]),input:not([type]),input:is([type=text],[type=number],[type=search],[type=email],[type=url],[type=password])');
+  function handler(event){
+   if(event.defaultPrevented||event.isComposing||event.altKey||!(event.metaKey||event.ctrlKey)||document.querySelector('dialog[open]'))return;
+   const key=event.key.toLowerCase();
+   if(key==='z'&&actions.current.canvasCommand&&!textEditing(event.target)){
+    event.preventDefault();actions.current.canvasCommand(event.shiftKey?'redo':'undo');
+   }else if(key==='o'){event.preventDefault();actions.current.add?.();}
+   else if(key==='s'&&event.shiftKey){event.preventDefault();actions.current.export?.();}
+  }
+  window.addEventListener('keydown',handler);const cleanup=window.qingtu?.onMenu(action=>{
+   if(action==='undo'||action==='redo'){
+    if(textEditing(document.activeElement))return document.execCommand(action);
+    if(!document.querySelector('dialog[open]'))return actions.current.canvasCommand?.(action);
+   }else if(!document.querySelector('dialog[open]')){
+    if(action==='import')return actions.current.add?.();
+    if(action==='export')return actions.current.export?.();
+   }
+  });
   return()=>{window.removeEventListener('keydown',handler);cleanup?.();};
  },[]);
  async function accept(result){
-  if(result.items.length){await Promise.all(items.filter(i=>i.sample).map(i=>api.remove(i.id)));setItems(old=>[...old.filter(i=>!i.sample),...result.items]);setSelectedId(result.items[0].id);if(!items.some(i=>!i.sample))setResize(defaults);setExportSelection(old=>old===null?null:[...old.filter(id=>items.some(i=>i.id===id&&!i.sample)),...result.items.map(i=>i.id)]);}
+  if(result.items.length){await Promise.all(items.filter(i=>i.sample).map(i=>api.remove(i.id)));setItems(old=>[...old.filter(i=>!i.sample),...result.items.map(item=>({...item,name:displayName(item.name)}))]);setSelectedId(result.items[0].id);setExportSelection(old=>old===null?null:[...old.filter(id=>items.some(i=>i.id===id&&!i.sample)),...result.items.map(i=>i.id)]);}
   if(result.errors.length)setNotice({type:'error',text:result.errors.join('；')});
  }
  async function importFiles(files){
@@ -98,23 +132,23 @@ export function CompressionApp(){
  function remove(ids){if(deleteLock.current)return deleteTask.current;const task=removeFiles(ids);deleteTask.current=task;return task;}
  async function runExport(ids){
   const files=ids?items.filter(file=>ids.includes(file.id)):[...exportItems];
-  if(!files.length||batch||loading||deleting||settingsError||exportLock.current)return;
-  const config=structuredClone(settings);exportLock.current=true;cancel.current=false;setBatch({current:0,total:files.length});setNotice(null);setStatuses({});let success=0,failed=0,adjusted=0;
+  if(!files.length||batch||loading||deleting||settingsError||pngRange.checking||exportLock.current)return;
+  const config=structuredClone(settings);exportLock.current=true;cancel.current=false;setBatch({current:0,total:files.length});setNotice(null);setStatuses({});let success=0,failed=0;
   try{
    const destination=await folder.prepare();if(!destination)return;
    await nameEditor.current?.flush();await queue.current?.flush();
    for(let i=0;i<files.length;i++){
     if(cancel.current)break;const file=files[i];setBatch({current:i+1,total:files.length});setStatuses(old=>({...old,[file.id]:{type:'busy'}}));
-    try{const r=await api.process(file.id,config);await folder.save(r.token,destination);success++;if(r.autoResized)adjusted++;setStatuses(old=>({...old,[file.id]:{type:'success',text:`${formatFileSize(r.bytes)}${r.autoResized?` · ${r.width} × ${r.height}`:''}`}}));}
+    try{const r=await api.process(file.id,config);await folder.save(r.token,destination);success++;setStatuses(old=>({...old,[file.id]:{type:'success',text:'已导出'}}));}
     catch(e){failed++;setStatuses(old=>({...old,[file.id]:{type:'error',text:e.message}}));}
    }
-   setNotice({type:failed?'error':'success',text:`${cancel.current?'已取消，导出':'已导出'} ${success} 张${failed?`，${failed} 张未完成`:''}${adjusted?`，${adjusted} 张已等比调整尺寸`:''}`,reveal:success>0&&desktop});
+   setNotice({type:failed?'error':'success',text:`${cancel.current?'已取消，导出':'已导出'} ${success} 张${failed?`，${failed} 张未完成`:''}`,reveal:success>0&&desktop});
   }catch(e){setNotice({type:'error',text:e.message});}finally{exportLock.current=false;setBatch(null);}
  }
  function exportImages(ids){if(exportLock.current)return exportTask.current;const task=runExport(ids);exportTask.current=task;return task;}
  function exportAll(){return exportImages();}
- actions.current=module==='compress'?{add,export:exportAll}:{add:()=>stitch.current?.add(),export:()=>stitch.current?.export()};
- function editDimension(field,value){setResize(old=>({...old,type:'pixels',width:size.width,height:size.height,[field]:value,anchor:field}));}
+ actions.current=module==='compress'?{add,export:exportAll}:{canvasCommand:command=>stitch.current?.canvasCommand(command),add:()=>stitch.current?.add(),export:()=>stitch.current?.export()};
+ function editDimension(field,value){if(Number(value)>MAX_EDGE)value=String(MAX_EDGE);setResize(old=>({...old,type:'pixels',width:size.width,height:size.height,[field]:value,anchor:field}));}
 
  function reset(){setTarget(10);setUnit('MB');setFormat('png');setResize(defaults);setPreviewReset(v=>v+1);setError('');}
  const windowButtons=<div className="window-controls"><button aria-label="最小化" onClick={()=>api.windowAction('minimize')}><Minus size={16}/></button><button aria-label="最大化或还原" onClick={()=>api.windowAction('maximize')}><Square size={13}/></button><button className="window-close" aria-label="关闭窗口" onClick={()=>api.windowAction('close')}><X size={17}/></button></div>;
@@ -134,19 +168,16 @@ export function CompressionApp(){
        <div className="view-switch" role="group" aria-label="预览方式">
         {[{value:'original',label:'原图',aria:'查看原图'},{value:'compare',label:'对比',aria:'对比原图与结果'},{value:'processed',label:'处理后',aria:'查看处理后图片'}].map(option=><button key={option.value} className={view===option.value?'active':''} disabled={!selected} aria-label={option.aria} aria-pressed={view===option.value} onClick={()=>setView(option.value)}>{option.label}</button>)}
        </div>
-       {!inspectorOpen&&<TooltipButton label="展开导出设置" placement="left" className="icon-button panel-toggle" aria-expanded={false} aria-controls="export-inspector" onClick={()=>setInspectorOpen(true)}><SidebarSimple size={24} weight="bold" aria-hidden/></TooltipButton>}
+       {!inspectorOpen&&<InspectorToggle panelId="export-inspector" expanded={false} setOpen={setInspectorOpen}/>}
       </div>
      </div>
      <div className="canvas-area">
       {selected?<div className="canvas-content">
-       <ImagePreview key={`${selected.id}:${previewReset}`} selected={selected} output={output} processing={processing} view={view} error={error}/>
+       <ImagePreview key={`${selected.id}:${previewReset}`} selected={selected} output={output} processing={processing} view={view} error={error} navigationSlot={module==='compress'?zoomSlot:null}/>
        <div className="preview-info" aria-live="polite">
-        <span className="size-comparison" title={output?`原图 ${selected.bytes.toLocaleString()} 字节 → 处理后 ${output.bytes.toLocaleString()} 字节`:undefined}>
-         <span className="size-pair">{formatFileSize(selected.bytes)}<span className="info-arrow"> → </span>{output?formatFileSize(output.bytes):processing?'计算中…':'—'}</span>
-         {output&&<> · <strong className={output.bytes>selected.bytes?'size-increase':undefined}>{sizeChangeLabel(selected.bytes,output.bytes)}</strong></>}
-        </span>
-        <span title={output?.autoResized?`为满足体积上限，已从设置的 ${output.requestedWidth} × ${output.requestedHeight} 等比调整` :undefined}>{selected.width} × {selected.height}{output&&(output.width!==selected.width||output.height!==selected.height)&&<> → {output.width} × {output.height}</>}{output?.autoResized&&' · 等比调整'}</span>
-        <span className="preview-status" title={output?`${output.encoding||(output.lossless?'无损编码':`编码质量 ${output.quality}`)} · ${output.bytes.toLocaleString()} 字节${output.autoResized?'；像素误差以实际尺寸的等比缩放图为基准':''}`:undefined}>{output?(output.format==='jpeg'?'JPG':output.format.toUpperCase()):loading?'正在导入…':error?'预览失败':processing?'正在处理…':'就绪'}</span>
+        <PreviewMetrics dimensions={selected} sources={[selected]} sourceBytes={selected.bytes} output={output} processing={processing}/>
+
+        <span className="canvas-navigation-slot" ref={setZoomSlot}/>
        </div>
       </div>:<div className="empty-state">
        <img className="empty-illustration" src="./assets/blue-file-empty.png" alt="" draggable={false}/>
@@ -158,36 +189,31 @@ export function CompressionApp(){
    </section>
    <div className="inspector-shell">
     <aside className="inspector" id="export-inspector" aria-label="导出设置" aria-hidden={!inspectorOpen} inert={!inspectorOpen}>
-     <div className="inspector-heading">
-      <h1>导出</h1>
-      <div className="inspector-actions">
-       <TooltipButton label="重置设置" placement="left" className="icon-button" onClick={reset} disabled={!!batch}><ArrowCounterClockwise size={23} weight="bold" aria-hidden/></TooltipButton>
-       <TooltipButton label="收起导出设置" placement="left" className="icon-button panel-toggle" aria-expanded={true} aria-controls="export-inspector" onClick={()=>setInspectorOpen(false)}><SidebarSimple size={23} weight="bold" aria-hidden/></TooltipButton>
-      </div>
-     </div>
+     <InspectorHeading title="设置" panelId="export-inspector" setOpen={setInspectorOpen} onReset={reset} resetDisabled={!!batch}/>
      <div className="settings-scroll">
       <div className="control-section">
        <label htmlFor="target-size">大小上限</label>
        <div className="target-control">
-        <input id="target-size" title="输出不超过此大小。1 MB = 1,000,000 字节。" type="number" inputMode="numeric" min="1" max={unit==='MB'?100:100000} step="1" value={target} onChange={e=>{const value=e.target.value;if(value===''||Number.isInteger(Number(value)))setTarget(value);}} onBlur={()=>{if(target==='')setTarget(10);}} disabled={!!batch}/>
-        <Dropdown id="unit" label="文件大小单位" className="unit-dropdown" value={unit} onChange={setUnit} disabled={!!batch||!inspectorOpen} options={[{value:'MB',label:'MB'},{value:'KB',label:'KB'}]}/>
+        <input id="target-size" aria-describedby={pngRange.message?'compression-png-range':undefined} title="输出不超过此大小。1 MB = 1,000,000 字节。" type="number" inputMode="numeric" min={unit==='KB'?pngRange.minimum:1} max={unit==='MB'?100:100000} step="1" value={target} onChange={e=>{const value=e.target.value;if(value===''||Number.isInteger(Number(value)))setTarget(value);}} onBlur={()=>{if(target==='')setTarget(10);}} disabled={!!batch}/>
+        <Dropdown id="unit" label="文件大小单位" className="unit-dropdown" minMenuWidth={0} value={unit} onChange={setUnit} disabled={!!batch||!inspectorOpen} options={[{value:'MB',label:'MB'},{value:'KB',label:'KB'}]}/>
        </div>
+       {pngRange.message&&<small id="compression-png-range" className="png-budget-range" role="status">{pngRange.message}</small>}
       </div>
       <div className="control-section">
        <h2>尺寸</h2>
        <div className="dimension-inputs">
-        <div className="number-with-unit"><input id="width" aria-label="宽度" type="number" min="1" max="16384" value={size.width||''} disabled={!!batch} onChange={e=>editDimension('width',e.target.value)}/><span>px</span></div>
-        <button className="link-button" disabled={!!batch} aria-label={resize.locked?'解锁宽高比例':'锁定宽高比例'} aria-pressed={resize.locked} title="保持比例" onClick={()=>setResize(old=>({...old,locked:!old.locked,width:size.width,height:size.height}))}>{resize.locked?<LinkSimple size={25} weight="bold"/>:<LinkSimpleBreak size={25} weight="bold"/>}</button>
-        <div className="number-with-unit"><input id="height" aria-label="高度" type="number" min="1" max="16384" value={size.height||''} disabled={!!batch} onChange={e=>editDimension('height',e.target.value)}/><span>px</span></div>
+        <div className="number-with-unit"><input id="width" aria-label="宽度" type="number" min="1" max={MAX_EDGE} value={size.width||''} disabled={!!batch} onChange={e=>editDimension('width',e.target.value)}/><span>px</span></div>
+        <AspectRatioButton locked={resize.locked} disabled={!!batch} onClick={()=>setResize(old=>({...old,locked:!old.locked,width:size.width,height:size.height}))}/>
+        <div className="number-with-unit"><input id="height" aria-label="高度" type="number" min="1" max={MAX_EDGE} value={size.height||''} disabled={!!batch} onChange={e=>editDimension('height',e.target.value)}/><span>px</span></div>
        </div>
       </div>
       <div className="control-section"><label htmlFor="scale">缩放</label><div className="number-with-unit"><input id="scale" type="number" min="0.1" max="400" step="0.1" value={scale||''} disabled={!!batch} onChange={e=>setResize(old=>({...old,type:'scale',percent:e.target.value}))}/><span>%</span></div></div>
-      <div className="control-section format-section"><label htmlFor="format">格式</label><Dropdown id="format" label="输出格式" value={explicitFormat(format)} onChange={setFormat} disabled={!!batch||!inspectorOpen} options={outputFormats}/></div>
+      <div className="control-section format-section"><label htmlFor="format">格式</label><Dropdown id="format" label="输出格式" value={format} onChange={setFormat} disabled={!!batch||!inspectorOpen} options={outputFormats}/></div>
      </div>
      <div className="export-section">
-      {error&&<div className="inline-message error" role="alert"><WarningCircle size={18}/><span>{error}</span></div>}
+      {error&&error!==pngRange.message&&<div className="inline-message error" role="alert"><WarningCircle size={18}/><span>{error}</span></div>}
       <OutputFolder folder={folder} disabled={!!batch}/>
-      <button className="primary export-button" disabled={!exportItems.length||loading||deleting||!!batch||!!settingsError} onClick={exportAll}>{batch?<><SpinnerGap size={22} className="spin"/>导出 {batch.current} / {batch.total}</>:<>导出 {exportItems.length} 张图片</>}</button>
+      <button className="primary export-button" disabled={!exportItems.length||loading||deleting||!!batch||!!settingsError||pngRange.checking} onClick={exportAll}>{batch?<><SpinnerGap size={22} className="spin"/>导出 {batch.current} / {batch.total}</>:<>导出 {exportItems.length} 张图片</>}</button>
       <div className="export-secondary">{batch&&<button className="cancel-button" onClick={()=>{cancel.current=true;}}>取消后续</button>}</div>
      </div>
     </aside>

@@ -2,7 +2,7 @@ const {app}=require('electron'),assert=require('node:assert/strict'),path=requir
 const {createSmoke}=require('./portrait-smoke-helpers.cjs');
 (async()=>{
  const s=await createSmoke('qingtu-offcanvas-click-','offcanvas-click');
- await s.edit('#stitch-height',180);await s.importFiles([path.resolve('public/samples/alpine-lake.jpg'),path.resolve('public/samples/forest-cabin.jpg')]);await s.edit('#stitch-width',260);await s.ready();await s.click('[data-layout=free]');await s.ready();const scale=await s.js("document.querySelector('.stitch-canvas').getBoundingClientRect().width/260");await s.drag('.stitch-layer.selected',280*scale,0);
+ await s.edit('#stitch-height',180);await s.importFiles([path.resolve('public/samples/alpine-lake.jpg'),path.resolve('public/samples/forest-cabin.jpg')]);await s.click('[aria-label=解锁画布宽高比例]');await s.edit('#stitch-width',260);await s.ready();await s.click('[data-layout=free]');await s.ready();const scale=await s.js("document.querySelector('.stitch-canvas').getBoundingClientRect().width/260");await s.drag('.stitch-layer.selected',280*scale,0);
  const before=await s.load(),point=await s.js("(()=>{const g=document.querySelector('.stitch-ghost').getBoundingClientRect(),c=document.querySelector('.stitch-canvas').getBoundingClientRect(),a=document.querySelector('.stitch-canvas-area').getBoundingClientRect();return {x:(Math.max(g.left,c.right)+Math.min(g.right,a.right-10))/2,y:(Math.max(g.top,a.top)+Math.min(g.bottom,a.bottom))/2,ghost:g.toJSON(),canvas:c.toJSON(),area:a.toJSON()}})()");
  assert.ok(point.x>point.canvas.right&&point.x<point.area.right);
  const hit=await s.js(`document.elementFromPoint(${point.x},${point.y})?.outerHTML`);

@@ -4,6 +4,7 @@ import {appendFixedImages} from './canvas-fixed.mjs';
 import {removeLayoutImageStates} from './canvas-layout-state.mjs';
 import {fitHeightCanvas} from './canvas-height.mjs';
 import {removeImportSize} from './import-sizes.mjs';
+import {rejoinSplitImages} from './split-origin.mjs';
 import {resetFixedCanvas} from './canvas-reset.mjs';
 
 export function validateImportOrder(project){
@@ -33,7 +34,10 @@ export function removeProjectImage(project,id){
 export function resetProject(project){
  const order=knownImportOrder(project);
  if(!order)throw new Error('缺少最初导入顺序，请先提供真实顺序');
- if(project.canvasMode==='fixed')return resetFixedCanvas(project,order.map(id=>project.images.find(image=>image.id===id)));
+ if(project.canvasMode==='fixed'){
+  const joined=rejoinSplitImages(project,order);
+  return resetFixedCanvas(joined,joined.initialOrder?.map(id=>joined.images.find(image=>image.id===id))??joined.images);
+ }
  let next=project;
  for(const image of project.images)if(project.edits?.[image.id])next=setImageEdit(next,image.id,{axis:'horizontal',amount:0});
  const reset={...next,images:order.map(id=>project.images.find(image=>image.id===id)),initialOrder:[...order],edits:{}};

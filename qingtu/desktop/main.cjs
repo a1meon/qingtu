@@ -46,9 +46,8 @@ async function start(options={}) {
   const {UpdateController}=require('./update-controller.cjs');
   const {resolveUpdateFeed}=require('./update-source.cjs');
   const nativeUpdater=options.updater||(process.platform==='darwin'?new (require('./mac-updater.cjs').MacUpdater)({version:app.getVersion(),arch:process.arch,publicKey:require('./sparkle-public-key.json').publicKey,cacheRoot:path.join(app.getPath('userData'),'update-parts'),fetcher:(url,request)=>net.fetch(url,request),native:require('./sparkle-native.cjs')}):require('electron-updater').autoUpdater);
-  const updater=new UpdateController({version:app.getVersion(),updater:nativeUpdater,canInstall:()=>activeOperations===0,
+  const updater=new UpdateController({development:!app.isPackaged&&!options.resolveUpdateFeed,version:app.isPackaged?app.getVersion():require('../package.json').version,updater:nativeUpdater,canInstall:()=>activeOperations===0,
     resolveFeed:options.resolveUpdateFeed||(async()=>{
-      if(!app.isPackaged)return null;
       let source;
       try{source=JSON.parse(await fs.readFile(path.join(process.resourcesPath,'qingtu-update-source.json'),'utf8'));}
       catch(error){if(error.code!=='ENOENT')throw error;source=require('./update-source.json');}
@@ -107,7 +106,7 @@ async function start(options={}) {
         if(method==='stitchList')return await store.list();
         if(method==='stitchLoad')return await store.load(args[0]);
         if(method==='stitchSave')return await store.save(args[0]);
-        if(method==='stitchDelete'){stitching.release(args[0]);return await store.remove(args[0]);}
+        if(method==='stitchDelete'){stitching.release(args[0]);return await store.remove(args[0],args[1]);}
         if(method==='stitchImport'){const f=args[0];if(!f||typeof f.base64!=='string'||f.base64.length>140*1024*1024)throw new Error('图片数据无效');return await store.import(Buffer.from(f.base64,'base64'),f.name);}
         if(method==='stitchChooseFiles'){
           const paths=options.testFiles||(await dialog.showOpenDialog(win,{title:args[0]==='open'?'打开图片':'添加图片',properties:['openFile','multiSelections'],filters:[{name:'图片',extensions:['jpg','jpeg','png','webp','avif','tif','tiff']}]})).filePaths;
@@ -159,6 +158,7 @@ async function start(options={}) {
       }finally{activeOperations--;}
     }
     if(method==='outputFolder')return describeFolder(await outputFolder(scopeOf(args[0])));
+    if(method==='exportThumbnail')return lastFolders.thumbnail(scopeOf(args[0]),args[1]);
     if(method==='exportHistory')return lastFolders.list(scopeOf(args[0]),args[1]);
     if(method==='revealFolder'){
       const scope=scopeOf(args[0]);
@@ -181,7 +181,7 @@ async function start(options={}) {
   Menu.setApplicationMenu(Menu.buildFromTemplate([
     ...(process.platform==='darwin'?[{label:'轻图',submenu:[{role:'about'},{type:'separator'},{role:'hide'},{role:'hideOthers'},{role:'unhide'},{type:'separator'},{role:'quit'}]}]:[]),
     {label:'文件',submenu:[{label:'添加图片',accelerator:'CmdOrCtrl+O',click:()=>win.webContents.send('qingtu:menu','import')},{label:'导出图片',accelerator:'CmdOrCtrl+Shift+S',click:()=>win.webContents.send('qingtu:menu','export')}, {type:'separator'},process.platform==='darwin'?{role:'close'}:{role:'quit'}]},
-    {label:'编辑',submenu:[{role:'undo'},{role:'redo'},{type:'separator'},{role:'cut'},{role:'copy'},{role:'paste'},{role:'selectAll'}]},
+    {label:'编辑',submenu:[{label:'撤销',accelerator:'CmdOrCtrl+Z',click:()=>win.webContents.send('qingtu:menu','undo')},{label:'重做',accelerator:'CmdOrCtrl+Shift+Z',click:()=>win.webContents.send('qingtu:menu','redo')},{type:'separator'},{role:'cut'},{role:'copy'},{role:'paste'},{role:'selectAll'}]},
     {label:'窗口',submenu:[{role:'minimize'},{role:'zoom'}]}
   ]));
   createWindow();

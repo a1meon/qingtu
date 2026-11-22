@@ -1,12 +1,16 @@
 import {initializeImageMagick} from '@imagemagick/magick-wasm';
 import wasmUrl from '@imagemagick/magick-wasm/magick.wasm?url';
 import {inspect,preview,encode} from './codec.js';
+import {calculateLayout} from '../../engine/stitch-layout.mjs';
+import {fullCanvasImage,stitchRenderKey} from '../../engine/stitch-render-input.mjs';
+import {PreviewCache} from '../../engine/preview-cache.mjs';
 import {compose} from './compose.js';
 import {readAsset} from '../stitch/database.js';
-import {exportStem,validateName} from '../../engine/output-name.mjs';
+import {exportStem,compressionRename,defaultCanvasName,nameOrDefault} from '../../engine/output-name.mjs';
 
 const files=new Map(),exportsByToken=new Map();
-let init,cache,totalBytes=0;
+const cache=new PreviewCache(),pending=new Map();
+let init,totalBytes=0;
 function pin(result,owner,latest){
   const {blob,...summary}=result;
   if(latest)return summary;
@@ -16,10 +20,15 @@ function pin(result,owner,latest){
   return {...summary,token};
 }
 async function cached(id,key,operation){
-  if(cache?.id===id&&cache.key===key)return cache.result;
-  cache=null;const result=await operation();
-  if(result.bytes<=64*1024*1024)cache={id,key,result};
-  return result;
+  const entry=cache.get(id);
+  if(entry?.key===key)return entry.result;
+  if(pending.get(id)?.key===key)return pending.get(id).task;
+  const task=operation();pending.set(id,{key,task});
+  try{
+    const result=await task;
+    if(pending.get(id)?.task===task)cache.set(id,{key,result},result.bytes+result.preview.size);
+    return result;
+  }finally{if(pending.get(id)?.task===task)pending.delete(id);}
 }
 function original(id){const entry=files.get(id);if(!entry)throw new Error('图片已移除，请重新添加');return entry;}
 async function metadata(file,stitch=false,sample=false){
@@ -29,9 +38,9 @@ async function metadata(file,stitch=false,sample=false){
   const item={id,name,width:meta.width,height:meta.height,bytes:file.size,...preview(bytes)};
   if(stitch){
     const digest=new Uint8Array(await crypto.subtle.digest('SHA-256',bytes));
-    return {...item,assetId:Array.from(digest,n=>n.toString(16).padStart(2,'0')).join('')};
+    return {...item,format:meta.format,assetId:Array.from(digest,n=>n.toString(16).padStart(2,'0')).join('')};
   }
-  files.set(id,{file,meta,name});totalBytes+=file.size;
+  files.set(id,{file,meta,name,originalName:name});totalBytes+=file.size;
   return {...item,format:meta.format,sample};
 }
 const actions={
@@ -47,22 +56,30 @@ const actions={
     const entry=original(id),result=await cached(id,JSON.stringify(settings),()=>encode(entry.file,entry.meta,settings));
     return pin(result,entry,options?.latest);
   },
-  rename(id,name){const entry=original(id);entry.name=validateName(name);entry.renamed=true;return {id,name:entry.name};},
-  remove(id){const entry=files.get(id);if(entry){totalBytes-=entry.file.size;files.delete(id);}if(cache?.id===id)cache=null;return true;},
+  rename(id,name){const entry=original(id);Object.assign(entry,compressionRename(name,entry.originalName));return {id,name:entry.name};},
+  remove(id){const entry=files.get(id);if(entry){totalBytes-=entry.file.size;files.delete(id);}cache.delete(id);pending.delete(id);return true;},
   stitchImport:file=>metadata(file,true),
   async stitchPreviews(ids){
     const images=[];for(const id of ids){const file=await readAsset(id);if(!file)throw new Error('原图副本缺失，项目无法恢复');images.push(preview(new Uint8Array(await file.arrayBuffer())).preview);}return images;
   },
   async stitchRender(project,options){
-    const key=JSON.stringify([project.canvasMode,project.canvas,project.layout,project.grid,project.positions,project.edits,project.images,project.export]);
-    const result=await cached(project.id,key,async()=>{
-      const {blob,layout}=await compose(project);
-      const output=await encode(blob,{width:layout.width,height:layout.height,format:'png',depth:8},project.export,{maxRatio:2.5});
-      return {...output,layout};
+    const result=await cached(project.id,stitchRenderKey(project),async()=>{
+      const layout=calculateLayout(project),original=fullCanvasImage(project,layout);
+      if(original){
+        const file=await readAsset(original.assetId);
+        if(!file)throw new Error('原图副本缺失，项目无法恢复');
+        const {meta}=await inspect(file);
+        if(file.size!==original.bytes||meta.width!==original.width||meta.height!==original.height)throw new Error('原图副本与项目尺寸不一致');
+        const resize={type:'pixels',locked:false,width:layout.width,height:layout.height};
+        return {...await encode(file,meta,{...project.export,resize}),sourceFormats:[meta.format],layout};
+      }
+      const {blob,sourceFormats}=await compose(project,layout);
+      const output=await encode(blob,{width:layout.width,height:layout.height,format:'png',depth:8},project.export);
+      return {...output,unchanged:false,layout,sourceFormats};
     });
-    return pin(result,{name:project.name,canvas:true},options?.latest);
+    return pin(result,{name:nameOrDefault(project.name,defaultCanvasName(project)),canvas:true},options?.latest);
   },
-  stitchRelease(id){if(cache?.id===id)cache=null;return true;},
+  stitchRelease(id){cache.delete(id);pending.delete(id);return true;},
   save(token){const result=exportsByToken.get(token);if(!result)throw new Error('处理结果已失效，请重新导出');exportsByToken.delete(token);return result;}
 };
 self.onmessage=async({data:{id,method,args}})=>{

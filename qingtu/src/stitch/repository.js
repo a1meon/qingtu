@@ -1,7 +1,10 @@
 import {api,desktop,readFile,staticBrowser} from '../api.js';
+import {defaultCanvasName,nameOrDefault} from '../../engine/output-name.mjs';
 import {canvasThumbnail} from './thumbnail.js';
 import {rotatePreview} from './rotate-preview.js';
-import {DEFAULT_CANVAS} from '../../engine/canvas-limits.mjs';
+import {PreviewCache} from '../../engine/preview-cache.mjs';
+import {restoreSingleImportFrame} from '../../engine/canvas-import.mjs';
+import {DEFAULT_CANVAS,canvasRatioLimit} from '../../engine/canvas-limits.mjs';
 import {migrateFixedCanvas} from '../../engine/canvas-migrate.mjs';
 import {enableHeightCanvas} from '../../engine/canvas-height.mjs';
 import {optimizationSettings} from '../../engine/optimization-settings.mjs';
@@ -11,14 +14,16 @@ import {db,request,readAsset,commitProject,deleteProjects} from './database.js';
 
 // Keep the active editor's originals available if a different tab deletes its manifest.
 let originals=new Map();
+const sourcePreviews=new PreviewCache();
 const storageError=error=>new Error(error?.name==='QuotaExceededError'?'本地空间不足，项目尚未保存。请释放空间后重试':`项目保存失败：${error?.message||'本地存储不可用'}`);
 function clean(project){validateImportSizes(project);return {...project,optimization:optimizationSettings(project.optimization),images:project.images.map(({preview,...image})=>image),updatedAt:Date.now()};}
 export const repository={
+ rememberImports(items){for(const image of items)if(image.preview)sourcePreviews.set(image.assetId,image.preview,2*image.preview.length);},
  setOriginals(files=new Map()){originals=files;},
  async list(){
   if(desktop)return api.stitchList();
   const tx=(await db()).transaction('projects'),all=await request(tx.objectStore('projects').getAll());
-  return all.map(p=>({id:p.id,name:p.name,revision:p.revision??0,updatedAt:p.updatedAt,count:p.images.length,thumbnail:p.thumbnail})).sort((a,b)=>b.updatedAt-a.updatedAt);
+  return all.map(p=>({id:p.id,name:nameOrDefault(p.name,defaultCanvasName(p)),revision:p.revision??0,updatedAt:p.updatedAt,count:p.images.length,thumbnail:p.thumbnail})).sort((a,b)=>b.updatedAt-a.updatedAt);
  },
  async load(id){
   if(desktop)return api.stitchLoad(id);
@@ -42,7 +47,10 @@ export const repository={
   }return image;
  },
  async prepare(project,{previews=true,retain}={}){
-  project=enableHeightCanvas(migrateFixedCanvas(project));
+  canvasRatioLimit(project.sourceCanvas);
+  const defaultName=defaultCanvasName(project);
+  project=enableHeightCanvas(migrateFixedCanvas({...project,defaultName,name:nameOrDefault(project.name,defaultName)}));
+  project=restoreSingleImportFrame(project);
   const ids=[...new Set(project.images.map(i=>i.assetId))];
   if(!ids.length)return project;
   if(retain&&!desktop)await Promise.all(ids.map(async id=>{
@@ -59,12 +67,21 @@ export const repository={
    }
   }
   if(!previews)return project;
-  const urls=await api.stitchPreviews(ids),byId=new Map(ids.map((id,n)=>[id,urls[n]]));
+  const byId=new Map(),missing=[];
+  for(const id of ids){
+   const url=sourcePreviews.get(id);
+   if(url)byId.set(id,url);else missing.push(id);
+  }
+  if(desktop&&byId.size&&(await api.stitchMissing([...byId.keys()])).length)throw new Error('原图副本缺失，项目无法恢复');
+  if(missing.length){
+   const urls=await api.stitchPreviews(missing);
+   missing.forEach((id,n)=>{byId.set(id,urls[n]);sourcePreviews.set(id,urls[n],2*urls[n].length);});
+  }
   const rotatedPreviews=new Map();
   return {...project,images:await Promise.all(project.images.map(async image=>{const key=`${image.assetId}:${image.rotation||0}`;if(!rotatedPreviews.has(key))rotatedPreviews.set(key,rotatePreview(byId.get(image.assetId),image.rotation||0));return {...image,preview:await rotatedPreviews.get(key)};}))};
  },
- async remove(selection){
-  if(desktop){for(const {id} of selection)await api.stitchDelete(id);}
+ async remove(selection,retained=[]){
+  if(desktop){for(const {id} of selection)await api.stitchDelete(id,retained);}
   else await deleteProjects(selection);
  }
 };

@@ -25,6 +25,7 @@ async function waitFor(win,expression){for(let n=0;n<300;n++){if(await win.webCo
   await js("document.querySelector('[aria-label=\"添加画布图片\"]').click()");
   await waitFor(win,"document.querySelectorAll('.stitch-layer').length===1 && document.querySelector('.save-status').textContent==='已自动保存'");
   const save=store.save.bind(store);store.save=async value=>{await pause(200);return save(value);};
+  await js("document.querySelector('[aria-label=解锁画布宽高比例]').click()");
   console.log('Editing then closing');
   await js("(()=>{const input=document.querySelector('#stitch-width');Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(input,'2400');input.dispatchEvent(new Event('input',{bubbles:true}));})()");
   await js("(()=>{const input=document.querySelector('#stitch-height');Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(input,'2000');input.dispatchEvent(new Event('input',{bubbles:true}));})()");

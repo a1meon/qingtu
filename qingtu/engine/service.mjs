@@ -10,7 +10,7 @@ const preview=async(buffer,bounds={width:1600,height:1200})=>{
     .png().toBuffer({resolveWithObject:true});
   return {url:'data:image/png;base64,'+data.toString('base64'),width:info.width,height:info.height};
 };
-import {exportStem,validateName} from './output-name.mjs';
+import {exportStem,compressionRename} from './output-name.mjs';
 export class ImageService {
   files=new Map(); results=new Map(); totalBytes=0;
   async add(buffer, name, sample=false) {
@@ -23,7 +23,7 @@ export class ImageService {
     const rotated=[5,6,7,8].includes(meta.orientation);
     const originalPreview=await preview(buffer);
     const item={id,name:path.basename(String(name).replaceAll('\\','/')).slice(0,200),width:rotated?meta.height:meta.width,height:rotated?meta.width:meta.height,bytes:buffer.length,format:meta.format,sample,preview:originalPreview.url,previewWidth:originalPreview.width,previewHeight:originalPreview.height};
-    this.files.set(id,{buffer,item});this.totalBytes+=buffer.length;
+    this.files.set(id,{buffer,item,originalName:item.name});this.totalBytes+=buffer.length;
     return item;
   }
   original(id) {
@@ -59,9 +59,9 @@ export class ImageService {
   }
   rename(id,name) {
     const file=this.original(id);
-    name=validateName(name);
-    file.item={...file.item,name:name.trim(),renamed:true};
-    for(const result of this.results.values())if(result.id===id){result.name=file.item.name;result.renamed=true;}
+    const change=compressionRename(name,file.originalName);
+    file.item={...file.item,...change};
+    for(const result of this.results.values())if(result.id===id)Object.assign(result,change);
     return {id,name:file.item.name};
   }
   remove(id) {

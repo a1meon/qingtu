@@ -23,11 +23,18 @@ async function createSmoke(prefix,artifactName,{createCanvas=true,exportFolder}=
   win.webContents.debugger.attach('1.3');try{
    await win.webContents.debugger.sendCommand('Input.dispatchMouseEvent',{type:'mousePressed',...p,button:'left',buttons:1,clickCount:1,modifiers:shift?8:0});
    for(let n=1;n<=16;n++)await win.webContents.debugger.sendCommand('Input.dispatchMouseEvent',{type:'mouseMoved',x:p.x+dx*n/16,y:p.y+dy*n/16,buttons:1,modifiers:shift?8:0});
-   await wait("document.querySelector('.stitch-canvas').dataset.interacting==='true'");assert.equal(calls,before,'gesture never encodes high-resolution images');
+   await wait("document.querySelector('.stitch-canvas').hasAttribute('data-interacting')");assert.equal(calls,before,'gesture never encodes high-resolution images');
    await win.webContents.debugger.sendCommand('Input.dispatchMouseEvent',{type:'mouseReleased',x:p.x+dx,y:p.y+dy,button:'left',buttons:0,clickCount:1,modifiers:shift?8:0});
   }finally{win.webContents.debugger.detach();}await js('new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)))');await ready();
  }
  async function importFiles(files){selection.splice(0,selection.length,...files);const count=Number(await js("document.querySelectorAll('.stitch-layer').length"));if(!count)await click('[aria-label="添加画布图片"]');else await js("window.dispatchEvent(new KeyboardEvent('keydown',{key:'o',ctrlKey:true,bubbles:true}))");await wait(`document.querySelectorAll('.stitch-layer').length===${count+files.length}`);await ready();}
+ async function loadAutoCanvas(height){
+  await wait("document.querySelector('.save-status')?.textContent==='已自动保存'");
+  const project=await load(),width=Math.floor(height*2.4);
+  await store.save({...project,canvas:{width,height},canvasSizing:'content',export:{...project.export,longEdge:width}});
+  await click('.canvas-card.selected .canvas-card-open');
+  await wait(`Number(document.querySelector('#stitch-height').value)===${height}&&!document.querySelector('.project-name').disabled`);
+ }
  async function capture(name){await js('new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)))');await fs.writeFile(path.join(artifact,name),(await win.webContents.capturePage()).toPNG());}
  async function save(name){const p=await load(),r=await stitching.render({...p,name}),saved=await service.save(r.token,artifact),buffer=await fs.readFile(saved.path),meta=await (await import('sharp')).default(buffer).metadata();assert.equal(saved.bytes,buffer.length);assert.ok(buffer.length<=p.export.targetBytes);assert.equal(meta.isPalette,false);return {file:saved.path,width:meta.width,height:meta.height,bytes:buffer.length,limit:p.export.targetBytes};}
  async function createBlankCanvas(){
@@ -38,6 +45,6 @@ async function createSmoke(prefix,artifactName,{createCanvas=true,exportFolder}=
  }
  await wait("!!document.querySelector('[aria-label=\"图像编辑\"]')");await click('[aria-label="图像编辑"]');await wait("!!document.querySelector('[aria-label=\"新建图像\"]')&&!document.querySelector('[aria-label=\"新建图像\"]').disabled");assert.equal((await store.list()).length,0);if(createCanvas){await createBlankCanvas();await wait("!!document.querySelector('[aria-label=\"添加画布图片\"]')");}
  async function finish(report){await fs.writeFile(path.join(artifact,'report.json'),JSON.stringify(report,null,2));console.log(JSON.stringify(report));win.destroy();app.quit();const absolute=path.resolve(root);if(path.dirname(absolute)!==path.resolve(os.tmpdir())||!path.basename(absolute).startsWith(prefix))throw new Error('Unsafe cleanup');await fs.rm(absolute,{recursive:true,force:true});}
- return {...context,root,artifact,js,wait,ready,click,createBlankCanvas,edit,load,drag,importFiles,capture,save,finish,calls:()=>calls};
+ return {...context,root,artifact,js,wait,ready,click,createBlankCanvas,loadAutoCanvas,edit,load,drag,importFiles,capture,save,finish,calls:()=>calls};
 }
 module.exports={createSmoke};

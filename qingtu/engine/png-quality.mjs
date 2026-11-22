@@ -1,14 +1,12 @@
 import sharp from 'sharp';
+import {PngBudgetError} from './png-budget-error.mjs';
 import {createHash} from 'node:crypto';
 import {BufferCache} from './buffer-cache.mjs';
 
 const cache=new BufferCache();
 const losslessFilters=new Map();
-export class PngBudgetError extends Error{
- constructor(losslessBytes,faithfulBytes){super('当前尺寸的高保真 PNG 超过体积上限');this.name='PngBudgetError';this.losslessBytes=losslessBytes;this.faithfulBytes=faithfulBytes;}
-}
 import {pixelDifference,prepareBoundedPixels as prepare} from './pixel-difference.mjs';
-export {pixelDifference};
+export {PngBudgetError,pixelDifference};
 export function prepareBoundedPixels(data,info){return prepare(data,info,Buffer.from);}
 export function boundedPixels(data,info,strength){return prepareBoundedPixels(data,info)(strength);}
 

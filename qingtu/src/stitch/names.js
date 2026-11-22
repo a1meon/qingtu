@@ -1,1 +1,1 @@
-export function canvasName(name){return typeof name==='string'?name:'';}
+export {nameOrDefault as canvasName} from '../../engine/output-name.mjs';

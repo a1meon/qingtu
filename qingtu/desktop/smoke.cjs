@@ -64,6 +64,9 @@ async function waitFor(win,expr){for(let n=0;n<100;n++){if(await win.webContents
    await waitFor(win,`!!document.querySelector('.export-history-dialog[open]')&&document.querySelector('.history-heading p')?.textContent.includes('${count} 条记录')`);
   }
   const closeHistory=()=>click('[aria-label="关闭导出历史"]');
+  await click('.version-button');
+  await waitFor(win,"document.querySelector('.update-dialog').open&&document.getElementById('update-title').textContent==='开发预览版'");
+  await click('.update-close');
   await showHistory(0);await closeHistory();
   assert.equal(await win.webContents.executeJavaScript("document.querySelector('#target-size').value"),'10');
   assert.equal(await win.webContents.executeJavaScript("document.querySelector('.export-button').disabled"),true);
@@ -71,7 +74,7 @@ async function waitFor(win,expr){for(let n=0;n<100;n++){if(await win.webContents
   await win.webContents.executeJavaScript("document.querySelector('.add-tile').click()");
   await waitFor(win,"document.querySelectorAll('.module-content:not([hidden]) .film-select').length===1 && document.querySelector('.processed-label')?.textContent.startsWith('处理后')");
   await win.webContents.executeJavaScript(`(()=>{const input=document.querySelector('#scale');Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(input,'50');input.dispatchEvent(new Event('input',{bubbles:true}));})()`);
-  await waitFor(win,"document.querySelector('.processed-label')?.textContent==='处理中'");
+  await waitFor(win,"document.querySelector('.size-comparison')?.textContent.includes('计算中')");
   assert.equal(await win.webContents.executeJavaScript("!document.querySelector('.processed-image')&&!!document.querySelector('.preview-loading-source')&&!!document.querySelector('.preview-loading-spinner .spin')"),true,'pending processing uses a clearly distinguished dimmed source and spinner, without claiming an actual result');
   await waitFor(win,"document.querySelector('.preview-info')?.textContent.includes('768 × 512') && document.querySelector('.processed-label')?.textContent.startsWith('处理后')");
   const file=[...service.files.values()][0].item;
@@ -121,7 +124,11 @@ async function waitFor(win,expr){for(let n=0;n<100;n++){if(await win.webContents
   assert.equal(await win.webContents.executeJavaScript("document.querySelector('#target-size').value"),'10');
   const noticeButton='.notice button:not(.icon-button)';
   await checkOpen(noticeButton,defaultFolder);
-  await showHistory(1);await checkOpen('.history-open',defaultFolder);await closeHistory();
+  await showHistory(1);
+  await waitFor(win,"document.querySelector('.history-thumbnail img')?.naturalWidth>0");
+  assert.equal(await js("getComputedStyle(document.querySelector('.history-list')).display"),'grid');
+  assert.equal(await js("(()=>{const h=document.querySelector('.history-heading h2').getBoundingClientRect(),b=document.querySelector('[aria-label=关闭导出历史]').getBoundingClientRect();return Math.abs(h.top+h.height/2-b.top-b.height/2)<=1;})()"),true);
+  await checkOpen('.history-open',defaultFolder);await closeHistory();
   await click(active+'.folder-picker');
   for(let n=0;n<100&&!chooserCalls;n++)await pause(20);
   assert.equal(chooserCalls,1);

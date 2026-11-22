@@ -1,5 +1,5 @@
 const {contextBridge,ipcRenderer}=require('electron');
-const methods=['samples','chooseFiles','importFiles','process','rename','remove','chooseFolder','save','outputFolder','exportHistory','revealFolder','windowAction','updateStatus','checkUpdate','downloadUpdate','installUpdate','stitchList','stitchLoad','stitchSave','stitchDelete','stitchImport','stitchChooseFiles','stitchPreviews','stitchMissing','stitchRender','stitchRelease'];
+const methods=['samples','chooseFiles','importFiles','process','rename','remove','chooseFolder','save','outputFolder','exportHistory','exportThumbnail','revealFolder','windowAction','updateStatus','checkUpdate','downloadUpdate','installUpdate','stitchList','stitchLoad','stitchSave','stitchDelete','stitchImport','stitchChooseFiles','stitchPreviews','stitchMissing','stitchRender','stitchRelease'];
 const api=Object.fromEntries(methods.map(method=>[method,(...args)=>ipcRenderer.invoke('qingtu:call',method,args)]));
 api.platform=process.platform;
 api.onFlush=callback=>{

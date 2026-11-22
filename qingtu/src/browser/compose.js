@@ -2,16 +2,19 @@ import {calculateLayout} from '../../engine/stitch-layout.mjs';
 import {sourceWindow,imageRotation,imageAngle} from '../../engine/image-source.mjs';
 import {rotatedImageBounds} from '../../engine/image-rotation.mjs';
 import {readAsset} from '../stitch/database.js';
-import {oriented} from './codec.js';
+import {inputFormat,oriented} from './codec.js';
 
-export async function compose(project){
-  const layout=calculateLayout(project),canvas=new OffscreenCanvas(layout.width,layout.height);
+export async function compose(project,layout=calculateLayout(project)){
+  const canvas=new OffscreenCanvas(layout.width,layout.height);
   const ctx=canvas.getContext('2d');ctx.imageSmoothingQuality='high';
+  const sourceFormats=new Set();
   for(const rect of layout.rects){
     const layer=project.images.find(item=>item.id===rect.id),angle=imageAngle(layer),bounds=rotatedImageBounds(rect,angle);
     if(bounds.x+bounds.width<=0||bounds.y+bounds.height<=0||bounds.x>=layout.width||bounds.y>=layout.height)continue;
     const file=await readAsset(rect.assetId);if(!file)throw new Error('原图副本缺失，项目无法恢复');
-    const pixels=oriented(new Uint8Array(await file.arrayBuffer()),image=>{
+    const bytes=new Uint8Array(await file.arrayBuffer());
+    sourceFormats.add(layer.format||inputFormat(bytes));
+    const pixels=oriented(bytes,image=>{
       const turn=imageRotation(layer);if(turn)image.rotate(turn);
       const source=sourceWindow(layer);
       if(image.width!==source.fullWidth||image.height!==source.fullHeight||file.size!==layer.bytes)throw new Error('原图副本与项目尺寸不一致');
@@ -24,5 +27,5 @@ export async function compose(project){
       ctx.drawImage(bitmap,left*bitmap.width,top*bitmap.height,(1-left-right)*bitmap.width,(1-top-bottom)*bitmap.height,-w/2,-h/2,w,h);
     }finally{ctx.restore();bitmap.close();}
   }
-  return {blob:await canvas.convertToBlob({type:'image/png'}),layout};
+  return {blob:await canvas.convertToBlob({type:'image/png'}),layout,sourceFormats:[...sourceFormats]};
 }

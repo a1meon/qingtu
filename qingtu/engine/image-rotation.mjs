@@ -49,7 +49,9 @@ export function rotatePoseAround(pose,pivot,angle){
  return {...pose,x:pivot.x+pivot.width/2+centre.x-pose.width/2,y:pivot.y+pivot.height/2+centre.y-pose.height/2};
 }
 
+export const snapRotationAngle=angle=>Math.round(angle/15)*15;
+
 export function angleFromCornerDrag(startAngle,startRay,currentRay,shift=false){
  const angle=startAngle+normalizeImageAngle(currentRay-startRay);
- return normalizeImageAngle(shift?Math.round(angle/45)*45:angle);
+ return normalizeImageAngle(shift?snapRotationAngle(angle):angle);
 }

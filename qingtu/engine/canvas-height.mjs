@@ -1,10 +1,10 @@
-import {MAX_EDGE,MAX_RATIO} from './canvas-limits.mjs';
+import {MAX_EDGE,FOUR_VIEW_RATIO,canvasRatioLimit} from './canvas-limits.mjs';
 
 // Height is authoritative. Wider content stays editable outside the capped
 // canvas; neither image pixels nor their scale are changed to satisfy the cap.
 export function fitHeightCanvas(project,{reflow=project.layout==='horizontal'}={}){
  if(!project.images.length)return project;
- const height=project.canvas.height;
+ const height=project.canvas.height,maxRatio=project.sourceCanvas?canvasRatioLimit(project.sourceCanvas):FOUR_VIEW_RATIO;
  if(!Number.isInteger(height)||height<1||height>MAX_EDGE)throw new Error('画布高度须为 1–5999 像素');
  const positions={...project.positions};let x=0;
  for(const image of project.images){
@@ -14,7 +14,9 @@ export function fitHeightCanvas(project,{reflow=project.layout==='horizontal'}={
  }
  if(project.canvasSizing==='manual')return {...project,positions};
  const right=Math.max(...project.images.map(image=>positions[image.id].x+positions[image.id].width));
- const width=Math.max(1,Math.min(MAX_EDGE,Math.floor(height*MAX_RATIO),Math.round(right)));
+ const ratioWidth=Math.floor(height*maxRatio);
+ const nativeWidth=height===project.sourceCanvas?.height?project.sourceCanvas.width:0;
+ const width=Math.max(1,Math.min(MAX_EDGE,Math.max(ratioWidth,nativeWidth),Math.round(right)));
  return {...project,positions,canvas:{width,height}};
 }
 

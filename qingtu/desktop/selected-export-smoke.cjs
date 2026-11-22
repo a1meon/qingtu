@@ -10,7 +10,7 @@ const {createSmoke}=require('./portrait-smoke-helpers.cjs');
  const samples=['alpine-lake.jpg','forest-cabin.jpg','coastline.jpg'];
  for(let n=0;n<3;n++){
   if(n){await s.createBlankCanvas();await s.wait("!!document.querySelector('[aria-label=\"添加画布图片\"]')&&!document.querySelector('.project-name').disabled");}
-  await s.edit('#stitch-height',120);await s.importFiles([path.resolve('public/samples',samples[n])]);await s.edit('#stitch-width',240+n*20);await s.ready();
+  await s.edit('#stitch-height',120);await s.importFiles([path.resolve('public/samples',samples[n])]);await s.click('[aria-label=解锁画布宽高比例]');await s.edit('#stitch-width',240+n*20);await s.ready();
  }
  assert.equal(await s.js("document.querySelectorAll('.canvas-card input[type=checkbox]').length"),3,'each canvas offers an independent export choice');
  assert.ok(await s.js("[...document.querySelectorAll('.canvas-export-select')].every(e=>{const r=e.getBoundingClientRect(),c=e.closest('.canvas-card').getBoundingClientRect(),s=getComputedStyle(e);return r.left>c.left+c.width/2&&r.right<=c.right&&s.boxShadow==='none'&&s.backgroundColor==='rgba(0, 0, 0, 0)'&&s.borderWidth==='0px'})"),'checkboxes sit on the right without a surrounding badge');
@@ -69,5 +69,16 @@ const {createSmoke}=require('./portrait-smoke-helpers.cjs');
  assert.equal(await s.js("document.querySelector('#stitch-export-inspector .history-trigger').disabled"),false,'export history remains available after a failed batch');
  s.service.save=save;
  await s.win.webContents.reload();await s.wait("document.querySelector('.project-name')?.value==='我的成片.v1.2'");await s.ready();assert.ok(await s.js("!!document.querySelector('[aria-label=\"打开画布 画布 12\"]')&&!!document.querySelector('[aria-label=\"打开画布 我的成片.v1.2\"]')"),'renamed cards reopen from saved project data');
+ // Export straight from a blank card draft after reopening a renamed canvas.
+ s.service.save=token=>save(token,renamedFolder);
+ await s.js("document.querySelector('.canvas-card.selected .canvas-name').dispatchEvent(new MouseEvent('dblclick',{bubbles:true}))");
+ await s.wait("!!document.querySelector('.canvas-name-input')");await s.edit('.canvas-name-input','　 ');
+ s.win.webContents.send('qingtu:menu','export');
+ await s.wait("document.querySelector('.notice.success')?.textContent.includes('已导出 2 张图像')&&document.querySelector('.project-name').value==='图像 3'");
+ assert.ok((await fs.stat(path.join(renamedFolder,'图像 3.png'))).size>0);
+ assert.equal((await s.load()).name,'图像 3');
+ await s.edit('.project-name','临时标题');await s.js("document.querySelector('.project-name').focus()");await s.edit('.project-name','');
+ await s.js("document.querySelector('.project-name').blur()");await s.ready();
+ assert.equal(await s.js("document.querySelector('.canvas-card.selected .canvas-name').textContent"),'图像 3');
  await s.finish({passed:true,singleAndMultipleExactFiles:true,keyboardSelectionAndExport:true,selectionDoesNotOpenOrEncode:true,emptySkipped:true,selectAllAndNone:true,mixedState:true,moduleSwitchPreservesSelection:true,unselectedInvalidCanvasDoesNotBlock:true,selectionLockedDuringExport:true,deletedSelectionDoesNotExportOthers:true,sourceBytesUnchanged:true,renamedTitlesCardsAndExportChoices:true,cardDoubleClickRename:true,cardContextRename:true,enterAndBlurSave:true,escapeCancels:true,reloadRestoresNames:true,renamedExports,outputs});
 })().catch(error=>{console.error(error);app.exit(1);});

@@ -10,5 +10,5 @@ export async function encodeStitchPng(data,info,target,options={}){
   // Flat/simple content is cheap to minimise and should retain its smaller PNG.
   if(buffer.length<=target&&buffer.length>data.length*.01)return {buffer,width:info.width,height:info.height,requestedWidth:info.width,requestedHeight:info.height,autoResized:false,scalePercent:100,differenceReference:'output-sized raster',lossless:true,quality:null,encoding:'全彩无损 PNG',difference:{maxError:0,alphaMaxError:0,mae:0,rmse:0,psnr:null}};
  }
- return encodePngWithinBudget(data,info,target,{...options,maxRatio:2.5});
+ return encodePngWithinBudget(data,info,target,options);
 }

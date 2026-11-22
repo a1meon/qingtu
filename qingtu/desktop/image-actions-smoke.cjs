@@ -19,7 +19,7 @@ const {createSmoke}=require('./portrait-smoke-helpers.cjs');
   await s.click('.inline-image-tools [aria-label="裁剪"]');await s.ready();
   const tools=await s.js("[...document.querySelectorAll('.inline-image-tools button')].map(b=>({label:b.getAttribute('aria-label'),text:b.textContent}))");assert.deepEqual(tools,[{label:'裁剪',text:''},{label:'分割',text:''},{label:'旋转',text:''},{label:'删除图片',text:''}]);
   await s.capture('icon-tools.png');await s.click('.inline-image-tools [aria-label="删除图片"]');await s.wait("document.querySelectorAll('.stitch-layer').length===1");await s.ready();
-  await s.click('.stitch-layer');await s.click('[aria-label="重置裁剪、缩放与顺序"]');await s.wait("!!document.querySelector('.stitch-dialog')");await key('Delete',46);assert.equal(await count(),1,'a confirmation dialog blocks background deletion');await s.click('.dialog-cancel');
+  await s.click('.stitch-layer');await s.click('[aria-label="删除全部画布"]');await s.wait("!!document.querySelector('.stitch-dialog')");await key('Delete',46);assert.equal(await count(),1,'a confirmation dialog blocks background deletion');await s.click('.dialog-cancel');
   await s.js("document.querySelector('.project-name').focus()");
   const photo=await s.js("(()=>{const r=document.querySelector('.stitch-layer').getBoundingClientRect();return {x:r.x+r.width/2,y:r.y+r.height/2}})()");
   for(const type of ['mousePressed','mouseReleased'])await s.win.webContents.debugger.sendCommand('Input.dispatchMouseEvent',{type,...photo,button:'left',buttons:type==='mousePressed'?1:0,clickCount:1});

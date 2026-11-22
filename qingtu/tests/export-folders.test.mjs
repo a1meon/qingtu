@@ -5,6 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import {loadExportFolders} from '../engine/export-folders.mjs';
 import 'fake-indexeddb/auto';
+import sharp from 'sharp';
 import {recordDownload,downloads} from '../src/browser-download-history.js';
 async function temp(t){
  const root=await fs.mkdtemp(path.join(os.tmpdir(),'qingtu-export-history-'));
@@ -27,6 +28,18 @@ test('every saved file retains its own folder across restarts; missing files and
  await assert.rejects(reopened.folderFor('compression',items[1].id),/删除或移动/);
  await fs.rename(b,b+'-moved');assert.equal((await reopened.list('stitch')).items[0].status,'missing');
 });
+test('export thumbnails preserve the actual saved picture after its file is removed',async t=>{
+ const root=await temp(t),file=path.join(root,'wide.png');
+ await sharp({create:{width:240,height:120,channels:3,background:'#1968a4'}}).png().toFile(file);
+ const history=await loadExportFolders(root);await history.record('stitch',file);
+ await fs.unlink(file);
+ const reopened=await loadExportFolders(root),[item]=(await reopened.list('stitch')).items;
+ assert.equal(item.thumbnail,undefined,'listing metadata must not load or encode images');
+ assert.equal(item.status,'missing');
+ const picture=sharp(Buffer.from((await reopened.thumbnail('stitch',item.id)).split(',')[1],'base64')),meta=await picture.metadata();
+ assert.deepEqual([meta.format,meta.width,meta.height],['webp',240,120]);
+});
+
 test('a legacy folder is restored without inventing files; all paged history survives interrupted lines',async t=>{
  const root=await temp(t),dir=path.join(root,'export-history');await fs.mkdir(dir);
  await fs.writeFile(path.join(dir,'stitch.json'),JSON.stringify(root));
@@ -60,4 +73,18 @@ test('browser download records retain per-module names and pagination without cl
  await recordDownload('compression','small.jpg');
  const {items,total}=await downloads('stitch');assert.equal(total,31);assert.equal(items[0].name,'30.png');assert.equal(items[0].status,'download');
  assert.equal((await downloads('stitch',1)).items[0].name,'0.png');assert.equal((await downloads('compression')).total,1);
+});
+
+test('opening a large legacy history reads only a page and generates thumbnails on demand',async t=>{
+ const root=await temp(t),dir=path.join(root,'export-history'),file=path.join(root,'image.png');
+ await fs.mkdir(dir);await sharp({create:{width:900,height:600,channels:3,background:'red'}}).png().toFile(file);
+ const records=Array.from({length:3000},(_,i)=>JSON.stringify({id:String(i),file,time:i}));
+ await fs.writeFile(path.join(dir,'stitch.jsonl'),records.join('\n'));
+ const history=await loadExportFolders(root),page=await history.list('stitch',1);
+ assert.equal(page.total,3000);assert.equal(page.items.length,30);assert.equal(page.items[0].id,'2969');
+ await assert.rejects(fs.access(path.join(dir,'thumbnails')),{code:'ENOENT'});
+ const [first,again]=await Promise.all([history.thumbnail('stitch','2969'),history.thumbnail('stitch','2969')]);
+ assert.ok(first?.startsWith('data:image/webp;base64,'));assert.equal(first,again);
+ assert.equal((await fs.readdir(path.join(dir,'thumbnails'))).length,1);
+ assert.equal(await history.thumbnail('compression','2969'),null);
 });

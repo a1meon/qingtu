@@ -1,4 +1,5 @@
 import {useEffect,useRef,useState} from 'react';
+import {sourceStem} from '../../engine/output-name.mjs';
 import {repository,newProject} from './repository.js';
 import {api} from '../api.js';
 import {calculateLayout} from '../../engine/stitch-layout.mjs';
@@ -8,9 +9,20 @@ import {knownImportOrder} from '../../engine/stitch-reset.mjs';
 import {importCanvasImages} from '../../engine/canvas-import.mjs';
 import {rememberCanvasLayout} from '../../engine/canvas-layout-state.mjs';
 
+// Geometry and image records are immutable. Unchanged branches (including image
+// previews) are shared, so checking for a no-op rarely descends beyond the root.
+function equivalent(a,b){
+ if(a===b)return true;
+ if(!a||!b||typeof a!=='object'||typeof b!=='object')return false;
+ const keys=Object.keys(a);
+ return keys.length===Object.keys(b).length&&keys.every(key=>Object.hasOwn(b,key)&&equivalent(a[key],b[key]));
+}
+const emptyHistory=()=>({undo:[],redo:[],group:null});
+
 export function useProjects(){
  const [projects,setProjects]=useState([]),[project,setProject]=useState(null),[saving,setSaving]=useState(false),[saveError,setSaveError]=useState(''),[loading,setLoading]=useState(true);
  const current=useRef(null),pending=useRef(Promise.resolve()),failure=useRef(null),loadRevision=useRef(0);
+ const history=useRef(emptyHistory()),savedAt=useRef(null);
  const revisions=useRef(new Map()),retryLoad=useRef(null);
  const flush=async()=>{await pending.current;if(failure.current)throw failure.current;};
  useEffect(()=>addFlushHandler(flush),[]);
@@ -18,7 +30,7 @@ export function useProjects(){
   setSaving(true);setSaveError('');
   const task=pending.current.catch(()=>{}).then(async()=>{
    const result=await repository.save(value,revisions.current.get(value.id)??null);
-   revisions.current.set(value.id,result.revision);
+   revisions.current.set(value.id,result.revision);if(current.current?.id===value.id)savedAt.current=result.updatedAt;
    failure.current=null;
    setProjects(old=>[{id:value.id,name:value.name,count:value.images.length,revision:result.revision,updatedAt:result.updatedAt,thumbnail:result.thumbnail},...old.filter(p=>p.id!==value.id)]);
    setSaveError('');return result;
@@ -27,54 +39,72 @@ export function useProjects(){
   task.catch(()=>{}).finally(()=>{if(pending.current===task)setSaving(false);});
   return task;
  };
- const update=change=>{
+ const apply=next=>{current.current=next;setProject(next);return persist(next);};
+ const record=(previous,group)=>{
+  const timeline=history.current;
+  if(!group||timeline.group!==group)timeline.undo.push(previous);
+  if(timeline.undo.length>50)timeline.undo.shift();
+  timeline.redo.length=0;timeline.group=group;
+ };
+ const travel=direction=>{
+  const timeline=history.current,next=timeline[direction].pop();
+  if(!next)return Promise.resolve();
+  timeline.group=null;timeline[direction==='undo'?'redo':'undo'].push(current.current);
+  return apply(next);
+ };
+ const update=(change,group)=>{
   const previous=current.current;if(!previous)return;
   const changed=typeof change==='function'?change(previous):{...previous,...change};
+  if(equivalent(changed,previous))return Promise.resolve();
   const next=rememberCanvasLayout(changed);
   try{const layout=calculateLayout(next);if(next.canvasMode!=='fixed')next.canvas={width:layout.width,height:layout.height};next.crops=Object.fromEntries(layout.rects.map(r=>[r.id,r.crop]));}catch{if(next.canvasMode!=='fixed')next.canvas=null;next.crops={};}
-  current.current=next;setProject(next);return persist(next);
+  if(equivalent(next,previous))return Promise.resolve();
+  record(previous,group);return apply(next);
  };
  const open=async id=>{
   const revision=++loadRevision.current;setLoading(true);
   try{
    await flush();retryLoad.current=id;const value=await repository.load(id),format=explicitFormat(value.export?.format),formatChanged=value.export?.format!==format;
+   if(revision!==loadRevision.current)return;
+   if(current.current?.id===id&&savedAt.current===value.updatedAt&&value.revision===revisions.current.get(id)&&!formatChanged&&!value.recovered){
+    retryLoad.current=null;return;
+   }
    const initialOrder=knownImportOrder(value),orderChanged=value.initialOrder===undefined&&initialOrder!==undefined;
    const retained=new Map();
    const ready=await repository.prepare({...value,...(initialOrder?{initialOrder}:{}),export:{...value.export,format}},{retain:retained});
    if(revision!==loadRevision.current)return;
-   if(current.current&&current.current.id!==id)await api.stitchRelease(current.current.id);
-   if(revision!==loadRevision.current)return;
-   repository.setOriginals(retained);setProjects(old=>old.map(p=>p.id===id?{...p,name:value.name,revision:value.revision??0}:p));revisions.current.set(id,value.revision??0);retryLoad.current=null;current.current=ready;setProject(ready);
+   history.current=emptyHistory();savedAt.current=value.updatedAt;repository.setOriginals(retained);setProjects(old=>old.map(p=>p.id===id?{...p,name:ready.name,revision:value.revision??0}:p));revisions.current.set(id,value.revision??0);retryLoad.current=null;current.current=ready;setProject(ready);
    setSaveError('');
    if(value.recovered)setSaveError('已恢复上次完整保存；请检查编辑状态后重试保存');
-   else if(value.canvasMode!=='fixed'||value.heightLocked!==ready.heightLocked||formatChanged||orderChanged||!value.thumbnail&&value.images.length)persist(ready);
+   else if(value.canvas!==ready.canvas||value.name!==ready.name||value.canvasMode!=='fixed'||value.heightLocked!==ready.heightLocked||formatChanged||orderChanged||!value.thumbnail&&value.images.length)persist(ready);
   }catch(error){if(revision===loadRevision.current)setSaveError(error.message);throw error;}finally{if(revision===loadRevision.current)setLoading(false);}
  };
  const leaveProject=async()=>{
   await flush();
-  if(current.current)await api.stitchRelease(current.current.id);
-  repository.setOriginals();current.current=null;setProject(null);retryLoad.current=null;
+  history.current=emptyHistory();repository.setOriginals();current.current=null;setProject(null);retryLoad.current=null;
  };
- const create=async(images=[],originals)=>{
+ const create=async(images=[],originals,group,singleSource=images.length===1)=>{
   await flush();
-  const value=importCanvasImages(newProject(),images),filename=images[0]?.name;
-  const extension=filename?.lastIndexOf('.');
-  value.name=filename?(extension>0?filename.slice(0,extension):filename):`图像 ${projects.length+1}`;
-  if(current.current)await api.stitchRelease(current.current.id);
+  const blank=newProject(),first=images[0];
+  const value=importCanvasImages(blank,images,{useSourceSize:singleSource}),filename=first?.name;
+  const defaultName=sourceStem(filename,`图像 ${projects.length+1}`);
+  value.defaultName=defaultName;value.name=defaultName;
+  history.current=emptyHistory();if(images.length)record({...blank,defaultName,name:defaultName},group);
   repository.setOriginals(originals);retryLoad.current=null;current.current=value;setProject(value);await persist(value);return value;
  };
  const remove=async id=>{
   await flush();const item=projects.find(p=>p.id===id);if(!item)return;
-  await repository.remove([{...item,revision:revisions.current.get(id)??item.revision}]);await api.stitchRelease(id);
+  const retained=id===current.current?.id?[]:[...new Set([...history.current.undo,...history.current.redo].flatMap(snapshot=>snapshot.images.map(image=>image.assetId)))];
+  await repository.remove([{...item,revision:revisions.current.get(id)??item.revision}],retained);await api.stitchRelease(id);
   const rest=await repository.list();setProjects(rest);
-  if(current.current?.id===id){repository.setOriginals();current.current=null;setProject(null);if(rest.length)await open(rest[0].id);}
+  if(current.current?.id===id){history.current=emptyHistory();repository.setOriginals();current.current=null;setProject(null);if(rest.length)await open(rest[0].id);}
  };
  const clear=async()=>{
   await flush();++loadRevision.current;setLoading(true);
   try{
    const selection=projects.map(item=>({...item,revision:revisions.current.get(item.id)??item.revision}));
    await repository.remove(selection);for(const {id} of selection)await api.stitchRelease(id);
-   repository.setOriginals();current.current=null;setProject(null);const rest=await repository.list();setProjects(rest);setSaveError('');
+   history.current=emptyHistory();repository.setOriginals();current.current=null;setProject(null);const rest=await repository.list();setProjects(rest);setSaveError('');
    if(rest.length)await open(rest[0].id);
   }catch(error){
    const rest=await repository.list();setProjects(rest);
@@ -99,12 +129,12 @@ export function useProjects(){
     const copy={...current.current,id:crypto.randomUUID(),name:`${current.current.name}（副本）`};
     // Until commit succeeds the original in-memory draft owns the editor.
     const result=await repository.save(copy,null);revisions.current.set(copy.id,result.revision);
-    current.current=copy;setProject(copy);failure.current=null;pending.current=Promise.resolve();setSaveError('');
+    history.current=emptyHistory();current.current=copy;setProject(copy);failure.current=null;pending.current=Promise.resolve();setSaveError('');
     setProjects(await repository.list());
    }catch(error){setSaveError(error.message);}finally{setLoading(false);}
   }else if(retryLoad.current){await open(retryLoad.current).catch(()=>{});}
   else if(current.current){await persist(current.current).catch(()=>{});}
   else{try{const list=await repository.list();setProjects(list);if(list.length)await open(list[0].id);else setSaveError('');}catch(error){setSaveError(error.message);}}
  };
- return {projects,project,update,open,leaveProject,create,remove,clear,loading,saving,saveError,flush,getCurrent:()=>current.current,retry,conflict:failure.current?.code==='PROJECT_CONFLICT'};
+ return {projects,project,update,travel,open,leaveProject,create,remove,clear,loading,saving,saveError,flush,getCurrent:()=>current.current,retry,conflict:failure.current?.code==='PROJECT_CONFLICT'};
 }

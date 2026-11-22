@@ -2,7 +2,7 @@ import {useEffect,useId,useRef,useState} from 'react';
 import {createPortal} from 'react-dom';
 import {CaretDown,Check} from '@phosphor-icons/react';
 
-export function Dropdown({id:providedId,label,value,options,onChange,disabled=false,className='',maxHeight=Infinity}){
+export function Dropdown({id:providedId,label,value,options,onChange,disabled=false,className='',maxHeight=Infinity,minMenuWidth=200}){
  const generatedId=useId(),id=providedId||generatedId;
  const [open,setOpen]=useState(false),[position,setPosition]=useState(null),[active,setActive]=useState(0);
  const trigger=useRef(),menu=useRef(),optionRefs=useRef([]);
@@ -11,8 +11,8 @@ export function Dropdown({id:providedId,label,value,options,onChange,disabled=fa
  function show(){
   if(disabled)return;
   const rect=trigger.current.getBoundingClientRect(),height=Math.min(options.length*42+16,maxHeight,window.innerHeight-16);
-  const up=rect.bottom+height+8>window.innerHeight;
-  setPosition({left:Math.max(8,Math.min(rect.left,window.innerWidth-Math.max(rect.width,200)-8)),top:Math.max(8,up?rect.top-height-6:rect.bottom+6),width:Math.max(rect.width,200),maxHeight:height,overflowY:'auto'});
+  const up=rect.bottom+height+8>window.innerHeight,width=Math.max(rect.width,minMenuWidth);
+  setPosition({left:Math.max(8,Math.min(rect.left,window.innerWidth-width-8)),top:Math.max(8,up?rect.top-height-6:rect.bottom+6),width,maxHeight:height,overflowY:'auto'});
   setActive(Math.max(0,options.findIndex(o=>o.value===value)));setOpen(true);
  }
  function choose(option){onChange(option.value);setOpen(false);trigger.current.focus();}

@@ -1,5 +1,5 @@
 import {imageGeometry,cropFractions} from './stitch-edits.mjs';
-import {MAX_EDGE,MAX_RATIO,validateCanvas} from './canvas-limits.mjs';
+import {MAX_EDGE,MAX_RATIO,FOUR_VIEW_RATIO,validateCanvas} from './canvas-limits.mjs';
 import {calculateFixedLayout} from './canvas-fixed.mjs';
 export {MAX_EDGE,MAX_RATIO,validateCanvas} from './canvas-limits.mjs';
 export function moveImage(images,from,to){const copy=[...images];const index=copy.findIndex(i=>i.id===from),target=copy.findIndex(i=>i.id===to);if(index<0||target<0)return copy;copy.splice(target,0,...copy.splice(index,1));return copy;}
@@ -44,6 +44,7 @@ function resolution(width,height,longEdge,draft=false,exact=false){
  const factor=longEdge/Math.max(width,height);
  let w=Math.max(1,Math.round(width*factor)),h=Math.max(1,Math.round(height*factor));
  // Round the short side up at the ratio boundary, never extend a canvas.
+ if(!draft&&width>=height&&width/height<=FOUR_VIEW_RATIO+1e-12&&w/h>FOUR_VIEW_RATIO)h=Math.ceil(w/FOUR_VIEW_RATIO);
  if(!draft){if(w/h>MAX_RATIO)h=Math.ceil(w/MAX_RATIO);if(h/w>MAX_RATIO)w=Math.ceil(h/MAX_RATIO);validateCanvas(w,h);}
  return {width:w,height:h,factor};
 }
@@ -73,9 +74,10 @@ export function calculateLayout(project,{draft=false}={}){
   ({width,height}=resolve(ratio,1,exact));
   // Keep uncropped image widths at rounded equal-height scale. Distribute the
   // remaining integer pixels among the eligible cropped pictures.
-  const widths=ratios.map(r=>exact?Math.floor(r*height):Math.round(r*height));
+  const atLimit=exact||Math.abs(ratio-FOUR_VIEW_RATIO)<1e-12;
+  const widths=ratios.map(r=>atLimit?Math.floor(r*height):Math.round(r*height));
   let difference=width-widths.reduce((s,w)=>s+w,0);
-  const eligible=exact?images.map((_,i)=>i).sort((a,b)=>(ratios[b]*height-widths[b])-(ratios[a]*height-widths[a])):ratio===MAX_RATIO&&cropIndices.length?cropIndices:images.map((_,i)=>i);
+  const eligible=atLimit?images.map((_,i)=>i).sort((a,b)=>(ratios[b]*height-widths[b])-(ratios[a]*height-widths[a])):ratio===MAX_RATIO&&cropIndices.length?cropIndices:images.map((_,i)=>i);
   for(let k=0;difference!==0;k++){const n=eligible[k%eligible.length],delta=Math.sign(difference);if(widths[n]+delta<1)throw new Error('分辨率过低，请增加长边');widths[n]+=delta;difference-=delta;}
   let x=0;
   rects=images.map((image,n)=>{

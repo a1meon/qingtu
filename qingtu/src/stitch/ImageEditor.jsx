@@ -91,7 +91,7 @@ export const ImageEditor=forwardRef(function ImageEditor({image,value,open,mode=
   dragBefore.current={draft:latest.current,touched:touched.current,prefill:prefill.current,side};pointer.current=true;setSide(CROP_HANDLES[edge].find(candidate=>['left','right'].includes(candidate)===(axis==='horizontal'))||CROP_HANDLES[edge][0]);
   callbacks.current.onPreview(prefill.current?original():latest.current,{gesture:true});
  }
- function previewCrop(edit,position,guides=[]){touched.current=true;prefill.current=false;latest.current=edit;setDraft(edit);callbacks.current.onPreview(edit,{gesture:true,guides});}
+ function previewCrop(edit){touched.current=true;prefill.current=false;latest.current=edit;setDraft(edit);callbacks.current.onPreview(edit,{gesture:true});}
  function endCrop(cancelled,pointerId){
   pointer.current=false;cropClick.current=pointerId;
   if(cancelled){const before=dragBefore.current;latest.current=before.draft;touched.current=before.touched;prefill.current=before.prefill;setDraft(before.draft);setSide(before.side);callbacks.current.onPreview(before.touched?before.draft:null);if(before.touched)timer.current=setTimeout(()=>commit().catch(e=>setError(e.message)),450);return Promise.resolve();}
@@ -106,7 +106,7 @@ export const ImageEditor=forwardRef(function ImageEditor({image,value,open,mode=
   return <button aria-label={`裁剪${names[edge]}边`} aria-pressed={active} className={active?'active':''} disabled={disabled} onClick={()=>chooseSide(edge)}>{names[edge]}</button>;
  }
  return <div ref={root} className="inline-image-controls" hidden={hidden} onKeyDown={event=>{if(event.key==='Escape'){event.stopPropagation();close();}}}>
-  {open&&mode==='crop'&&<CanvasCropOverlay image={image} project={placement.project} targets={placement.targets} rect={placement.rect} scale={placement.scale} value={prefill.current?original():draft} disabled={disabled} onStart={startCrop} onPreview={previewCrop} onEnd={endCrop}/>}
+  {open&&mode==='crop'&&<CanvasCropOverlay image={image} rect={placement.rect} scale={placement.scale} value={prefill.current?original():draft} disabled={disabled} onStart={startCrop} onPreview={previewCrop} onEnd={endCrop}/>}
   {open&&mode==='rotate'&&<CanvasRotationOverlay ref={rotationGesture} hidden={hidden} origin={placement.origin} image={image} rect={placement.rect} scale={placement.scale} disabled={disabled} onStart={()=>{rotatingCorner.current=true;return rotationEditor.current.startRotation();}} onPreview={angle=>rotationEditor.current.previewRotation(angle)} onEnd={(cancelled,id)=>{rotatingCorner.current=false;return rotationEditor.current.endRotation(cancelled,id);}}/>}
   {createPortal(<div hidden={hidden} ref={toolsRoot} className="inline-image-tools editor-mode image-tools-portal" role="group" aria-label="图片操作" style={placement.tools}>
    <button aria-label="裁剪" title="裁剪" className={open&&mode==='crop'?'active':''} aria-pressed={open&&mode==='crop'} disabled={disabled} onClick={()=>activate('crop')}><Crop size={17} aria-hidden/></button>

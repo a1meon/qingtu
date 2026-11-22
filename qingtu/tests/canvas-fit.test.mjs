@@ -15,16 +15,16 @@ test('each import derives canvas from complete visible content and uses the requ
  const first=importCanvasImages(project(),[image('a')]);assert.deepEqual(first.canvas,{width:4499,height:5999});assert.equal(first.positions.a.x,0);assert.equal(first.positions.a.y,0);near(first.positions.a.width/first.positions.a.height,.75);
  const second=importCanvasImages(first,[image('b')]);assert.deepEqual(second.canvas,{width:5999,height:3999});near(second.positions.b.x,second.positions.a.width);near(second.positions.a.height,second.positions.b.height);assert.deepEqual(second.initialOrder,['a','b']);assert.deepEqual(first.images.map(i=>i.id),['a']);
 });
-test('imports override a manually chosen canvas, while position updates alone never refit',()=>{
- const p=importCanvasImages({...project(),canvasSizing:'manual',canvas:{width:1200,height:480},export:{longEdge:1200}},[image('a',100,100),image('b',100,100)]);assert.deepEqual(p.canvas,{width:1200,height:600});assert.equal(p.canvasSizing,'content');
+test('imports and position updates preserve a manually chosen canvas',()=>{
+ const p=importCanvasImages({...project(),canvasSizing:'manual',canvas:{width:1200,height:480},export:{longEdge:1200}},[image('a',100,100),image('b',100,100)]);assert.deepEqual(p.canvas,{width:1200,height:480});assert.equal(p.canvasSizing,'manual');
  const moved=rememberCanvasLayout({...p,positions:{...p.positions,a:{x:-200,y:50,width:1100,height:700}}});assert.deepEqual(moved.canvas,p.canvas);assert.equal(calculateLayout(moved).rects[0].x,-200);
- const next=importCanvasImages(moved,[image('c',100,100)]);assert.equal(next.positions.a.x,0);assert.notDeepEqual(next.canvas,moved.canvas);const scale=next.positions.a.width/1100;near(next.positions.a.height/700,scale);near(next.positions.b.x-next.positions.a.x,(p.positions.b.x+200)*scale);
+ const next=importCanvasImages(moved,[image('c',100,100)]);assert.deepEqual(next.canvas,moved.canvas);assert.deepEqual(next.positions.a,moved.positions.a);assert.deepEqual(next.positions.b,moved.positions.b);
 });
 test('first automatic layout fits its content, while remembered layouts restore their own canvas and poses',()=>{
  let p=rememberCanvasLayout(importCanvasImages(project(),[image('a',100,100),image('b',100,100)]));const row=p;
  p=switchCanvasLayout(p,'vertical');assert.deepEqual(p.canvas,{width:3000,height:5999});const column=p;p=switchCanvasLayout(p,'grid');assert.deepEqual(p.canvas,column.canvas);
  p=switchCanvasLayout(p,'horizontal');assert.deepEqual(p.canvas,row.canvas);assert.deepEqual(p.positions,row.positions);p=switchCanvasLayout(p,'vertical');assert.deepEqual(p.canvas,column.canvas);assert.deepEqual(p.positions,column.positions);
- const manual=rememberCanvasLayout({...p,canvasSizing:'manual',canvas:{width:900,height:600}});p=switchCanvasLayout(manual,'free');assert.deepEqual(p.canvas,manual.canvas);p=switchCanvasLayout(p,'vertical');assert.deepEqual(p.canvas,manual.canvas);
+ const manual=rememberCanvasLayout({...p,canvasSizing:'manual',canvas:{width:900,height:600}});p=switchCanvasLayout(manual,'free');assert.deepEqual(p.canvas,manual.canvas);p=switchCanvasLayout(p,'horizontal');assert.deepEqual(p.canvas,manual.canvas);p=switchCanvasLayout(p,'vertical');assert.deepEqual(p.canvas,manual.canvas);
 });
 test('a new import refits every visited layout without loading images or losing relative edits',()=>{
  let p=importCanvasImages(project(),[image('a',100,100),image('b',100,100)]);p=switchCanvasLayout(p,'vertical');p=switchCanvasLayout(p,'horizontal');p=importCanvasImages(p,[image('c',100,100)]);validateLayoutStates(p);

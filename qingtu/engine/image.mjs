@@ -1,6 +1,5 @@
 import sharp from 'sharp';
 import {encodePngWithinBudget} from './png-budget.mjs';
-import {encodeFaithfulPng} from './png-quality.mjs';
 import {encodeJpeg} from './jpeg-quality.mjs';
 
 sharp.cache({memory:64,files:0,items:20});
@@ -77,7 +76,7 @@ async function smartSize(source,meta,settings,target,options){
   const resized=size.width!==oriented.width||size.height!==oriented.height;
   const finish=result=>{
     const imageBytes=result.buffer.length;
-    if(imageBytes>limit)throw new Error('输出体积超过设置大小，请缩小分辨率');
+    if(imageBytes>limit)throw new Error('当前尺寸的文件超过大小上限，请提高大小上限');
     return {...result,imageBytes,paddedBytes:0,limitBytes:limit};
   };
   if(!resized && ['jpeg','png'].includes(meta.format) && (requested==='auto'||requested===meta.format)){
@@ -98,7 +97,7 @@ async function smartSize(source,meta,settings,target,options){
     try{
       // Legacy Auto clients may choose JPEG at the requested resolution. Both
       // current menus use explicit formats; explicit PNG always stays PNG.
-      const result=requested==='auto'&&!meta.hasAlpha?{...await encodeFaithfulPng(data,info,limit,options),...size}:await encodePngWithinBudget(data,info,limit,options);
+      const result=await encodePngWithinBudget(data,info,limit,{...options,faithfulOnly:requested==='auto'&&!meta.hasAlpha});
       return finish({...result,format,unchanged:false});
     }
     catch(error){if(error.message==='预览参数已更新'||requested!=='auto'||meta.hasAlpha)throw error;format='jpeg';}

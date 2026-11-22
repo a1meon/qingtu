@@ -90,10 +90,10 @@ test('an odd source split retains the exact export plane after a precise right a
  assert.ok(after.data.equals(before.data),'splitting must not shift the rotated source by a pixel');
 });
 
-test('corner rotation follows pointer angle and Shift snaps the absolute angle to 45 degrees',async()=>{
+test('corner rotation follows pointer angle and Shift snaps the absolute angle to 15 degrees',async()=>{
  const {angleFromCornerDrag}=await import('../engine/image-rotation.mjs');
  assert.equal(angleFromCornerDrag(12,10,25,false),27);
- assert.equal(angleFromCornerDrag(12,10,25,true),45);
+ assert.equal(angleFromCornerDrag(12,10,25,true),30);
  assert.equal(angleFromCornerDrag(170,175,-175,false),-180);
  assert.equal(angleFromCornerDrag(-20,-50,-70,true),-45);
 });
