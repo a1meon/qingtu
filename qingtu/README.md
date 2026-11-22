@@ -64,7 +64,7 @@ PNG 编码误差以设定宽高的像素为基准。预览、单张和批量导�
 
 ## 自动更新
 
-0.5.0 起使用腾讯云 CNB 主源和 GitHub Releases 备用源。首次安装下载一个 Windows EXE 或与芯片对应的 Mac DMG。应用内更新会优先使用匹配的增量补丁，缺少基线时下载完整 EXE 或 ZIP。旧版用户可从 Gitee 发行说明的入口下载 0.5.0 并覆盖安装。详见[发布手册](docs/auto-update.md)。
+0.5.0 起使用腾讯云 CNB 主源和 GitHub Releases 备用源。首次安装下载一个 Windows EXE 或与芯片对应的 Mac DMG。应用内更新会优先使用匹配的增量补丁，缺少基线时下载完整 EXE 或 ZIP。接入 Gitee 旧更新通道的 Electron 0.4.x 用户可在应用内直接升级到 0.5.0。详见[发布手册](docs/auto-update.md)。
 
 ## 开发环境
 
