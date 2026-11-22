@@ -2,6 +2,7 @@ name: Mirror verified CNB release
 on:
   push:
     tags: ['v*']
+    branches: ['codex/release-retry/v*']
   workflow_dispatch:
     inputs:
       tag:
@@ -10,6 +11,7 @@ on:
         type: string
 permissions:
   contents: write
+  actions: read
 concurrency:
   group: qingtu-formal-release
   cancel-in-progress: false
@@ -23,7 +25,26 @@ jobs:
           node-version: '24'
       - run: npm ci --ignore-scripts
         working-directory: qingtu
-      - run: npm run release:mirror -- "$RELEASE_TAG"
+      - name: Read the previous failure on an explicit release retry
+        if: github.ref_type == 'branch' && startsWith(github.ref_name, 'codex/release-retry/')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag="${GITHUB_REF_NAME##*/}"
+          run_id=$(gh run list --branch "$tag" --limit 8 --json name,conclusion,databaseId --jq '[.[] | select(.name == "Mirror verified CNB release" and .conclusion == "failure")][0].databaseId // empty' || true)
+          if [ -n "$run_id" ]; then
+            gh run view "$run_id" --log-failed > "$RUNNER_TEMP/previous-release.log" || true
+            python3 - <<'PYLOG'
+          import os, pathlib, re
+          lines = (pathlib.Path(os.environ["RUNNER_TEMP"]) / "previous-release.log").read_text().splitlines()
+          for line in lines[-15:]:
+              text = line.split("\t")[-1].split("Z ", 1)[-1]
+              if re.search(r"下载失败|校验失败|状态异常|HTTP [45]\d\d|fetch failed|timed? ?out|gh:|error uploading|failed to", text, re.I):
+                  print("::notice title=Previous release error::" + text.replace("%", "%25")[:500])
+          PYLOG
+          fi
+      - name: Mirror signed release attachments
+        run: npm run release:mirror -- "${RELEASE_TAG##*/}"
         working-directory: qingtu
         env:
           RELEASE_TAG: ${{ inputs.tag || github.ref_name }}

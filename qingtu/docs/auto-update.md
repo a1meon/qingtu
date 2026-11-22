@@ -11,7 +11,7 @@
 3. 为同平台的旧发行包与新包计算块差异。构建前可为单个平台设置 `QINGTU_DELTA_BASE` 指向正式发布的旧 EXE 或 ZIP。优先使用匹配基线的 `.qtdelta`；实际还原验证通过、并且足够小的补丁才进入清单。首次通过 DMG 安装的 Mac 若没有旧 ZIP，第一次应用内更新会取完整 ZIP，以后可复用已验证的缓存。
 4. 联合发布前运行 `npm run release:verify -- --seal`，生成并签署完整 SHA-256 表。再次运行 `npm run release:verify` 可检查现有发行目录。核对 Windows 更新清单、两个架构的 Mac 签名、正式安装包及补丁。每个平台的实际产物还须通过安装包及更新器测试。
 5. 在公开 CNB 仓库为本次发行创建同名标签。登录官方 CNB CLI 后运行 `npm run release:cnb`，创建草稿、上传发行目录的全部文件并执行匿名下载校验。匿名下载核对完毕后，将发行目录内的 `stable.json` 提交到 CNB 的 `qingtu-updates` 分支根目录。分支只用于发布可用版本，允许用户在不登录 CNB 的情况下检查更新。
-6. 将正式源码提交和同名标签通过 `npm run git:sync -- --tag vX.Y.Z` 双推。GitHub 的标签工作流会从 CNB 获取签名校验表和文件，校验后上传 GitHub 草稿并发布。也可在具备仓库写权限的 GitHub CLI 环境运行 `npm run release:mirror -- vX.Y.Z`。执行 `npm run release:mirror -- vX.Y.Z --verify-only` 可匿名校验两端的公开附件。Gitee 保留发行说明、CNB 与 GitHub 下载链接。
+6. 将正式源码提交和同名标签通过 `npm run git:sync -- --tag vX.Y.Z` 双推。GitHub 的标签工作流会从 CNB 获取签名校验表和文件，校验后上传 GitHub 草稿并发布。需要恢复同一发行时，可从已审核的发布脚本提交推送分支 `codex/release-retry/vX.Y.Z` 重新同步既有标签和草稿。也可在具备仓库写权限的 GitHub CLI 环境运行 `npm run release:mirror -- vX.Y.Z`。执行 `npm run release:mirror -- vX.Y.Z --verify-only` 可匿名校验两端的公开附件。Gitee 保留发行说明、CNB 与 GitHub 下载链接。
 7. Gitee 发行仓库的最新正式发行版永久停在 v0.5.0，供仍在运行的 Electron 0.4.x 直接升级。执行 `node scripts/prepare-gitee-transition.cjs` 生成一次性兼容附件，上传至 Gitee v0.5.0。Windows 旧更新器从 Gitee 读取指向 CNB 完整 EXE 的清单并校验 SHA-512。旧 Mac 更新器只接受 Gitee 同一发行版下的相对文件名，因此在 Gitee 提供两套签名兼容清单和归档分片；它们合并后与 CNB、GitHub 的 ZIP 逐字节一致。以后仅在 Gitee 发行仓库 README 和版本文档添加新版本说明及下载入口，保留这个旧客户端入口。此次迁移面向 Electron 0.4.x。
 
 ## Mac 协议与信任

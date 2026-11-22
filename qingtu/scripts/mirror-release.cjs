@@ -54,13 +54,28 @@ async function response(url) {
   return res;
 }
 
-async function download(url, target) {
+async function downloadOnce(url, target) {
   const hash = createHash('sha256');
   const body = (await response(url)).body;
   await pipeline(body, async function* (stream) {
     for await (const bytes of stream) { hash.update(bytes); yield bytes; }
   }, createWriteStream(target));
   return hash.digest('hex');
+}
+
+async function download(url, target) {
+  const name = path.basename(target);
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      const hash = await downloadOnce(url, target);
+      console.log('Verified transfer ' + name + ' from ' + new URL(url).hostname);
+      return hash;
+    } catch (error) {
+      if (attempt === 3) throw new Error('下载失败 ' + url + ' (' + (error.cause?.code || error.message) + ')');
+      console.warn('Retrying ' + name + ' after ' + (error.cause?.code || error.message));
+      await new Promise(resolve => setTimeout(resolve, attempt * 1500));
+    }
+  }
 }
 
 async function verifyPayload(dir, file) {
@@ -149,5 +164,10 @@ async function mirror(tag, verifyOnly = false) {
 }
 module.exports = {checksums,requiredFiles,sameAssets,verifyPayload};
 if (require.main === module) mirror(process.argv[2],process.argv[3] === '--verify-only').catch(error => {
-  console.error(error.message); process.exitCode = 1;
+  console.error(error.message);
+  if (process.env.GITHUB_ACTIONS === 'true') {
+    const message = error.message.replace(/%/g, '%25').replace(/\r/g, '%0D').replace(/\n/g, '%0A');
+    console.error('::error title=Release mirror::' + message);
+  }
+  process.exitCode = 1;
 });
