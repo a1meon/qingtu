@@ -30,12 +30,13 @@ export function OptimizationSettings({value,onChange,onValidityChange,hint,image
  function change(id,key,raw){save({...latest.current,[id]:{...latest.current[id],[key]:raw}});}
  return <section className="optimization-settings" aria-label="优化裁剪设置">
   <div className="optimization-settings-heading"><h3>特殊裁剪</h3>
-   <TooltipButton type="button" label="如何使用四视优化" className="optimization-help" hint={<>
-    <span>四视优化会裁去角色正面全身图的头部，把整排图的宽高比控制在 2.5:1 以内。</span>
-    <span><strong>3 张图</strong>默认选第 2 张，适合正面和侧面合在一张图的情况。<br/><strong>4 张图</strong>默认选第 3 张。建议将四个视图分开导入，裁剪效果更好。</span>
-    <span>点选正面全身图的编号，设置「顶部」和「左右各」的裁剪量，再点「四视优化」应用。</span>
-    <span>裁完正面图后，如果整排宽高比仍超过 2.4:1，其余图片才会按相同比例裁去左右两侧。</span>
-   </>}><Question size={17} aria-hidden/></TooltipButton>
+   <TooltipButton type="button" label="如何使用四视优化" className="optimization-help" hint={<ul className="optimization-help-list">
+    <li>四视优化会裁去角色四视图中正面全身照的头部，并把整排图的宽高比控制在 2.4:1 以内。</li>
+    <li>如果共有 3 张图，特殊裁剪默认选择第 2 张，适合正、侧面部近景合在一张图的情况（建议将四个视图分开导入，或将正、侧面部特写裁为 2 张图）。</li>
+    <li>如果共有 4 张图，特殊裁剪默认选择第 3 张。</li>
+    <li>点选正面全身照的编号，设置「顶部」和「左右各」的裁剪量，再点「四视优化」应用。</li>
+    <li>裁完正面全身照后，如果整排宽高比仍超过 2.4:1，其余图片会按相同比例裁去左右两侧。</li>
+   </ul>}><Question size={17} aria-hidden/></TooltipButton>
   </div>
   <div className="optimization-settings-body">
   {images.length>0&&<div className="optimization-image-buttons" role="group" aria-label="特殊裁剪图片">{images.map((image,index)=><button type="button" key={image.id} aria-label={`第 ${index+1} 张特殊裁剪`} aria-pressed={!!draft[image.id]?.enabled} title={image.name} onClick={()=>toggle(image,index)}>{index+1}</button>)}</div>}

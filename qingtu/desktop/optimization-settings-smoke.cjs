@@ -19,6 +19,11 @@ const {createSmoke}=require('./portrait-smoke-helpers.cjs');
   const point=await s.js("(()=>{const r=document.querySelector('.optimization-help').getBoundingClientRect();return {x:r.x+r.width/2,y:r.y+r.height/2};})()");
   await s.win.webContents.debugger.sendCommand('Input.dispatchMouseEvent',{type:'mouseMoved',...point});
   await s.wait("document.querySelector('.optimization-settings [role=tooltip]')?.textContent.includes('2.4:1')");
+  const hints=await s.js("[...document.querySelectorAll('.optimization-help-list li')].map(item=>item.textContent)");
+  assert.equal(hints.length,5);
+  assert.ok(hints[1].includes('默认选择第 2 张')&&hints[2].includes('默认选择第 3 张'));
+  assert.ok(hints[0].includes('2.4:1')&&hints[4].includes('2.4:1'));
+  await s.capture('four-view-help.png');
  }finally{s.win.webContents.debugger.detach();}
  await s.click('[aria-label="设置优化裁剪"]');await s.importFiles(files.slice(3));
  const original=await s.load(),ids=original.images.map(i=>i.id),beforeCalls=s.calls();await openSettings();
