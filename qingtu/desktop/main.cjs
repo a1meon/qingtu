@@ -45,7 +45,7 @@ async function start(options={}) {
   ipcMain.handle('qingtu:flushReady',event=>{if(!validSender(event))throw new Error('无效窗口');rendererReady=true;for(const id of flushRequests.keys())win.webContents.send('qingtu:flush',id);});
   const {UpdateController}=require('./update-controller.cjs');
   const {resolveUpdateFeed}=require('./update-source.cjs');
-  const nativeUpdater=options.updater||(process.platform==='darwin'?new (require('./mac-updater.cjs').MacUpdater)({version:app.getVersion(),arch:process.arch,publicKey:require('./sparkle-public-key.json').publicKey,cacheRoot:path.join(app.getPath('userData'),'update-parts'),fetcher:(url,request)=>net.fetch(url,request),native:require('./sparkle-native.cjs')}):require('electron-updater').autoUpdater);
+  const nativeUpdater=options.updater||(process.platform==='darwin'?new (require('./mac-updater.cjs').MacUpdater)({version:app.getVersion(),arch:process.arch,publicKey:require('./sparkle-public-key.json').publicKey,cacheRoot:path.join(app.getPath('userData'),'update-parts'),baseFiles:[path.join(app.getPath('home'),'Downloads',`Qingtu-${app.getVersion()}-${process.arch}`,`Qingtu-${app.getVersion()}-mac-${process.arch}.zip`)],fetcher:(url,request)=>net.fetch(url,request),native:require('./sparkle-native.cjs')}):require('electron-updater').autoUpdater);
   const updater=new UpdateController({development:!app.isPackaged&&!options.resolveUpdateFeed,version:app.isPackaged?app.getVersion():require('../package.json').version,updater:nativeUpdater,canInstall:()=>activeOperations===0,
     resolveFeed:options.resolveUpdateFeed||(async()=>{
       let source;
@@ -59,7 +59,10 @@ async function start(options={}) {
       });
       if(feed&&source.provider==='gitee'&&process.platform==='win32'){
         const {ChunkTransport}=require('./chunk-download.cjs');const {GiteeChunkProvider}=require('./chunk-provider.cjs');
-        chunkTransport ||= await new ChunkTransport(path.join(app.getPath('userData'),'update-parts'),{fetcher:(url,options)=>net.fetch(url,options)}).start();
+        chunkTransport ||= await new ChunkTransport(path.join(app.getPath('userData'),'update-parts'),{fetcher:(url,options)=>net.fetch(url,options),baseFiles:[
+          path.join(nativeUpdater.app.baseCachePath,'qingtu-updater','installer.exe'),
+          path.join(app.getPath('temp'),`Qingtu-${app.getVersion()}-install`,`Qingtu-${app.getVersion()}-win-${process.arch}.exe`),
+        ]}).start();
         return {...feed,provider:'custom',updateProvider:GiteeChunkProvider,transport:chunkTransport};
       }
       return feed;

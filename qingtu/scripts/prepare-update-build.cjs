@@ -27,7 +27,7 @@ function updateBuild(source,pkg,platform,arch,publicKey){
 async function prepare(platform,arch){
  const pkg=JSON.parse(await fs.readFile('package.json','utf8'));
  let source=JSON.parse(await fs.readFile('desktop/update-source.json','utf8'));
- if(process.env.QINGTU_UPDATE_GITEE){const parts=process.env.QINGTU_UPDATE_GITEE.split('/');if(parts.length!==2)throw new Error('仓库格式为 owner/repo');source={provider:'gitee',owner:parts[0],repo:parts[1]};}
+ if(process.env.QINGTU_UPDATE_GITEE){const parts=process.env.QINGTU_UPDATE_GITEE.split('/');if(parts.length!==2)throw new Error('仓库格式为 owner/repo');if(source.provider!=='gitee'||source.owner!==parts[0]||source.repo!==parts[1])source={provider:'gitee',owner:parts[0],repo:parts[1]};}
  if(process.env.QINGTU_UPDATE_URL)source={provider:'generic',url:process.env.QINGTU_UPDATE_URL};
  const publicKey=platform==='darwin'?JSON.parse(await fs.readFile('desktop/sparkle-public-key.json','utf8')).publicKey:undefined;
  const build=updateBuild(source,pkg,platform,arch,publicKey);

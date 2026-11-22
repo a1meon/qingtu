@@ -64,7 +64,7 @@ PNG 编码误差以设定宽高的像素为基准。预览、单张和批量导�
 
 ## 自动更新
 
-0.4.8 已通过 Gitee 的 a1meon_admin/halframe-releases 发布。桌面启动检查新版，先询问，再下载并确认重启；离线启动安静，点击版本号可手动检查。Mac 使用 Sparkle、Ed25519 签名更新包及免费 ad-hoc 应用签名，无需 Apple Developer Program；Windows 使用 NSIS。Gitee 大安装包采用经过校验的分片传输。本轮三个平台的匿名下载与更新器校验通过，最新版本 API 已恢复；API 发现和当前版本不重复下载检查通过，详见发行记录。首次安装和发布步骤见 [docs/auto-update.md](docs/auto-update.md)。
+v0.4.9 由 Gitee 提供。下一次正式发行开始，三个平台的同一套附件也发布到 GitHub Releases。新版客户端优先访问 Gitee，版本查询、清单或分片下载失败时自动尝试 GitHub。旧安装包与补丁基线匹配时优先下载增量补丁，完成后由用户确认重启。首次安装和发布步骤见 [docs/auto-update.md](docs/auto-update.md)。
 
 ## 开发环境
 

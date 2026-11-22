@@ -1,0 +1,28 @@
+name: Mirror verified Gitee release
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: '已在 Gitee 正式发布的标签，例如 v0.5.0'
+        required: true
+        type: string
+permissions:
+  contents: write
+concurrency:
+  group: qingtu-formal-release
+  cancel-in-progress: false
+jobs:
+  mirror:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm ci --ignore-scripts
+        working-directory: qingtu
+      - run: npm run release:mirror -- "$RELEASE_TAG"
+        working-directory: qingtu
+        env:
+          RELEASE_TAG: ${{ inputs.tag }}
+          GH_TOKEN: ${{ github.token }}

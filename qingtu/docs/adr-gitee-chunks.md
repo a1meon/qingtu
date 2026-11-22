@@ -1,6 +1,8 @@
 # ADR: Gitee 分片更新
 
-状态：用户于 2026-10-13 选择分片方案。发布目标为 a1meon_admin/halframe-releases。
+当前实现已加入跨版本增量补丁，使用同一 Gitee 源。完整分片承担首次安装和回退。协议及发布步骤见 [自动更新](auto-update.md)。
+
+原始决定：用户于 2026-10-13 选择分片方案。发布目标为 a1meon_admin/halframe-releases。
 
 要求：单附件小于 100M；仅确认后下载；断网可重试；不改变完整安装包；保留 SHA-512 和原生签名/安装验证；下载与合并不要求用户操作。Mac 标准安装仍需要 Developer ID 签名资格。
 

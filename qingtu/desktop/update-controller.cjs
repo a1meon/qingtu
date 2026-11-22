@@ -7,7 +7,13 @@ class UpdateController extends EventEmitter {
   updater.autoDownload=false;updater.autoInstallOnAppQuit=false;updater.allowPrerelease=false;updater.allowDowngrade=false;
   updater.on('update-available',info=>this.set({phase:'available',availableVersion:info.version,visible:true}));
   updater.on('update-not-available',()=>this.set({phase:'current',availableVersion:null,visible:this.manual}));
-  updater.on('download-progress',p=>this.set({phase:'downloading',percent:Math.max(this.state.phase==='downloading'?this.state.percent:0,Math.min(100,Math.round(Number(p.percent)||0)))}));
+  updater.on('download-progress',p=>{
+   // The SDK copies the reconstructed installer from loopback after the actual
+   // transfer. Its local progress should not replace the network byte count.
+   if(this.state.transferMode&&!p.mode)return;
+   const previous=this.state.phase==='downloading'&&this.state.transferMode===p.mode?this.state.percent:0;
+   this.set({phase:'downloading',transferMode:p.mode,transferBytes:p.total,percent:Math.max(previous,Math.min(100,Math.round(Number(p.percent)||0)))});
+  });
   updater.on('update-downloaded',info=>this.set({phase:'ready',availableVersion:info.version,percent:100,visible:true}));
   // Updater emits errors as well as rejecting its operation. Always handle it.
   updater.on('error',error=>this.failed(error));
@@ -34,7 +40,7 @@ class UpdateController extends EventEmitter {
  download(){
   if(this.downloading)return this.downloading;
   if(!this.state.availableVersion||!['available','error'].includes(this.state.phase))return Promise.reject(new Error('请先检查新版本'));
-  this.set({phase:'downloading',visible:true,percent:0,message:null,failureStage:null});
+  this.set({phase:'downloading',visible:true,percent:0,transferMode:null,transferBytes:null,message:null,failureStage:null});
   this.downloading=Promise.resolve().then(()=>this.updater.downloadUpdate()).then(()=>this.status()).catch(error=>this.failed(error)).finally(()=>{this.downloading=null;});
   return this.downloading;
  }

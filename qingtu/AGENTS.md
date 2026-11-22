@@ -10,6 +10,10 @@ Build app UI in `src/`. Keep `.openai/hosting.json`, `worker/index.js`, `scripts
 
 ## User-approved product constraints (latest feedback overrides earlier designs)
 
+- Follow the root AGENTS.md for every source push and formal release. Check and download from Gitee first with same-version GitHub Releases failover on both desktop platforms.
+
+- Keep routine desktop updates lightweight. Prefer verified incremental downloads for Windows and both Mac architectures, with full multipart compatibility, existing package checks and explicit restart.
+
 - In 图像编辑, 原图比例 restores the combined equal-height row of the imported images, counting repeated imports separately and split pieces once per original. Ratio presets fit horizontal images to the canvas height while preserving proportions. Switching back brings the entire composition into the frame.
 
 - 四视优化 caps the post-special horizontal row at 2.4:1. For three images default to the second, for four default to the third. Explicit image selections win. Preserve all special cuts and leave ordinary images intact at or below the cap. Above it, crop only the ordinary images by the same percentage from each side. The widest preset is 12:5 (5988 × 2495); the menu explains how to select and crop the front full-body view via its focusable question mark. Use light backgrounds and dark text for this guide and the file-size increase explanations in both modules.

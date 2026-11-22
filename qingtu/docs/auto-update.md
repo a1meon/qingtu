@@ -1,8 +1,25 @@
-# 自动更新（0.4.6）
+# 自动更新
 
 0.4.6 已于 2026-10-15 联合正式发布至 Gitee，Windows x64、Mac arm64/x64 的匿名下载、签名及哈希、latest API 和当前版本不下载检查已通过。用户批准 Mac 采用 Sparkle 和免费 ad-hoc 签名，无需付费 Apple Developer Program。Windows 保留 NSIS 与 electron-updater。
 
 启动只检查一次；发现新版先询问，确认后下载。下载完成后等待「重启并更新」，不因为普通退出自动安装。离线启动安静；版本号用于手动检查和重试。图片处理和导出期间不能重启；安装启动后不接受新的处理或保存任务。浏览器预览提示在桌面版更新。
+
+## 双源发行与验收
+
+v0.4.9 仍由 Gitee 单独提供。从下一次正式发行起，Gitee 是主源，GitHub Releases 是备用源。新版桌面端在版本查询失败时改查另一个服务。确定版本后，平台清单、增量补丁和完整分片都从同一标签读取，一个源连接失败、附件缺失或校验未通过时尝试另一个源。首次安装引导也可从两处下载。旧客户端通过原更新源升级一次后获得此能力。
+
+1. 将源码及正式标签同步到两个源码仓库。在应用目录运行 `npm run git:sync -- --tag vX.Y.Z`。按下面的打包流程制作和验证 Windows x64、Mac arm64、Mac x64 的产物。
+2. 在 Gitee 发行仓库发布经过验证的同一套附件，包括 `SHA256SUMS-X.Y.Z.txt`。每行以 SHA-256 十六进制摘要、两个空格、附件名组成。覆盖全部公开附件，校验表自身除外。
+3. 在已登录 GitHub CLI 并有仓库写权限的机器上运行 `npm run release:mirror -- vX.Y.Z`。也可以在 GitHub Actions 运行 **Mirror verified Gitee release** 工作流。命令按正式标签从 Gitee 获取附件，核对三个平台清单、Mac 签名、引用的补丁与分片，以及各附件的 SHA-256。随后上传至 GitHub 草稿并逐一对照服务器计算的摘要，全部匹配后公开。
+4. 同一命令最后通过匿名下载检查 GitHub 附件，并确认两端的最新版本入口。出现网络中断时可重跑，已校验的草稿附件会复用。已有同名不同内容时停止，保留现场供检查。只做验收可运行 `npm run release:mirror -- vX.Y.Z --verify-only`。在两个源通过验证后宣布发行完成。
+
+## 增量更新
+
+新版桌面客户端共用一套支持双源的补丁下载协议。确认更新后，若本机保存的旧安装包与补丁要求的 SHA-512 和大小一致，只下载一个 `.qtdelta` 附件。客户端在临时文件中复制本地旧包的数据块、写入新的块，并校验还原结果的完整大小及 SHA-512。Windows 将验证后的 EXE 交给 NSIS，macOS 将完整 ZIP 交给 Sparkle 验证原始 EdDSA 签名。仍需用户点击「重启并更新」。更新窗口显示所选下载的大小和进度。
+
+新安装的 Mac 引导程序在同一磁盘上为已校验的 ZIP 建立硬链接，用户整理下载目录后仍可使用这份更新缓存。Windows 可读取 NSIS 保留的安装包。通过应用内更新的两端都会缓存验证完毕的安装包。已发布的旧客户端仍走原有的完整分片流程，通常需要一次完整更新来升级更新器。跳过补丁支持的基线版本、清除了缓存、差异过大或补丁丢失、校验失败时，客户端走完整更新。网络暂时中断时保留基线，重试增量下载。
+
+发布命令会自动为 Windows x64、Mac arm64 和 Mac x64 的安装包分别生成补丁。默认取 `release/` 中同平台、同架构的最近旧版本；干净的构建机会尝试从配置的正式更新源取得基线。若本地有多个试打包，使用 `QINGTU_DELTA_BASE` 指定用户实际安装的已发布 EXE 或 ZIP。构建端使用 electron-builder 的 blockmap 比较两版，生成后实际还原一次并校验结果。补丁须小于完整包且不超过 64 MiB。发布时将清单引用的 `.qtdelta` 和完整分片一起上传；缺少基线时仍可生成完整更新。Mac 补丁信息包含在签名清单中。
 
 ## 首次安装
 
@@ -12,7 +29,7 @@
 
 Windows 新安装可运行 Install-Qingtu-0.4.6-Windows.cmd，自动下载和合并、核对 SHA-512，再打开 NSIS 向导。已接入更新源和分片协议的 0.4.3 Windows 可以在应用内升级。
 
-发行仓库：[a1meon_admin/halframe-releases](https://gitee.com/a1meon_admin/halframe-releases)。各版使用与 package.json 一致的 vX.Y.Z 标签。当前配置为 desktop/update-source.json 的公开 Gitee 源，客户端不带令牌。
+发行仓库：[a1meon_admin/halframe-releases](https://gitee.com/a1meon_admin/halframe-releases)。各版使用与 package.json 一致的 vX.Y.Z 标签。主源和备用源均由 desktop/update-source.json 配置，客户端匿名访问。
 
 ## Mac 协议与信任
 
@@ -34,7 +51,7 @@ CI 可通过 QINGTU_SPARKLE_SEED secret 导入种子；未配置时不应发布 
 
 npm run pack:mac / pack:mac:intel 编译各架构桥接、生成构建配置、签名打包、生成签名清单/分片和小型首次安装 DMG。npm run pack:win 生成 NSIS 和分片。发布附件集中在 release/gitee-publish；自定义输出目录用对应 scripts/prepare-*.cjs 参数。
 
-Mac 只上传更新 ZIP 的分片与签名清单、初装 DMG。Windows 上传 EXE 分片、latest.yml、初装 CMD。上传合并的 SHA256SUMS 校验表。标准大 DMG/ZIP 留作本地分发，不需要上传大文件或手工拼接。Gitee 单仓库附件总量 1G，未来发布需控制保留数量；清理线上旧版应另行确认。当前每个附件最多 64 MiB，均低于 Gitee 100M 上限。
+Mac 上传更新 ZIP 的分片、可用的增量包、签名清单和初装 DMG。Windows 上传 EXE 分片、可用的增量包、latest.yml 和初装 CMD。上传合并的 SHA256SUMS 校验表。标准大 DMG/ZIP 留作本地分发，不需要上传大文件或手工拼接。Gitee 单仓库附件总量 1G，未来发布需控制保留数量；清理线上旧版应另行确认。当前每个附件最多 64 MiB，均低于 Gitee 100M 上限。
 
 先创建预览发行版并上传全部附件；验证匿名下载、清单签名、所有分片及完整包、Sparkle ZIP 签名和 Windows SDK 下载，再改为正式。每版附件保持不可变。联合发行必须带 Windows latest.yml，否则 latest API 指向 Mac 单平台版会影响 Windows 更新。
 

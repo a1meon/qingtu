@@ -18,3 +18,24 @@ test('wrong architecture, already-current version and incomplete download cannot
  const f=await fixture(t);await assert.rejects(f.updater.quitAndInstall(),/下载/);f.updater.arch='x64';await assert.rejects(f.updater.checkForUpdates(),/架构/);f.updater.arch='arm64';f.updater.version='0.4.4';let current=false;f.updater.on('update-not-available',()=>current=true);await f.updater.checkForUpdates();assert.equal(current,true);assert.equal(f.hits,0);
  f.updater.version='0.4.3';await f.updater.checkForUpdates();f.break();await assert.rejects(f.updater.downloadUpdate(),/校验|体积/);assert.equal(f.calls.length,0);
 });
+
+test('Mac verifies mirror manifests, pins their version and tries the other host for damaged parts',async t=>{
+ const f=await fixture(t);
+ const healthy=f.updater.feed.url,primary='https://primary.test/v0.4.4/';
+ let damagedManifest=true;const hits=[];
+ f.updater.fetcher=async(url,options)=>{
+  hits.push(url);
+  if(url.startsWith(primary)){
+   if(url.endsWith('.json')&&!damagedManifest)return fetch(new URL('mac-arm64.json',healthy),options);
+   return new Response(url.endsWith('.json')?'{"signature":"bad"}':'broken');
+  }
+  return fetch(url,options);
+ };
+ f.updater.setFeedURL({url:primary,mirrorUrls:[healthy],releaseVersion:'0.4.5'});
+ await assert.rejects(f.updater.checkForUpdates());assert.equal(f.hits,0);
+ f.updater.setFeedURL({url:primary,mirrorUrls:[healthy],releaseVersion:'0.4.4'});
+ await f.updater.checkForUpdates();assert.equal(f.updater.sources[0],healthy);
+ damagedManifest=false;await f.updater.checkForUpdates();assert.equal(f.updater.sources[0],primary);
+ const [result]=await f.updater.downloadUpdate();assert.deepEqual(await fs.readFile(result),f.bytes);
+ assert.deepEqual(hits.slice(-2),[primary+'archive.part01',healthy+'archive.part01']);
+});
