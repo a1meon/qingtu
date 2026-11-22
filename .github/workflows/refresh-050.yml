@@ -8,6 +8,24 @@ concurrency:
   group: qingtu-formal-release
   cancel-in-progress: false
 jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+    steps:
+      - name: Read the failed release step
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh run view 45053026578 --repo a1meon/qingtu --log-failed > "$RUNNER_TEMP/failed.txt"
+          python3 - <<'PYLOG'
+          import pathlib,os
+          lines=(pathlib.Path(os.environ['RUNNER_TEMP'])/'failed.txt').read_text().splitlines()
+          for line in lines[-35:]:
+              msg=line.split('Z ',1)[-1]
+              if any(s in msg.lower() for s in ['error','failed','gh:','assertion','traceback','exception','httperror','status 4','status 5','cannot','not found','403','404','422']):
+                  print('::notice title=Release diagnostic::'+msg.replace('%','%25')[:800])
+          PYLOG
   windows:
     runs-on: windows-latest
     steps:
@@ -55,15 +73,15 @@ jobs:
               return {n:h for h,n in (l.split() for l in pathlib.Path(f).read_text().splitlines())}
           old, new = (sums('.github/v050-'+s+'.sha256') for s in ('original','replacement'))
           release=json.loads(subprocess.check_output(['gh','api','repos/a1meon/qingtu/releases/tags/v0.5.0']))
-          assert str(release['id'])=='454546415' and not release['draft'] and not release['prerelease']
+          assert str(release['id'])=='454546415' and not release['draft'] and not release['prerelease'], 'Unexpected release identity'
           existing={a['name']:a['digest'].removeprefix('sha256:') for a in release['assets']}
           assert set(old)==set(new) and set(existing)<=set(new)
-          assert all(h in {old[n], new[n]} for n,h in existing.items())
+          assert all(h in {old[n], new[n]} for n,h in existing.items()), [n for n,h in existing.items() if h not in {old[n],new[n]}]
           for n in sorted(new, key=lambda n:(n.startswith('SHA256'), n.endswith(('.yml','.json')), n)):
               if existing.get(n)!=new[n]:
-                  subprocess.run(['gh','release','upload','v0.5.0','qingtu/release/v0.5.0/'+n,'--clobber'],check=True)
+                  subprocess.run(['gh','release','upload','v0.5.0','qingtu/release/v0.5.0/'+n,'--repo','a1meon/qingtu','--clobber'],check=True)
           PY
-          gh release edit v0.5.0 --notes-file qingtu/docs/releases/v0.5.0.md
+          gh release edit v0.5.0 --repo a1meon/qingtu --notes-file qingtu/docs/releases/v0.5.0.md
       - name: Check every anonymous download on both sources
         run: npm run release:mirror -- v0.5.0 --verify-only
         working-directory: qingtu
