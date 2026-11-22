@@ -10,9 +10,9 @@ Build app UI in `src/`. Keep `.openai/hosting.json`, `worker/index.js`, `scripts
 
 ## User-approved product constraints (latest feedback overrides earlier designs)
 
-- Follow the root AGENTS.md for every source push and formal release. Check and download from Gitee first with same-version GitHub Releases failover on both desktop platforms.
+- Follow the root AGENTS.md for every source push and formal release. Check and download from Tencent CNB first with same-version GitHub Releases failover. Publish complete installers and incremental patches. Gitee hosts release notes and download links.
 
-- Keep routine desktop updates lightweight. Prefer verified incremental downloads for Windows and both Mac architectures, with full multipart compatibility, existing package checks and explicit restart.
+- Keep routine desktop updates lightweight. Prefer verified incremental downloads for Windows and both Mac architectures, with complete installers, backwards-compatible reading of old multipart metadata, existing package checks and explicit restart.
 
 - In 图像编辑, 原图比例 restores the combined equal-height row of the imported images, counting repeated imports separately and split pieces once per original. Ratio presets fit horizontal images to the canvas height while preserving proportions. Switching back brings the entire composition into the frame.
 

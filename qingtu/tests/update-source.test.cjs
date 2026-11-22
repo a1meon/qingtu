@@ -21,19 +21,19 @@ test('empty source disables updates and malformed or insecure sources fail befor
 });
 
 test('unavailable, invalid or prerelease primary discovers the stable GitHub tag and pins both download hosts',async()=>{
- const config=require('../desktop/update-source.json');
+ const config={provider:'cnb',owner:'sample',repo:'qingtu',mirrors:[{provider:'github',owner:'a1meon',repo:'qingtu'}]};
  for(const primary of [null,{tag_name:'v1.0.0',draft:true},{tag_name:'v9.0.0',prerelease:true},{tag_name:'../other'}]){
   const requests=[];
   const feed=await resolveUpdateFeed(config,'win32','x64',async url=>{
    requests.push(url);
-   if(url.includes('gitee.com')){if(!primary)throw Error('unavailable');return primary;}
+   if(url.includes('cnb.cool')){if(!primary)throw Error('unavailable');return primary;}
    return {tag_name:'v1.2.3'};
   });
-  assert.deepEqual(requests,['https://gitee.com/api/v5/repos/a1meon_admin/halframe-releases/releases/latest','https://api.github.com/repos/a1meon/qingtu/releases/latest']);
+  assert.deepEqual(requests,['https://cnb.cool/sample/qingtu/-/git/raw/qingtu-updates/stable.json','https://api.github.com/repos/a1meon/qingtu/releases/latest']);
   assert.equal(feed.releaseVersion,'1.2.3');
   assert.equal(feed.url,'https://github.com/a1meon/qingtu/releases/download/v1.2.3/');
-  assert.deepEqual(feed.mirrorUrls,['https://gitee.com/a1meon_admin/halframe-releases/releases/download/v1.2.3/']);
+  assert.deepEqual(feed.mirrorUrls,['https://cnb.cool/sample/qingtu/-/releases/download/v1.2.3/']);
  }
- const feed=await resolveUpdateFeed(config,'darwin','x64',async url=>{assert.match(url,/gitee/);return {tag_name:'v1.2.4'};});
- assert.match(feed.url,/gitee/);assert.match(feed.mirrorUrls[0],/github.*v1.2.4\/$/);
+ const feed=await resolveUpdateFeed(config,'darwin','x64',async url=>{assert.match(url,/cnb.cool/);return {tag_name:'v1.2.4'};});
+ assert.match(feed.url,/cnb.cool/);assert.match(feed.mirrorUrls[0],/github.*v1.2.4\/$/);
 });

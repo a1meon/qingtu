@@ -64,7 +64,7 @@ PNG 编码误差以设定宽高的像素为基准。预览、单张和批量导�
 
 ## 自动更新
 
-v0.4.9 由 Gitee 提供。下一次正式发行开始，三个平台的同一套附件也发布到 GitHub Releases。新版客户端优先访问 Gitee，版本查询、清单或分片下载失败时自动尝试 GitHub。旧安装包与补丁基线匹配时优先下载增量补丁，完成后由用户确认重启。首次安装和发布步骤见 [docs/auto-update.md](docs/auto-update.md)。
+0.5.0 起使用腾讯云 CNB 主源和 GitHub Releases 备用源。首次安装下载一个 Windows EXE 或与芯片对应的 Mac DMG。应用内更新会优先使用匹配的增量补丁，缺少基线时下载完整 EXE 或 ZIP。旧版用户可从 Gitee 发行说明的入口下载 0.5.0 并覆盖安装。详见[发布手册](docs/auto-update.md)。
 
 ## 开发环境
 

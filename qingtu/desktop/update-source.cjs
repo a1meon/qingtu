@@ -9,11 +9,15 @@ function httpsUrl(value) {
 
 function releaseHosts(config) {
   return [config, ...(config.mirrors || [])].map(({provider, owner, repo}) => {
-    if (!['gitee', 'github'].includes(provider) ||
-        ![owner, repo].every(value => typeof value === 'string' && /^[a-zA-Z0-9_-][a-zA-Z0-9_.-]*$/.test(value))) {
+    if (!['gitee', 'github', 'cnb'].includes(provider) ||
+        ![...(provider === 'cnb' && typeof owner === 'string' ? owner.split('/') : [owner]), repo].every(value => typeof value === 'string' && /^[a-zA-Z0-9_-][a-zA-Z0-9_.-]*$/.test(value))) {
       throw new Error('发行仓库地址无效');
     }
     const project = owner + '/' + repo;
+    if (provider === 'cnb') {
+      const downloads = 'https://cnb.cool/' + project + '/-/releases/download/';
+      return {api:'https://cnb.cool/' + project + '/-/git/raw/qingtu-updates/stable.json', downloads};
+    }
     return {
       api: (provider === 'gitee' ? 'https://gitee.com/api/v5' : 'https://api.github.com') + '/repos/' + project + '/releases/latest',
       downloads: 'https://' + provider + '.com/' + project + '/releases/download/'
@@ -49,7 +53,7 @@ async function resolveUpdateFeed(config, platform, arch, requestJson) {
     if (!url.pathname.endsWith('/')) url.pathname += '/';
     return {provider:'generic', url:new URL((platform === 'darwin' ? 'mac' : 'win') + '-' + arch + '/', url).href, useMultipleRangeRequest:false};
   }
-  if (config.provider !== 'gitee') throw new Error('更新源类型无效');
+  if (!['gitee','cnb'].includes(config.provider)) throw new Error('更新源类型无效');
   if (!config.owner || !config.repo) return null;
   const hosts = releaseHosts(config);
   return fromMirrors(hosts, async host => {
@@ -59,7 +63,7 @@ async function resolveUpdateFeed(config, platform, arch, requestJson) {
     return {
       provider:'generic', url:host.downloads + path,
       mirrorUrls:hosts.filter(other => other !== host).map(other => other.downloads + path),
-      releaseVersion:release.tag_name.slice(1), channel:platform === 'darwin' ? 'latest-' + arch : 'latest', useMultipleRangeRequest:false
+      releaseVersion:release.tag_name.slice(1), signedWindows:config.provider === 'cnb', channel:platform === 'darwin' ? 'latest-' + arch : 'latest', useMultipleRangeRequest:false
     };
   });
 }

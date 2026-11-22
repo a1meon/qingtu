@@ -8,7 +8,7 @@ const version = '1.2.3', primary = 'https://primary.test/v1.2.3/', backup = 'htt
 const sha512 = createHash('sha512').update('a').digest('base64');
 function file(suffix) {
  const url = 'Qingtu-' + version + '-' + suffix;
- return {url, size:1, sha512, qingtuParts:[{url:url+'.part01',size:1,sha512}]};
+ return {url, size:1, sha512};
 }
 test('Windows SDK retries the selected tag on the second host and hands all matching hosts to transport',async()=>{
  const installer = file('win-x64.exe'), requests = [], registered = [];
@@ -22,7 +22,7 @@ test('Windows SDK retries the selected tag on the second host and hands all matc
  assert.equal(info.version,version);assert.deepEqual(requests,['primary.test/v1.2.3/latest.yml','backup.test/v1.2.3/latest.yml']);
  provider.resolveFiles(info);assert.equal(registered[0][1],backup);assert.deepEqual(registered[0][3],[primary]);
 });
-test('release verification requires both Mac installers, Windows and every advertised patch and part',()=>{
+test('release verification requires both Mac installers, Windows and every complete archive and advertised patch',()=>{
  const win = file('win-x64.exe'),macs={};
  win.qingtuDelta={url:win.url+'.from-1.2.2.qtdelta'};
  for(const arch of ['arm64','x64'])macs[arch]={arch,version,file:file('mac-'+arch+'.zip')};
@@ -43,10 +43,23 @@ test('mirror checks the reconstructed package and advertised patch before upload
  const dir=await fs.mkdtemp(path.join(os.tmpdir(),'qingtu-manifest-'));t.after(()=>fs.rm(dir,{recursive:true,force:true}));
  const target=file('win-x64.exe');target.qingtuDelta={url:'change.qtdelta',size:1,sha512};
  const {verifyPayload}=require('../scripts/mirror-release.cjs');
- await fs.writeFile(path.join(dir,target.qingtuParts[0].url),'a');
+ await fs.writeFile(path.join(dir,target.url),'a');
  await fs.writeFile(path.join(dir,'change.qtdelta'),'a');
  await verifyPayload(dir,target);
  await fs.writeFile(path.join(dir,'change.qtdelta'),'b');
  await assert.rejects(verifyPayload(dir,target),/change.qtdelta/);
  await assert.rejects(verifyPayload(dir,{...target,sha512:'wrong'}),/完整包/);
+});
+
+test('Windows binds the complete EXE and delta to the signed version and rejects arbitrary package overrides',()=>{
+ const {generateKeyPairSync,sign}=require('node:crypto');
+ const {signedBytes,verifyWindowsManifest}=require('../desktop/windows-manifest.cjs');
+ const {privateKey,publicKey}=generateKeyPairSync('ed25519');
+ const raw=publicKey.export({format:'der',type:'spki'}).subarray(-32).toString('base64');
+ const info={version,files:[file('win-x64.exe')]};
+ info.qingtuSignature=sign(null,signedBytes(info),privateKey).toString('base64');
+ assert.doesNotThrow(()=>verifyWindowsManifest(info,raw));
+ assert.throws(()=>verifyWindowsManifest({...info,packages:{x64:{path:'another.7z'}}},raw));
+ info.files[0].qingtuDelta={url:'other.qtdelta'};
+ assert.throws(()=>verifyWindowsManifest(info,raw));
 });

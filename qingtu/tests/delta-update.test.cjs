@@ -52,6 +52,15 @@ test('published update uses only the patch over HTTP, with verified recovery pat
   assert.deepEqual(await fs.readFile(result),next);
   assert.deepEqual(attempts,[primary+patch.url,url+patch.url]);assert.deepEqual(downloaded.splice(0),[patch.url]);
  });
+ await t.test('single-file releases choose a patch with a matching base and one complete EXE otherwise',async()=>{
+  const whole={...file};delete whole.qingtuParts;
+  await fs.writeFile(path.join(feedDir,name),next);
+  for(const usePatch of [true,false]){
+   const result=await assembleParts(whole,url,path.join(dir,'single-'+usePatch),{baseFiles:usePatch?[old]:[]});
+   assert.deepEqual(await fs.readFile(result),next);
+   assert.deepEqual(downloaded.splice(0),[usePatch?patch.url:name]);
+  }
+ });
  await t.test('a missing or same-size damaged base downloads full parts without requesting a patch',async()=>{
   const damaged=path.join(dir,'damaged');await fs.writeFile(damaged,Buffer.alloc(original.length));
   const result=await assembleParts(file,url,path.join(dir,'no-base'),{baseFiles:[damaged]});

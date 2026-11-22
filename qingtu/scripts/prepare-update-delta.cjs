@@ -41,7 +41,7 @@ async function releaseBaseline(target) {
     let config;
     try { config = JSON.parse(await fs.readFile('build/update-source.json','utf8')); }
     catch (error) { if (error.code !== 'ENOENT') throw error; config = require('../desktop/update-source.json'); }
-    if (config.provider !== 'gitee') return;
+    if (!['cnb','gitee'].includes(config.provider)) return;
     async function metadata(url) {
       const response = await fetch(url,{signal:AbortSignal.timeout(15000)});
       if (!response.ok) throw new Error('HTTP ' + response.status);
@@ -62,10 +62,11 @@ async function releaseBaseline(target) {
         if (manifest.version === version && manifest.file.url === name) file = manifest.file;
       } else {
         const info = require('js-yaml').load(await metadata(new URL('latest.yml',base)));
+        if (config.provider === 'cnb') require('../desktop/windows-manifest.cjs').verifyWindowsManifest(info);
         if (info.version === version) file = info.files.find(entry=>entry.url === name);
       }
       if (!file) throw new Error('发行清单缺少基线安装包');
-      require('../desktop/chunk-download.cjs').validateParts(file,base);
+      require('../desktop/chunk-download.cjs').validateArchive(file,base);
       return {file,base};
     });
     const archive = await assembleParts({...file,qingtuDelta:undefined},base,path.resolve('.cache','delta-base',match[2]),{mirrorUrls:preferredUrls(feed,base).slice(1)});

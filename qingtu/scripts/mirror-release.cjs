@@ -1,4 +1,4 @@
-// Copy an already verified, public Gitee release. Only publish the GitHub draft
+// Copy an already verified, public CNB release. Only publish the GitHub draft
 // after its stored assets match the source byte for byte.
 const {execFileSync} = require('node:child_process');
 const {createHash} = require('node:crypto');
@@ -12,7 +12,7 @@ const semver = require('semver');
 const config = require('../desktop/update-source.json');
 const {releaseHosts} = require('../desktop/update-source.cjs');
 const {decodeEnvelope} = require('../desktop/mac-updater.cjs');
-const {validateParts} = require('../desktop/chunk-download.cjs');
+const {validateArchive} = require('../desktop/chunk-download.cjs');
 
 function checksums(text) {
   const sums = new Map();
@@ -25,8 +25,7 @@ function checksums(text) {
 }
 
 function requiredFiles(version, windows, macs, base) {
-  const names = new Set(['latest.yml', 'mac-arm64.json', 'mac-x64.json',
-    'Install-Qingtu-' + version + '-Windows.cmd', ...['arm64','x64'].map(a => 'Qingtu-' + version + '-Mac-' + a + '-Installer.dmg')]);
+  const names = new Set(['stable.json','latest.yml','mac-arm64.json','mac-x64.json', ...['arm64','x64'].map(a => 'Qingtu-' + version + '-mac-' + a + '.dmg')]);
   if (windows.version !== version || windows.files?.length !== 1) throw new Error('Windows 清单版本或文件列表不匹配');
   for (const [suffix, file] of [['win-x64.exe', windows.files[0]], ...['arm64','x64'].map(arch => {
     const manifest = macs[arch];
@@ -34,8 +33,9 @@ function requiredFiles(version, windows, macs, base) {
     return ['mac-' + arch + '.zip', manifest.file];
   })]) {
     if (file.url !== 'Qingtu-' + version + '-' + suffix) throw new Error('安装包名称与平台不符');
-    validateParts(file,base);
-    for (const part of file.qingtuParts) names.add(part.url);
+    if (file.qingtuParts !== undefined) throw new Error('本版只发布完整安装包');
+    validateArchive(file,base);
+    names.add(file.url);
     if (file.qingtuDelta) {
       if (!/^[A-Za-z0-9][A-Za-z0-9_.-]*\.qtdelta$/.test(file.qingtuDelta.url)) throw new Error('增量包名称无效');
       names.add(file.qingtuDelta.url);
@@ -49,7 +49,7 @@ function sameAssets(expected, actual) {
 }
 
 async function response(url) {
-  const res = await fetch(url, {signal:AbortSignal.timeout(180000),headers:{'User-Agent':'qingtu-release'}});
+  const res = await fetch(url, {signal:AbortSignal.timeout(1200000),headers:{'User-Agent':'qingtu-release'}});
   if (!res.ok || new URL(res.url).protocol !== 'https:') throw new Error('附件或发行信息下载失败 ' + res.status + ' ' + url);
   return res;
 }
@@ -64,43 +64,43 @@ async function download(url, target) {
 }
 
 async function verifyPayload(dir, file) {
-  const whole = createHash('sha512');
-  const verify = async (part, archivePart) => {
+  const verify = async part => {
     const hash = createHash('sha512');
     let size = 0;
     for await (const bytes of createReadStream(path.join(dir,part.url))) {
       size += bytes.length;
       hash.update(bytes);
-      if (archivePart) whole.update(bytes);
     }
-    if (size !== part.size || hash.digest('base64') !== part.sha512) throw new Error('更新附件与平台清单不符 ' + part.url);
+    if (size !== part.size || hash.digest('base64') !== part.sha512) throw new Error('完整包或补丁校验失败 ' + part.url);
   };
-  for (const part of file.qingtuParts) await verify(part, true);
-  if (whole.digest('base64') !== file.sha512) throw new Error('完整包校验失败 ' + file.url);
-  if (file.qingtuDelta) await verify(file.qingtuDelta, false);
+  await verify(file);
+  if (file.qingtuDelta) await verify(file.qingtuDelta);
 }
 
 async function mirror(tag, verifyOnly = false) {
   if (!/^v\d+\.\d+\.\d+$/.test(tag) || !semver.gt(tag,'0.4.9')) throw new Error('双发从 v0.4.9 之后的正式版本开始');
   const version = tag.slice(1);
-  const [gitee, github] = releaseHosts(config);
+  const [cnb, github] = releaseHosts(config);
   const project = config.mirrors.find(mirror => mirror.provider === 'github');
   const repo = project.owner + '/' + project.repo;
-  const base = gitee.downloads + tag + '/';
-  const release = await (await response(gitee.api.replace(/latest$/, 'tags/' + tag))).json();
-  if (release.tag_name !== tag || release.draft || release.prerelease) throw new Error('Gitee 尚无对应的公开正式版本');
+  const base = cnb.downloads + tag + '/';
+  const release = await (await response(base+'stable.json')).json();
+  if (release.tag_name !== tag) throw new Error('CNB 发布标记与标签不匹配');
   const sumFile = 'SHA256SUMS-' + version + '.txt';
-  const sourceFiles = new Set(release.assets.filter(a => a.browser_download_url === base + a.name).map(a => a.name));
   const temp = await fs.mkdtemp(path.join(os.tmpdir(),'qingtu-release-'));
   const gh = args => execFileSync('gh', args, {encoding:'utf8',maxBuffer:32*1024*1024});
   const releases = () => JSON.parse(gh(['api','--paginate','--slurp','repos/' + repo + '/releases?per_page=100'])).flat();
   const find = () => releases().find(r => r.tag_name === tag);
   try {
     const sumHash = await download(base + sumFile, path.join(temp,sumFile));
-    const sums = checksums(await fs.readFile(path.join(temp,sumFile),'utf8'));
-    sameAssets(new Set([sumFile,...sums.keys()]),sourceFiles);
+    const sumSig=sumFile+'.sig';
+    const sigHash=await download(base+sumSig,path.join(temp,sumSig));
+    const data=await fs.readFile(path.join(temp,sumFile));
+    const {verifyReleaseSignature}=require('./release-key.cjs');
+    verifyReleaseSignature(data,await fs.readFile(path.join(temp,sumSig),'utf8'));
+    const sums=checksums(data.toString('utf8'));
     for (const [name, digest] of sums) {
-      if (await download(base + name,path.join(temp,name)) !== digest) throw new Error('Gitee 附件校验失败 ' + name);
+      if (await download(base + name,path.join(temp,name)) !== digest) throw new Error('CNB 附件校验失败 ' + name);
     }
     const macs = {};
     for (const arch of ['arm64','x64']) {
@@ -108,13 +108,14 @@ async function mirror(tag, verifyOnly = false) {
       macs[arch] = decodeEnvelope(envelope,require('../desktop/sparkle-public-key.json').publicKey,arch,base);
     }
     const windows = yaml.load(await fs.readFile(path.join(temp,'latest.yml'),'utf8'));
+    require('../desktop/windows-manifest.cjs').verifyWindowsManifest(windows);
     sameAssets(requiredFiles(version,windows,macs,base),new Set(sums.keys()));
     for (const file of [windows.files[0],macs.arm64.file,macs.x64.file]) await verifyPayload(temp,file);
-    sums.set(sumFile,sumHash);
+    sums.set(sumFile,sumHash);sums.set(sumSig,sigHash);
     if (!verifyOnly) {
       let dest = find();
       if (!dest) {
-        gh(['release','create',tag,'--repo',repo,'--verify-tag','--draft','--title',release.name || tag,'--notes',release.body || tag]);
+        gh(['release','create',tag,'--repo',repo,'--verify-tag','--draft','--title','轻图 '+version,'--notes-file',path.join(__dirname,'..','docs','releases',tag+'.md')]);
         dest = find();
       }
       if (!dest || dest.prerelease) throw new Error('GitHub 发行状态异常');
@@ -140,7 +141,7 @@ async function mirror(tag, verifyOnly = false) {
     for (const [name, digest] of sums) {
       if (await download(github.downloads + tag + '/' + name,path.join(temp,name)) !== digest) throw new Error('GitHub 匿名下载校验失败 ' + name);
     }
-    for (const host of [gitee,github]) {
+    for (const host of [cnb,github]) {
       if ((await (await response(host.api)).json()).tag_name !== tag) throw new Error('最新版本入口尚未指向 ' + tag);
     }
     console.log(tag + ' 双源校验通过，共 ' + sums.size + ' 个附件。');

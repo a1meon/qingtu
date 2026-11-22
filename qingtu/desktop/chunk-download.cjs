@@ -17,6 +17,15 @@ function validateParts(file,base){
  if(total!==file.size)throw new Error('分片总体积不匹配');
  return file;
 }
+// Older releases describe parts. New releases name a single immutable archive.
+function validateArchive(file, base) {
+ if (file?.qingtuParts !== undefined) return validateParts(file,base);
+ const origin=new URL(base);
+ if (origin.protocol!=='https:' && !(origin.protocol==='http:' && origin.hostname==='127.0.0.1')) throw new Error('更新源须为 HTTPS');
+ if (!/^[A-Za-z0-9][A-Za-z0-9_.-]*\.(exe|zip)$/.test(file?.url) ||
+     !Number.isSafeInteger(file.size) || file.size<1 || file.size>MAX_FILE || !digestValid(file.sha512)) throw new Error('完整包名称、大小或校验信息无效');
+ return file;
+}
 async function fileDigest(file){
  const hash=createHash('sha512');
  for await(const bytes of createReadStream(file))hash.update(bytes);
@@ -27,7 +36,7 @@ async function verified(file,size,sha512){
 }
 
 async function fetchPiece(part,base,tmp,{signal,fetcher,onBytes}){
- const timeout=AbortSignal.timeout(120000);
+ const timeout=AbortSignal.timeout(part.size>MAX_PART?1800000:120000);
  const response=await fetcher(new URL(part.url,base).href,{signal:signal?AbortSignal.any([signal,timeout]):timeout});
  if(new URL(base).protocol==='https:'&&response.url&&new URL(response.url).protocol!=='https:')throw new Error('分片源不能降级为 HTTP');
  if(!response.ok||!response.body)throw Object.assign(new Error('分片下载失败'),{fallback:[404,410].includes(response.status)});
@@ -78,7 +87,7 @@ async function tryDelta(file,sources,root,complete,{signal,fetcher,onProgress,ba
 
 async function assembleParts(file,base,root,{signal,onProgress=()=>{},fetcher=fetch,baseFiles=[],mirrorUrls=[]}={}){
  const sources=[...new Set([base,...mirrorUrls])];
- for(const url of sources)validateParts(file,url);signal?.throwIfAborted();
+ for(const url of sources)validateArchive(file,url);signal?.throwIfAborted();
  const key=Buffer.from(file.sha512,'base64').toString('hex'),dir=path.join(root,key);
  await fs.mkdir(dir,{recursive:true,mode:0o700});
  const complete=path.join(dir,'complete');
@@ -86,6 +95,14 @@ async function assembleParts(file,base,root,{signal,onProgress=()=>{},fetcher=fe
  await fs.rm(complete,{force:true});
  if(await tryDelta(file,sources,root,complete,{signal,fetcher,onProgress,baseFiles}))return complete;
  onProgress(0,file.size,'full');
+ if (!file.qingtuParts) {
+  const tmp=complete+'.partial-'+randomUUID();
+  try {
+   await fetchVerifiedPiece(file,sources,tmp,{signal,fetcher,onBytes:bytes=>onProgress(bytes,file.size,'full')});
+   signal?.throwIfAborted();await fs.rename(tmp,complete);
+   return complete;
+  } finally { await fs.rm(tmp,{force:true}); }
+ }
  let transferred=0;const paths=[];
  for(let i=0;i<file.qingtuParts.length;i++){
   signal?.throwIfAborted();const part=file.qingtuParts[i];const dest=path.join(dir,`${i}-${Buffer.from(part.sha512,'base64').toString('hex')}`);paths.push(dest);
@@ -113,7 +130,7 @@ class ChunkTransport {
   this.server=http.createServer((req,res)=>this.serve(req,res));await new Promise((resolve,reject)=>{this.server.once('error',reject);this.server.listen(0,'127.0.0.1',resolve);});this.server.unref();return this;
  }
  register(file,base,onProgress=()=>{},mirrorUrls=[]){
-  validateParts(file,base);const name=path.posix.basename(new URL(file.url,base).pathname);
+  validateArchive(file,base);const name=path.posix.basename(new URL(file.url,base).pathname);
   if(!/^[A-Za-z0-9][A-Za-z0-9_.-]*\.(exe|zip|dmg)$/.test(name))throw new Error('分片安装包名称无效');
   const route=`/${this.token}/${randomUUID()}/${name}`;
   this.routes.set(route,{file,base,onProgress,mirrorUrls});return new URL(`http://127.0.0.1:${this.server.address().port}${route}`);
@@ -140,4 +157,4 @@ class ChunkTransport {
  }
  close(){this.activeAbort?.abort();this.server?.close();}
 }
-module.exports={assembleParts,validateParts,ChunkTransport,fileDigest};
+module.exports={assembleParts,validateParts,validateArchive,ChunkTransport,fileDigest};

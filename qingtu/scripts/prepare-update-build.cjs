@@ -1,13 +1,12 @@
 const fs=require('node:fs/promises');
 const path=require('node:path');
-const {httpsUrl}=require('../desktop/update-source.cjs');
+const {httpsUrl,releaseHosts}=require('../desktop/update-source.cjs');
 function updateBuild(source,pkg,platform,arch,publicKey){
  const target=`${platform==='darwin'?'mac':'win'}-${arch}`;
  if(!['darwin','win32'].includes(platform)||!['arm64','x64'].includes(arch))throw new Error('不支持的构建平台');
  let url;
- if(source.provider==='gitee'&&source.owner&&source.repo){
-  if(![source.owner,source.repo].every(v=>/^[a-zA-Z0-9_-][a-zA-Z0-9_.-]*$/.test(v)&&v!=='.'&&v!=='..'))throw new Error('Gitee 仓库地址无效');
-  url=`https://gitee.com/${source.owner}/${source.repo}/releases/download/v${pkg.version}/`;
+ if(['gitee','cnb'].includes(source.provider)&&source.owner&&source.repo){
+  url=releaseHosts(source)[0].downloads+'v'+pkg.version+'/';
  }else if(source.provider==='generic'&&source.url){
   const base=httpsUrl(source.url);if(!base.pathname.endsWith('/'))base.pathname+='/';url=new URL(target+'/',base).href;
  }else if(source.owner||source.repo||source.url)throw new Error('更新源配置不完整');
@@ -27,7 +26,6 @@ function updateBuild(source,pkg,platform,arch,publicKey){
 async function prepare(platform,arch){
  const pkg=JSON.parse(await fs.readFile('package.json','utf8'));
  let source=JSON.parse(await fs.readFile('desktop/update-source.json','utf8'));
- if(process.env.QINGTU_UPDATE_GITEE){const parts=process.env.QINGTU_UPDATE_GITEE.split('/');if(parts.length!==2)throw new Error('仓库格式为 owner/repo');if(source.provider!=='gitee'||source.owner!==parts[0]||source.repo!==parts[1])source={provider:'gitee',owner:parts[0],repo:parts[1]};}
  if(process.env.QINGTU_UPDATE_URL)source={provider:'generic',url:process.env.QINGTU_UPDATE_URL};
  const publicKey=platform==='darwin'?JSON.parse(await fs.readFile('desktop/sparkle-public-key.json','utf8')).publicKey:undefined;
  const build=updateBuild(source,pkg,platform,arch,publicKey);

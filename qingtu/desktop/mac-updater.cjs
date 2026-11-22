@@ -1,6 +1,6 @@
 const {EventEmitter}=require('node:events');
 const {createPublicKey,verify}=require('node:crypto');
-const {assembleParts,validateParts,ChunkTransport}=require('./chunk-download.cjs');
+const {assembleParts,validateArchive,ChunkTransport}=require('./chunk-download.cjs');
 const {fromMirrors,preferredUrls}=require('./update-source.cjs');
 const xml=value=>String(value).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&apos;'}[c]));
 function versionParts(value){if(typeof value!=='string'||!/^\d{1,8}\.\d{1,8}\.\d{1,8}$/.test(value))throw new Error('更新版本无效');return value.split('.').map(Number);}
@@ -14,7 +14,7 @@ function decodeEnvelope(envelope,publicKey,arch,base){
  const manifest=JSON.parse(payload);versionParts(manifest.version);
  if(manifest.arch!==arch)throw new Error('更新架构不匹配');
  if(!/^[A-Za-z0-9][A-Za-z0-9_.-]*\.zip$/.test(manifest.file?.url)||Buffer.from(manifest.file?.edSignature||'','base64').length!==64)throw new Error('更新包签名或名称无效');
- validateParts(manifest.file,base);return manifest;
+ validateArchive(manifest.file,base);return manifest;
 }
 class MacUpdater extends EventEmitter {
  constructor({version,arch,publicKey,cacheRoot,baseFiles=[],fetcher=fetch,native}){super();Object.assign(this,{version,arch,publicKey,cacheRoot,baseFiles,fetcher,native});}
