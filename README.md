@@ -1,6 +1,6 @@
 # 轻图源码
 
-Mac / Windows 本地图片压缩、分辨率调整与拼接应用。当前版本 0.4.6。
+Mac / Windows 本地图片压缩、分辨率调整与拼接应用。
 
 应用源码、开发与打包说明位于 [qingtu/](qingtu/README.md)。
 
