@@ -26,7 +26,7 @@ export function devBridge() {
         let result;
         if(!Array.isArray(args))throw new Error('参数无效');
         if(method==='stitchImport'){
-          const f=args[0];if(!f||typeof f.base64!=='string'||f.base64.length>140*1024*1024)throw new Error('图片数据无效');result=await store.import(Buffer.from(f.base64,'base64'),f.name);
+          const f=args[0];if(!f||typeof f.base64!=='string'||f.base64.length>140*1024*1024)throw new Error('图片数据无效');result=await store.import(Buffer.from(f.base64,'base64'),f.name,{reference:args[1]===true});
         }else if(method==='stitchPreviews'){
           if(!Array.isArray(args[0])||args[0].length>100)throw new Error('图片参数无效');result=[];for(const id of args[0])result.push(await store.preview(id));
         }else if(method==='stitchMissing'){

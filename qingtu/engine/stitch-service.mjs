@@ -10,6 +10,7 @@ import {encodeJpeg} from './jpeg-quality.mjs';
 import {clipRectangle} from './canvas-clip.mjs';
 import {rotatedImageBounds} from './image-rotation.mjs';
 import {sourceWindow,imageRotation,imageAngle} from './image-source.mjs';
+import {applyImageColor} from './image-color.mjs';
 
 export async function composeProject(project,store,{isObsolete}={}){
  const check=()=>{if(isObsolete?.())throw new Error('预览参数已更新');};
@@ -56,6 +57,7 @@ export async function composeProject(project,store,{isObsolete}={}){
    pipeline=sharp(resized.data,{raw:resized.info}).extract({left:Math.floor((resized.info.width-rect.width)/2),top:0,width:rect.width,height:rect.height});
   }else {if(image.source||geometry.width!==image.width||geometry.height!==image.height)pipeline=pipeline.extract({left:window.left+geometry.left,top:window.top+geometry.top,width:geometry.width,height:geometry.height});pipeline=pipeline.resize(rect.width,rect.height,{fit:'fill'});if(layout.fixed)pipeline=pipeline.extract({left:clipped.sourceLeft,top:clipped.sourceTop,width:clipped.width,height:clipped.height});}
   let part=await pipeline.ensureAlpha().raw().toBuffer(),destination=clipped;
+  applyImageColor(part,image.color);
   if(fine){
    const turned=await sharp(part,{raw:{width:clipped.width,height:clipped.height,channels:4}}).rotate(fine,{background:'#00000000'}).raw().toBuffer({resolveWithObject:true});check();
    destination=clipRectangle({x:Math.round(pose.x+pose.width/2-turned.info.width/2),y:Math.round(pose.y+pose.height/2-turned.info.height/2),width:turned.info.width,height:turned.info.height},layout);

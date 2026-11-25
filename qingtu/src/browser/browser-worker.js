@@ -31,11 +31,12 @@ async function cached(id,key,operation){
   }finally{if(pending.get(id)?.task===task)pending.delete(id);}
 }
 function original(id){const entry=files.get(id);if(!entry)throw new Error('图片已移除，请重新添加');return entry;}
-async function metadata(file,stitch=false,sample=false){
+async function metadata(file,stitch=false,sample=false,reference=false){
   const {bytes,meta}=await inspect(file);
   if(stitch&&meta.depth>8)throw new Error('图像编辑支持单帧 8 位 JPEG、PNG、WebP、AVIF、TIFF');
   const id=crypto.randomUUID(),name=file.name.replaceAll('\\','/').split('/').pop().slice(0,200);
   const item={id,name,width:meta.width,height:meta.height,bytes:file.size,...preview(bytes)};
+  if(reference)return item;
   if(stitch){
     const digest=new Uint8Array(await crypto.subtle.digest('SHA-256',bytes));
     return {...item,format:meta.format,assetId:Array.from(digest,n=>n.toString(16).padStart(2,'0')).join('')};
@@ -58,7 +59,7 @@ const actions={
   },
   rename(id,name){const entry=original(id);Object.assign(entry,compressionRename(name,entry.originalName));return {id,name:entry.name};},
   remove(id){const entry=files.get(id);if(entry){totalBytes-=entry.file.size;files.delete(id);}cache.delete(id);pending.delete(id);return true;},
-  stitchImport:file=>metadata(file,true),
+  stitchImport:(file,reference)=>metadata(file,true,false,reference===true),
   async stitchPreviews(ids){
     const images=[];for(const id of ids){const file=await readAsset(id);if(!file)throw new Error('原图副本缺失，项目无法恢复');images.push(preview(new Uint8Array(await file.arrayBuffer())).preview);}return images;
   },

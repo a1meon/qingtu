@@ -137,3 +137,18 @@ test('a valid backup remains discoverable when the primary is invalid, mismatche
   const list=await store.list();assert.equal(list.length,1);assert.equal(list[0].id,value.id);
  }
 });
+
+test('an external color reference can be profiled without writing a canvas asset', async t => {
+ const {root,store}=await setup(t),source=await fixture();
+ const reference=await store.import(source,'reference.png',{reference:true});
+ assert.deepEqual([reference.name,reference.width,reference.height],['reference.png',80,60]);
+ assert.ok(reference.preview.startsWith('data:image/png;base64,'));
+ assert.equal(reference.assetId,undefined);
+ await assert.rejects(fs.readdir(path.join(root,'assets')), {code:'ENOENT'});
+ const image=await store.import(source,'canvas.png');delete image.preview;
+ const colorReference={name:reference.name,thumbnail:reference.preview,statistics:{mean:[.5,.03,-.1],deviation:[.02,.03,.01]}};
+ const p={...project(image),colorReference};
+ await store.save(p);
+ assert.deepEqual((await new ProjectStore(root).load(p.id)).colorReference,colorReference);
+ assert.throws(()=>store.save({...p,colorReference:{...colorReference,statistics:{mean:[],deviation:[]}}}),/参考图数据/);
+});

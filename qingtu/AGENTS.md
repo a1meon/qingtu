@@ -10,6 +10,8 @@ Build app UI in `src/`. Keep `.openai/hosting.json`, `worker/index.js`, `scripts
 
 ## User-approved product constraints (latest feedback overrides earlier designs)
 
+- 图像编辑顶部居中放置「布局 / 调色」，置于自动保存状态的左侧；调色原图和处理后切换位于右上。色彩克隆使用加号弹窗从画布缩略图单击选参考，悬浮与已选状态有明确区别，分割片各自可选，最后支持上传独立参考图。克隆整张目标图的色彩，强度和明暗可调，两图白底相近时保留白底。基础调色均可键入数值，色温与色调滑轨显示对应色彩。参数随项目保存并用于导出，保留原图。
+
 - Windows shortcuts open one instance of 轻图 per user profile. Reopening the app brings its existing editing window forward, including when it is minimized or still starting.
 
 - Follow the root AGENTS.md for every source push and formal release. Check and download from Tencent CNB first with same-version GitHub Releases failover. Publish complete installers and incremental patches. Gitee hosts release notes and download links.

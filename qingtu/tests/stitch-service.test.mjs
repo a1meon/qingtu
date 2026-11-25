@@ -245,3 +245,19 @@ test('a fitting oriented original survives switching canvases, and ignores a leg
  const moved=await service.render({...project,positions:{[image.id]:{...pose,x:8}}});
  assert.ok(!moved.unchanged);assert.notDeepEqual(images.result(moved.token).output.buffer,file);
 });
+
+test('saved image color invalidates the original export fast path and render cache', async t => {
+ const {store,images,service}=await setup(t);
+ const item=await solid(store,'color.png',120,120,'#806448');
+ const project={id:'color-export',images:[item],layout:'horizontal',export:settings};
+ const original=await store.readAsset(item.assetId);
+ assert.equal((await service.render(project,{latest:true})).unchanged,true);
+ project.images=[{...item,color:{adjustments:{saturation:-100}}}];
+ await store.save(project);
+ const restored=await store.load(project.id),result=await service.render(restored);
+ const raw=await sharp(images.result(result.token).output.buffer).ensureAlpha().raw().toBuffer();
+ assert.deepEqual([...raw.subarray(0,4)],[104,104,104,255]);
+ assert.equal(Boolean(result.unchanged),false);
+ assert.deepEqual(restored.images[0].color,project.images[0].color);
+ assert.deepEqual(await store.readAsset(item.assetId),original);
+});

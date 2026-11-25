@@ -111,7 +111,7 @@ async function start(options={}) {
         if(method==='stitchLoad')return await store.load(args[0]);
         if(method==='stitchSave')return await store.save(args[0]);
         if(method==='stitchDelete'){stitching.release(args[0]);return await store.remove(args[0],args[1]);}
-        if(method==='stitchImport'){const f=args[0];if(!f||typeof f.base64!=='string'||f.base64.length>140*1024*1024)throw new Error('图片数据无效');return await store.import(Buffer.from(f.base64,'base64'),f.name);}
+        if(method==='stitchImport'){const f=args[0];if(!f||typeof f.base64!=='string'||f.base64.length>140*1024*1024)throw new Error('图片数据无效');return await store.import(Buffer.from(f.base64,'base64'),f.name,{reference:args[1]===true});}
         if(method==='stitchChooseFiles'){
           const paths=options.testFiles||(await dialog.showOpenDialog(win,{title:args[0]==='open'?'打开图片':'添加图片',properties:['openFile','multiSelections'],filters:[{name:'图片',extensions:['jpg','jpeg','png','webp','avif','tif','tiff']}]})).filePaths;
           const result={items:[],errors:[]};for(const p of paths||[])try{if((await fs.stat(p)).size>100*1024*1024)throw new Error('单张图片须小于 100 MB');result.items.push(await store.import(await fs.readFile(p),path.basename(p)));}catch(e){result.errors.push(path.basename(p)+'：'+e.message);}return result;

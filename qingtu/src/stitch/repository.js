@@ -9,6 +9,8 @@ import {migrateFixedCanvas} from '../../engine/canvas-migrate.mjs';
 import {enableHeightCanvas} from '../../engine/canvas-height.mjs';
 import {optimizationSettings} from '../../engine/optimization-settings.mjs';
 import {validateImportSizes} from '../../engine/import-sizes.mjs';
+import {normalizeImageColor,validateColorReference} from '../../engine/image-color.mjs';
+import {profileColorReference} from './color-preview.js';
 
 import {db,request,readAsset,commitProject,deleteProjects} from './database.js';
 
@@ -16,7 +18,7 @@ import {db,request,readAsset,commitProject,deleteProjects} from './database.js';
 let originals=new Map();
 const sourcePreviews=new PreviewCache();
 const storageError=error=>new Error(error?.name==='QuotaExceededError'?'本地空间不足，项目尚未保存。请释放空间后重试':`项目保存失败：${error?.message||'本地存储不可用'}`);
-function clean(project){validateImportSizes(project);return {...project,optimization:optimizationSettings(project.optimization),images:project.images.map(({preview,...image})=>image),updatedAt:Date.now()};}
+function clean(project){validateImportSizes(project);validateColorReference(project.colorReference);for(const image of project.images)normalizeImageColor(image.color);return {...project,optimization:optimizationSettings(project.optimization),images:project.images.map(({preview,...image})=>image),updatedAt:Date.now()};}
 export const repository={
  rememberImports(items){for(const image of items)if(image.preview)sourcePreviews.set(image.assetId,image.preview,2*image.preview.length);},
  setOriginals(files=new Map()){originals=files;},
@@ -46,8 +48,14 @@ export const repository={
    navigator.storage?.persist?.().catch(()=>{});
   }return image;
  },
+ async importReference(file){
+  if(file.size>100*1024*1024)throw new Error('单张图片须小于 100 MB');
+  return profileColorReference(await api.stitchReference(await readFile(file)));
+ },
  async prepare(project,{previews=true,retain}={}){
   canvasRatioLimit(project.sourceCanvas);
+  validateColorReference(project.colorReference);
+  for(const image of project.images)normalizeImageColor(image.color);
   const defaultName=defaultCanvasName(project);
   project=enableHeightCanvas(migrateFixedCanvas({...project,defaultName,name:nameOrDefault(project.name,defaultName)}));
   project=restoreSingleImportFrame(project);

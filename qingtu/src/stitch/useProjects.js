@@ -57,6 +57,8 @@ export function useProjects(){
   const changed=typeof change==='function'?change(previous):{...previous,...change};
   if(equivalent(changed,previous))return Promise.resolve();
   const next=rememberCanvasLayout(changed);
+  const referenceId=next.colorReference?.imageId;
+  if(referenceId&&!next.images.some(image=>image.id===referenceId))delete next.colorReference;
   try{const layout=calculateLayout(next);if(next.canvasMode!=='fixed')next.canvas={width:layout.width,height:layout.height};next.crops=Object.fromEntries(layout.rects.map(r=>[r.id,r.crop]));}catch{if(next.canvasMode!=='fixed')next.canvas=null;next.crops={};}
   if(equivalent(next,previous))return Promise.resolve();
   record(previous,group);return apply(next);

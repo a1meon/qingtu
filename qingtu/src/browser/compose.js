@@ -3,6 +3,8 @@ import {sourceWindow,imageRotation,imageAngle} from '../../engine/image-source.m
 import {rotatedImageBounds} from '../../engine/image-rotation.mjs';
 import {readAsset} from '../stitch/database.js';
 import {inputFormat,oriented} from './codec.js';
+import {applyImageColor,hasImageColor} from '../../engine/image-color.mjs';
+import {clipRectangle} from '../../engine/canvas-clip.mjs';
 
 export async function compose(project,layout=calculateLayout(project)){
   const canvas=new OffscreenCanvas(layout.width,layout.height);
@@ -22,9 +24,26 @@ export async function compose(project,layout=calculateLayout(project)){
     });
     const bitmap=await createImageBitmap(pixels),{left=0,right=0,top=0,bottom=0}=rect.crop||{};
     const x=Math.round(rect.x),y=Math.round(rect.y),w=Math.max(1,Math.round(rect.x+rect.width)-x),h=Math.max(1,Math.round(rect.y+rect.height)-y);
+    const sourceX=left*bitmap.width,sourceY=top*bitmap.height;
+    const sourceWidth=(1-left-right)*bitmap.width,sourceHeight=(1-top-bottom)*bitmap.height;
     try{
       ctx.save();ctx.translate(angle?rect.x+rect.width/2:x+w/2,angle?rect.y+rect.height/2:y+h/2);ctx.rotate(angle*Math.PI/180);
-      ctx.drawImage(bitmap,left*bitmap.width,top*bitmap.height,(1-left-right)*bitmap.width,(1-top-bottom)*bitmap.height,-w/2,-h/2,w,h);
+      if(!hasImageColor(layer.color)){
+        ctx.drawImage(bitmap,sourceX,sourceY,sourceWidth,sourceHeight,-w/2,-h/2,w,h);
+        continue;
+      }
+      const clipped=angle?{sourceLeft:0,sourceTop:0,width:w,height:h}:clipRectangle({x,y,width:w,height:h},layout);
+      if(!clipped)continue;
+      const {sourceLeft,sourceTop,width,height}=clipped;
+      if(width*height>100000000)throw new Error('旋转图像过大，请缩小图片');
+      const raster=new OffscreenCanvas(width,height),layerContext=raster.getContext('2d',{willReadFrequently:true});
+      layerContext.imageSmoothingQuality='high';
+      layerContext.drawImage(bitmap,sourceX+sourceLeft/w*sourceWidth,sourceY+sourceTop/h*sourceHeight,
+        sourceWidth*width/w,sourceHeight*height/h,0,0,width,height);
+      const layerPixels=layerContext.getImageData(0,0,width,height);
+      applyImageColor(layerPixels.data,layer.color);
+      layerContext.putImageData(layerPixels,0,0);
+      ctx.drawImage(raster,sourceLeft-w/2,sourceTop-h/2);
     }finally{ctx.restore();bitmap.close();}
   }
   return {blob:await canvas.convertToBlob({type:'image/png'}),layout,sourceFormats:[...sourceFormats]};
