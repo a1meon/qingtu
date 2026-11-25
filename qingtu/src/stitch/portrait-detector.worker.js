@@ -35,8 +35,10 @@ function legGeometry(points){
   const hip=average(0),ankle=average(2),tracked=limbs.flatMap(limb=>limb.filter(p=>visible(p,.25)));
   const xs=tracked.map(p=>p.x),l=Math.min(...xs),r=Math.max(...xs);
   const foot=Math.min(1,Math.max(ankle+.021,...limbs.flatMap(limb=>limb.slice(2).filter(p=>visible(p,.25)).map(p=>p.y))));
-  const shoePoints=limbs.flatMap(limb=>limb.slice(2).filter(p=>visible(p,.26)));
-  const lock=Math.min(ankle,Math.max(hip+.035,Math.min(...shoePoints.map(p=>p.y))-.027));
+  const footwear=limbs.flatMap(limb=>limb.slice(2).filter(p=>visible(p,.31)));
+  const firstShoePoint=Math.min(...footwear.map(p=>p.y));
+  const ankleBuffer=Math.min(.022,(ankle-average(1))*.13);
+  const lock=Math.max(hip+.012,firstShoePoint-ankleBuffer);
   const core=Math.min(.72,(r-l)/2+.05),radius=Math.min(1,Math.max(.22,core+.20));
   return {hip,ankle,x:(l+r)/2,foot,lock,core,radius};
 }

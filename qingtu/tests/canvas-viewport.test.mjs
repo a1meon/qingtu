@@ -95,13 +95,13 @@ test('the image toolbar follows the visible image up to the outside of the top e
  const bounds={left:120,top:140,width:400,height:300};
  for(const mode of ['crop','split','rotate']){
   const place=(x,y)=>placeImageControls(bounds,{x,y,width:200,height:300},mode).tools;
-  assert.deepEqual(place(180,250),{left:203,top:250-(mode==='rotate'?59:43)});
+  assert.deepEqual(place(180,250),{left:185,top:250-(mode==='rotate'?59:43),width:190});
   const rise=mode==='rotate'?59:43;
   const dockedTop=bounds.top-4-39;
   for(const y of [140,139,-200,-1600])assert.equal(bounds.top-(place(180,y).top+39),4,'the docked menu leaves a small gap');
   for(const gap of [0.5,10,42])assert.equal(place(180,dockedTop+rise+gap).top,dockedTop+gap,'crossing the edge is continuous');
-  assert.deepEqual(place(-50,530),{left:120,top:401});
-  assert.deepEqual(place(490,130),{left:366,top:dockedTop});
+  assert.deepEqual(place(-50,530),{left:120,top:401,width:190});
+  assert.deepEqual(place(490,130),{left:330,top:dockedTop,width:190});
  }
 });
 
@@ -141,6 +141,6 @@ test('wheel zoom accumulates fractional input, normalizes wheel units and limits
 test('a zoomed image toolbar can overlay the preview header without reaching the window title bar',()=>{
  const bounds={left:56,top:120,width:510,height:390,toolbarFloor:72};
  const image={x:56,y:-250,width:180,height:600};
- assert.deepEqual(placeImageControls(bounds,image).tools,{left:69,top:72});
- assert.deepEqual(placeImageControls(bounds,{...image,y:162}).tools,{left:69,top:119});
+ assert.deepEqual(placeImageControls(bounds,image).tools,{left:56,top:72,width:190});
+ assert.deepEqual(placeImageControls(bounds,{...image,y:162}).tools,{left:56,top:119,width:190});
 });

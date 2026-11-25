@@ -25,7 +25,8 @@ export function extendLiquifyPath(path,last,point,radius,radiusY,kind,finish=fal
   return {x:last.x+dx*consumed,y:last.y+dy*consumed};
 }
 
-export function portraitPoint({x,y},turn){
+export function portraitPoint({x,y},turn,mirrored=false){
+  if(mirrored)x=1-x;
   if(turn===90)return {x:1-y,y:x};
   if(turn===180)return {x:1-x,y:1-y};
   if(turn===270)return {x:y,y:1-x};
@@ -36,8 +37,8 @@ export function normalizePortraitRetouch(value){
   if(value===undefined)return undefined;
   const invalid=()=>{throw new Error('美颜参数无效');};
   if(!value||typeof value!=='object'||Array.isArray(value))invalid();
-  const {face,legs,head,slim=0,skin=0,length=0,headSize=0,strokes=[],turn=0}=value;
-  if(![0,90,180,270].includes(turn)||![slim,skin,length,headSize].every(amount=>within(amount,0,100))||
+  const {face,legs,head,slim=0,skin=0,length=0,headSize=0,strokes=[],turn=0,mirrored=false}=value;
+  if(![0,90,180,270].includes(turn)||typeof mirrored!=='boolean'||![slim,skin,length,headSize].every(amount=>within(amount,0,100))||
      !Array.isArray(strokes)||strokes.length>maxLiquifyStrokes)invalid();
   const box=region=>{
     if(!region||!within(region.x,0,1)||!within(region.y,0,1)||!within(region.rx,.005,.75)||!within(region.ry,.005,.75))invalid();
@@ -46,6 +47,7 @@ export function normalizePortraitRetouch(value){
   if(length&&(!legs||!within(legs.hip,0,1)||!within(legs.ankle,legs.hip+.025,1)||
      !within(legs.x,0,1)||!within(legs.radius,.05,1)||
      legs.foot!==undefined&&!within(legs.foot,legs.ankle,1)||
+     legs.bottom!==undefined&&!within(legs.bottom,legs.ankle,1)||
      legs.lock!==undefined&&!within(legs.lock,legs.hip+.012,legs.ankle)||
      legs.core!==undefined&&!within(legs.core,0,legs.radius)))invalid();
   const dab=point=>{
@@ -62,10 +64,11 @@ export function normalizePortraitRetouch(value){
     return {kind:stroke.kind,path:stroke.path.map(dab),...(stroke.soft===true&&stroke.kind==='push'&&{soft:true})};
   });
   if(!slim&&!skin&&!length&&!headSize&&!brushes.length)return undefined;
-  return {turn,...(slim||skin?{face:box(face),slim,skin}:{}),
+  return {turn,...(mirrored&&{mirrored}),...(slim||skin?{face:box(face),slim,skin}:{}),
     ...(headSize?{head:box(head),headSize}:{}),
     ...(length?{legs:{hip:legs.hip,ankle:legs.ankle,x:legs.x,radius:legs.radius,
-      ...(legs.foot!==undefined&&{foot:legs.foot}),...(legs.lock!==undefined&&{lock:legs.lock}),...(legs.core!==undefined&&{core:legs.core})},length}:{}),
+      ...(legs.foot!==undefined&&{foot:legs.foot}),...(legs.bottom!==undefined&&{bottom:legs.bottom}),
+      ...(legs.lock!==undefined&&{lock:legs.lock}),...(legs.core!==undefined&&{core:legs.core})},length}:{}),
     ...(brushes.length?{strokes:brushes}:{})};
 }
 
@@ -73,20 +76,29 @@ export function hasPortraitRetouch(value){
   return !!(value?.slim||value?.skin||value?.length||value?.headSize||value?.strokes?.length);
 }
 
-function stretchProfile(legs,amount){
-  if(!amount)return;
-  const {hip,ankle}=legs,lock=legs.lock??Math.max(hip+.012,ankle-.023);
-  const span=lock-hip,offset=Math.min(hip*.29,span*.23)*amount/100;
-  return {hip,lock,offset,raised:hip-offset,anchor:Math.max(0,hip-span*.60)};
+export function portraitForCrop(retouch,crop){
+  if(!retouch?.length)return retouch;
+  const {turn=0,legs}=retouch;
+  const {left=0,top=0,right=0,bottom=0}=crop||{};
+  const edge=1-(turn===90?left:turn===180?top:turn===270?right:bottom);
+  return {...retouch,legs:{...legs,bottom:edge}};
 }
 
-function stretchedLegSource(y,{lock,offset,raised,anchor}){
-  // Below the upper ankle boundary source pixels remain at their exact
-  // coordinates, including the shoes, their silhouette, and their shadows.
-  if(y<anchor||y>=lock)return y;
-  const weight=y<raised?smooth((y-anchor)/Math.max(.001,raised-anchor)):
-    smooth((lock-y)/Math.max(.001,lock-raised));
-  return y+offset*weight;
+function stretchProfile(legs,amount,visibleBottom){
+  if(!amount)return;
+  const {hip,ankle}=legs,span=ankle-hip;
+  const bottom=Math.min(visibleBottom,legs.bottom??1);
+  const shoeTop=legs.lock??Math.max(hip+.012,ankle-Math.min(.025,span*.14));
+  const toe=Math.max(legs.foot??ankle+Math.min(.04,span*.12),ankle+.013);
+  // Leave enough space for the whole shoe, including the sole beyond the pose landmark.
+  const sole=toe+Math.min(.055,Math.max(.012,(toe-ankle)*.52));
+  const offset=Math.min((shoeTop-hip)*.23,(bottom-sole)*.8)*amount/100;
+  if(offset<=0)return;
+  return {hip,offset,shoeTop:shoeTop+offset,core:Math.max(legs.core||0,legs.radius*.78)};
+}
+
+export function hasLimitedLegRoom(legs){
+  return legs&&(stretchProfile(legs,100,1)?.offset||0)<.018;
 }
 
 function brushCells(dabs,size=24){
@@ -135,12 +147,12 @@ function makeBrushOffset(cell,aspect){
   };
 }
 
-function softBrushMesh(brush,{startX,startY,endX,endY,width,height,left,top,spanX,spanY,inverse}){
+function softBrushMesh(brush,{startX,startY,endX,endY,width,height,left,top,spanX,spanY,inverse,mirrored}){
   const step=Math.max(2,Math.round(Math.max(width,height)/390));
   const cols=Math.ceil((endX-startX)/step)+1,rows=Math.ceil((endY-startY)/step)+1;
   const grid=new Float32Array(cols*rows*2),offset=[0,0];
   for(let row=0;row<rows;row++)for(let col=0;col<cols;col++){
-    const point=portraitPoint({x:left+(startX+col*step+.5)/width*spanX,y:top+(startY+row*step+.5)/height*spanY},inverse);
+    const point=portraitPoint({x:left+(startX+col*step+.5)/width*spanX,y:top+(startY+row*step+.5)/height*spanY},inverse,mirrored);
     brush(point.x,point.y,offset);
     const at=(row*cols+col)*2;
     grid[at]=offset[0]-point.x;grid[at+1]=offset[1]-point.y;
@@ -159,12 +171,12 @@ function softBrushMesh(brush,{startX,startY,endX,endY,width,height,left,top,span
 // coordinate. Sample RGBA together so transparent edges stay transparent.
 export function applyPortraitRetouch(pixels,retouch,{width,height,crop}){
   if(!hasPortraitRetouch(retouch)||width*height*4!==pixels.length)return pixels;
-  const {face,legs,head,slim=0,skin=0,length=0,headSize=0,strokes=[],turn=0}=retouch;
+  const {face,legs,head,slim=0,skin=0,length=0,headSize=0,strokes=[],turn=0,mirrored=false}=retouch;
   const {left=0,top=0,right=1,bottom=1}=crop||{},spanX=right-left,spanY=bottom-top;
-  const source=new Uint8ClampedArray(pixels);
-  const inverse=(360-turn)%360;
+  const inverse=mirrored?turn:(360-turn)%360;
   const aspect=(turn%180?height/width*spanX/spanY:width/height*spanY/spanX);
-  const profile=stretchProfile(legs,length);
+  const visibleBottom=turn===90?1-left:turn===180?1-top:turn===270?right:bottom;
+  const profile=stretchProfile(legs,length,visibleBottom);
   const dabs=strokes.flatMap((stroke,group)=>(stroke.path||[stroke]).map(dab=>({
     ...dab,kind:stroke.kind,soft:stroke.soft,group,radiusY:dab.radiusY??dab.radius*aspect,
   })));
@@ -172,16 +184,17 @@ export function applyPortraitRetouch(pixels,retouch,{width,height,crop}){
   const bounds=[];
   if(face&&(slim||skin))bounds.push([face.x-face.rx*1.65,face.y-face.ry*1.48,face.x+face.rx*1.65,face.y+face.ry*1.48]);
   if(headSize)bounds.push([head.x-head.rx*1.85,head.y-head.ry*1.77,head.x+head.rx*1.85,head.y+head.ry*1.77]);
-  if(profile)bounds.push([legs.x-legs.radius,profile.anchor,legs.x+legs.radius,profile.lock]);
+  if(profile)bounds.push([legs.x-legs.radius,profile.hip,legs.x+legs.radius,1]);
   dabs.forEach(({x,y,radius,radiusY,soft})=>{const spread=soft?1.54:1;bounds.push([x-radius*spread,y-radiusY*spread,x+radius*spread,y+radiusY*spread]);});
-  const corners=bounds.flatMap(([x0,y0,x1,y1])=>[portraitPoint({x:x0,y:y0},turn),portraitPoint({x:x1,y:y1},turn)]);
+  const corners=bounds.flatMap(([x0,y0,x1,y1])=>[portraitPoint({x:x0,y:y0},turn,mirrored),portraitPoint({x:x1,y:y1},turn,mirrored)]);
   const startX=Math.floor(unit((Math.min(...corners.map(point=>point.x))-left)/spanX)*width);
   const endX=Math.ceil(unit((Math.max(...corners.map(point=>point.x))-left)/spanX)*width);
   const startY=Math.floor(unit((Math.min(...corners.map(point=>point.y))-top)/spanY)*height);
   const endY=Math.ceil(unit((Math.max(...corners.map(point=>point.y))-top)/spanY)*height);
   if(startX>=endX||startY>=endY)return pixels;
+  const source=new Uint8ClampedArray(pixels);
   const mesh=dabs.length&&strokes.some(stroke=>stroke.soft)&&
-    softBrushMesh(brush,{startX,startY,endX,endY,width,height,left,top,spanX,spanY,inverse});
+    softBrushMesh(brush,{startX,startY,endX,endY,width,height,left,top,spanX,spanY,inverse,mirrored});
   const displacement=[0,0];
   const blurRadius=Math.max(1,Math.min(24,Math.round((face?.rx||0)*(turn%180?height/spanY:width/spanX)*.105)));
   const offsets=skin?[[-1,0],[1,0],[0,-1],[0,1],[-1,-1],[1,-1],[-1,1],[1,1]].map(([x,y])=>(x+y*width)*blurRadius*4):[];
@@ -203,14 +216,14 @@ export function applyPortraitRetouch(pixels,retouch,{width,height,crop}){
 
   for(let py=startY;py<endY;py++)for(let px=startX;px<endX;px++){
     const tx=left+(px+.5)/width*spanX,ty=top+(py+.5)/height*spanY;
-    const original=portraitPoint({x:tx,y:ty},inverse);
+    const original=portraitPoint({x:tx,y:ty},inverse,mirrored);
     let {x,y}=original;
     if(mesh){mesh(px,py,displacement);x+=displacement[0];y+=displacement[1];}
     else if(brush){brush(x,y,displacement);x=displacement[0];y=displacement[1];}
-    if(profile&&y<profile.lock&&Math.abs(x-legs.x)<legs.radius){
-      const core=legs.core??legs.radius*.38;
-      const weight=smooth((legs.radius-Math.abs(x-legs.x))/Math.max(.001,legs.radius-core));
-      y+=(stretchedLegSource(y,profile)-y)*weight;
+    if(profile&&y>profile.hip&&Math.abs(x-legs.x)<legs.radius){
+      const weight=smooth((legs.radius-Math.abs(x-legs.x))/Math.max(.001,legs.radius-profile.core));
+      // Stretch up to the shoe opening. All lower rows share one translation per column.
+      y-=profile.offset*weight*smooth((y-profile.hip)/(profile.shoeTop-profile.hip));
     }
     if(headSize){
       const nx=Math.abs(x-head.x)/head.rx,ny=Math.abs(y-head.y)/head.ry;
@@ -229,7 +242,7 @@ export function applyPortraitRetouch(pixels,retouch,{width,height,crop}){
       }
       if(skin)skinWeight=(skin/100)*smooth(1.53-(nx/.94)**2-(ny/1.06)**2)*.92;
     }
-    const point=portraitPoint({x,y},turn),i=(py*width+px)*4;
+    const point=portraitPoint({x,y},turn,mirrored),i=(py*width+px)*4;
     if(x!==original.x||y!==original.y)sample(point.x,point.y,i);
     if(skinWeight>.002&&source[i+3]===255&&pixels[i+3]===255&&
       px>=blurRadius&&px+blurRadius<width&&py>=blurRadius&&py+blurRadius<height){

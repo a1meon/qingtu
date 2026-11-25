@@ -1,6 +1,6 @@
-import {applyPortraitRetouch} from '../../engine/portrait-retouch.mjs';
+import {applyPortraitRetouch,portraitForCrop} from '../../engine/portrait-retouch.mjs';
 import {calculateLayout} from '../../engine/stitch-layout.mjs';
-import {sourceWindow,imageRotation,imageAngle} from '../../engine/image-source.mjs';
+import {sourceWindow,imageRotation,imageAngle,imageMirrored} from '../../engine/image-source.mjs';
 import {rotatedImageBounds} from '../../engine/image-rotation.mjs';
 import {readAsset} from '../stitch/database.js';
 import {inputFormat,oriented} from './codec.js';
@@ -19,12 +19,13 @@ export async function compose(project,layout=calculateLayout(project)){
     const bytes=new Uint8Array(await file.arrayBuffer());
     sourceFormats.add(layer.format||inputFormat(bytes));
     const pixels=oriented(bytes,image=>{
+      if(imageMirrored(layer))image.flop();
       const turn=imageRotation(layer);if(turn)image.rotate(turn);
       const source=sourceWindow(layer);
       if(image.width!==source.fullWidth||image.height!==source.fullHeight||file.size!==layer.bytes)throw new Error('原图副本与项目尺寸不一致');
       return image.getPixels(p=>new ImageData(new Uint8ClampedArray(p.toByteArray(0,0,image.width,image.height,'RGBA')),image.width,image.height));
     });
-    applyPortraitRetouch(pixels.data,layer.color?.retouch,pixels);
+    applyPortraitRetouch(pixels.data,portraitForCrop(layer.color?.retouch,rect.crop),pixels);
     const bitmap=await createImageBitmap(pixels),{left=0,right=0,top=0,bottom=0}=rect.crop||{};
     const x=Math.round(rect.x),y=Math.round(rect.y),w=Math.max(1,Math.round(rect.x+rect.width)-x),h=Math.max(1,Math.round(rect.y+rect.height)-y);
     const sourceX=left*bitmap.width,sourceY=top*bitmap.height;

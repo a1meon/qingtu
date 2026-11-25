@@ -4,6 +4,7 @@ const {pathToFileURL}=require('node:url');
 const catalog=require('./toy-catalog.json');
 
 const width=300,height=226;
+const isNativeCoordinate=value=>value>=-0x80000000&&value<=0x7fffffff;
 
 function createToyWindow({index,owner,notify,hidden=false,offscreen=false}){
  const url=pathToFileURL(index);
@@ -70,14 +71,18 @@ function createToyWindow({index,owner,notify,hidden=false,offscreen=false}){
  }
  function drag(phase,x,y){
   if(phase==='end'){dragOrigin=null;return;}
-  if(!Number.isFinite(x)||!Number.isFinite(y))return;
+  if(!window||window.isDestroyed()||!Number.isFinite(x)||!Number.isFinite(y))return;
   if(phase==='start'){
    const [left,top]=window.getPosition();
    dragOrigin={x,y,left,top,lastX:left,lastY:top};
   }else if(phase==='move'&&dragOrigin){
-   const nextX=Math.round(dragOrigin.left+x-dragOrigin.x),nextY=Math.round(dragOrigin.top+y-dragOrigin.y);
+   // Electron's int32 converter rejects JavaScript's negative zero.
+   const nextX=Math.round(dragOrigin.left+(x-dragOrigin.x))+0;
+   const nextY=Math.round(dragOrigin.top+(y-dragOrigin.y))+0;
+   if(!isNativeCoordinate(nextX)||!isNativeCoordinate(nextY))return;
    if(nextX===dragOrigin.lastX&&nextY===dragOrigin.lastY)return;
-   window.setPosition(nextX,nextY);
+   try{window.setPosition(nextX,nextY);}
+   catch(error){dragOrigin=null;console.warn('桌面玩具移动失败',error.message);return;}
    dragOrigin.lastX=nextX;dragOrigin.lastY=nextY;
   }
  }

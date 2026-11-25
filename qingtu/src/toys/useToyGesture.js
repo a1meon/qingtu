@@ -8,8 +8,10 @@ export function useToyGesture(kind,native){
   const current=gesture.current;
   if(!current)return;
   gesture.current=null;
-  native.drag('end');
-  if(current.moved)setDragging(false);
+  if(current.moved){
+   native.drag('end');
+   setDragging(false);
+  }
  }
  useEffect(()=>{
   window.addEventListener('blur',finish);
@@ -24,13 +26,13 @@ export function useToyGesture(kind,native){
   event.stopPropagation();
   event.currentTarget.setPointerCapture(event.pointerId);
   gesture.current={toy,id:event.pointerId,x:event.screenX,y:event.screenY,moved:false};
-  native.drag('start',event.screenX,event.screenY);
  }
  function dragTo(current,event){
   if(!current.moved){
    if(Math.hypot(event.screenX-current.x,event.screenY-current.y)<motionThreshold)return;
    current.moved=true;
    setDragging(true);
+   native.drag('start',current.x,current.y);
   }
   native.drag('move',event.screenX,event.screenY);
  }
@@ -46,7 +48,7 @@ export function useToyGesture(kind,native){
   const current=gesture.current;
   if(current?.id!==event.pointerId)return;
   event.stopPropagation();
-  dragTo(current,event);
+  if(current.moved)dragTo(current,event);
   finish();
   if(current.moved)return;
   const button=current.toy.shadowRoot?.querySelector('button');

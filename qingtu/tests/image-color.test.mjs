@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {applyImageColor, colorStatistics, hasImageColor, matchImageColor, normalizeImageColor, setImageColors} from '../engine/image-color.mjs';
 import {colorEffectFrame} from '../engine/color-effects.mjs';
+import {portraitForCrop} from '../engine/portrait-retouch.mjs';
 
 const target = [45, 82, 114, 255, 108, 132, 164, 255, 168, 177, 190, 180];
 const reference = [94, 69, 48, 255, 152, 123, 94, 255, 206, 174, 128, 180];
@@ -190,7 +191,7 @@ test('portrait retouch keeps dimensions and untouched areas while moving localiz
   assert.equal(changed.length,pixels.length);
   assert.deepEqual(changed.slice(0,4),pixels.slice(0,4));
   assert.equal(changed[at(40,67)+3],255);
-  assert.ok(changed[at(40,67)+1]>pixels[at(40,67)+1]);
+  assert.ok(changed[at(40,67)+1]<pixels[at(40,67)+1]);
   assert.notEqual(changed[at(39,24)],pixels[at(39,24)]);
   assert.throws(()=>normalizeImageColor({retouch:{length:70,legs:{hip:.8,ankle:.3,x:.5,radius:.5}}}),/美颜/);
 });
@@ -210,16 +211,35 @@ test('sampled HSL stores exact RGB and changes the sampled colour without select
   assert.throws(()=>normalizeImageColor({hslSamples:[{rgb},{rgb}]}),/重复/);
 });
 
-test('stretching the legs locks the region below the visible ankle in its original pixels',()=>{
+test('stretching the legs anchors the hips, extends the calves, and translates the shoes without scaling',()=>{
   const width=9,height=250;
   const source=Uint8ClampedArray.from(Array.from({length:width*height},(_,i)=>[Math.floor(i/width),50,10,255]).flat());
   const legs={hip:.38,ankle:.76,foot:.88,lock:.728,x:.5,core:.18,radius:.4};
   const color=normalizeImageColor({retouch:{legs,length:100}});
   const changed=applyImageColor(source.slice(),color,{width,height});
   const red=y=>changed[(y*width+4)*4];
-  assert.ok(red(145)>145);
-  assert.deepEqual(changed.slice(182*width*4),source.slice(182*width*4));
-  assert.equal(red(45),45);
+  assert.deepEqual(changed.slice(0,95*width*4),source.slice(0,95*width*4));
+  assert.ok(red(145)<145,'the middle of the legs should move down');
+  assert.ok(193-red(193)>145-red(145),'the lower legs should contribute to the stretch');
+  assert.equal(211-red(211),233-red(233),'both points on a shoe translate by the same amount');
+  assert.ok(red(211)<211);
+  assert.equal(249-red(249),211-red(211),'a sole near the frame edge moves as far as the shoe opening');
+  assert.equal(249-changed[(249*width+6)*4],249-red(249),'the full width of a shoe shares the same shift');
+  assert.equal(changed[249*width*4],249,'pixels well outside the legs stay anchored');
+});
+
+test('leg extension respects a cropped image with no space below the feet',()=>{
+  const width=9,height=200,crop={left:0,top:0,right:1,bottom:.88};
+  const source=Uint8ClampedArray.from(Array.from({length:width*height},(_,i)=>[Math.floor(i/width),50,10,255]).flat());
+  const legs={hip:.38,ankle:.76,foot:.88,lock:.65,x:.5,core:.18,radius:.4};
+  const color=normalizeImageColor({retouch:{legs,length:100}});
+  assert.deepEqual(applyImageColor(source.slice(),color,{width,height,crop}),source);
+  const saved=normalizeImageColor({retouch:{legs:{...legs,bottom:.88},length:100}});
+  assert.deepEqual(applyImageColor(source.slice(),saved,{width,height}),source);
+  const recropped=portraitForCrop(color.retouch,{bottom:.12});
+  assert.deepEqual(applyImageColor(source.slice(),{retouch:recropped},{width,height}),source);
+  assert.equal(portraitForCrop({...color.retouch,turn:90},{left:.12}).legs.bottom,.88);
+  assert.equal(portraitForCrop(saved.retouch,null).legs.bottom,1);
 });
 
 test('small head scales a localized head region, and liquify accepts an ordered brush path',()=>{

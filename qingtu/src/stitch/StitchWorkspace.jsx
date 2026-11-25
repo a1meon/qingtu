@@ -41,7 +41,7 @@ import {CANVAS_PRESETS,currentCanvasPreset,originalCanvas,selectCanvasPreset,edi
 import {prepareLayoutPreview} from './layout-preview.js';
 import {applyCanvasTransform} from '../../engine/canvas-transform.mjs';
 import {reorderCanvas} from '../../engine/canvas-order.mjs';
-import {rotateProjectImage,setProjectImageAngle} from '../../engine/image-rotation.mjs';
+import {mirrorProjectImage,rotateProjectImage,setProjectImageAngle} from '../../engine/image-rotation.mjs';
 import {rotatePreview} from './rotate-preview.js';
 import {hasImageColor,setImageColors} from '../../engine/image-color.mjs';
 import {ColorInspector} from './ColorInspector.jsx';
@@ -102,11 +102,11 @@ export const StitchWorkspace=forwardRef(function StitchWorkspace({active,inspect
  function draftBrush(path){
   const image=getCurrent()?.images.find(item=>item.id===selected);
   if(!image||!path.length)return;
-  const value=image.color?.retouch,turn=value?.turn||0,inverse=(360-turn)%360;
+  const value=image.color?.retouch,turn=value?.turn||0,mirrored=!!value?.mirrored,inverse=mirrored?turn:(360-turn)%360;
   const strokes=value?.strokes||[];
   if(strokes.length>=maxLiquifyStrokes)return;
   const points=path.map(dab=>{
-   const point=portraitPoint(dab,inverse),offset=portraitPoint({x:.5+dab.dx,y:.5+dab.dy},inverse);
+   const point=portraitPoint(dab,inverse,mirrored),offset=portraitPoint({x:.5+dab.dx,y:.5+dab.dy},inverse,mirrored);
    return {...point,dx:offset.x-.5,dy:offset.y-.5,radius:turn%180?dab.radiusY:dab.radius,
     radiusY:turn%180?dab.radius:dab.radiusY};
   });
@@ -158,13 +158,13 @@ export const StitchWorkspace=forwardRef(function StitchWorkspace({active,inspect
  const calculation=useMemo(()=>{try{return {layout:calculateLayout(displayProject||{})};}catch(e){try{return {layout:calculateLayout(displayProject||{},{draft:true}),error:e.message};}catch{return {error:e.message};}}},[displayProject]);
  const {layout}=calculation;
  const portraitRect=layout?.rects.find(rect=>rect.id===selected);
- const detection=usePortraitDetection(portraitImage?.preview,active&&portraitMode&&!cropDraft&&!splitDraft,portraitRect?.crop,portraitImage&&`${portraitImage.assetId}:${portraitImage.rotation||0}`);
+ const detection=usePortraitDetection(portraitImage?.preview,active&&portraitMode&&!cropDraft&&!splitDraft,portraitRect?.crop,portraitImage&&`${portraitImage.assetId}:${portraitImage.rotation||0}:${!!portraitImage.mirrored}`);
  const {left=0,right=0,top=0,bottom=0}=portraitRect?.crop||{};
  const inVisibleImage=point=>!!(portraitRect&&point&&point.x>=left&&point.x<=1-right&&point.y>=top&&point.y<=1-bottom);
  const portraitFace=inVisibleImage(detection?.face)?detection.face:null;
  const detectedLegs=detection?.legs;
  const portraitLegs=detectedLegs&&inVisibleImage({x:detectedLegs.x,y:detectedLegs.hip})&&
-  inVisibleImage({x:detectedLegs.x,y:detectedLegs.ankle})?detectedLegs:null;
+  inVisibleImage({x:detectedLegs.x,y:detectedLegs.ankle})?{...detectedLegs,...(bottom>0&&{bottom:1-bottom})}:null;
  const portraitHead=inVisibleImage(detection?.head)?detection.head:null;
  const portraitBody=!!(portraitLegs||inVisibleImage(detection?.body));
  const status=empty=>!selected?'选择画布中的图片':detection?.error?'本机识别暂不可用':
@@ -249,13 +249,6 @@ export const StitchWorkspace=forwardRef(function StitchWorkspace({active,inspect
   actionTask.current=Promise.resolve().then(()=>saveColorReference(reference,owner))
    .catch(error=>setMatchMessage({error:true,text:error.message}));
  }
- function importColorReference(file){
-  const owner=getCurrent()?.id;
-  const ready=repository.importReference(file).then(reference=>({saved:saveColorReference(reference,owner)}));
-  // The reference is usable immediately while the normal save queue persists it.
-  actionTask.current=ready.then(({saved})=>saved).catch(()=>{});
-  return ready;
- }
  function matchColors(ids,options){
   if(busy||matchingLock.current)return actionTask.current;
   matchingLock.current=true;setMatching(true);setMatchMessage(null);showGradedPreview();
@@ -323,14 +316,15 @@ export const StitchWorkspace=forwardRef(function StitchWorkspace({active,inspect
   const task=(async()=>{await flushEditor();const ids=[crypto.randomUUID(),crypto.randomUUID()];await update(p=>splitProjectImage(p,id,axis,at,ids));setEditing(null);setCropDraft(null);setSplitDraft(null);setAngleDraft(null);setSelected(ids[0]);})().catch(e=>{setNotice(e.message);throw e;}).finally(()=>{splitLock.current=false;setSplitting(false);});
   splitTask.current=task.catch(()=>{});return task;
  }
- function rotateImage(id,degrees){
+ function orientImage(id,degrees,mirroring=false){
   if(busy||rotationLock.current)return actionTask.current;
   rotationLock.current=true;setRotating(true);const owner=getCurrent()?.id;
   const task=(async()=>{
-   await flushEditor();const current=getCurrent();if(current?.id!==owner)throw new Error('画布已切换，请重新选择图片');
+   if(mirroring)await settleEditor();else await flushEditor();
+   const current=getCurrent();if(current?.id!==owner)throw new Error('画布已切换，请重新选择图片');
    const image=current.images.find(image=>image.id===id);if(!image)throw new Error('图片已移除');
-   const preview=await rotatePreview(image.preview,degrees);
-   await update(p=>{if(p.id!==owner)throw new Error('画布已切换，请重新选择图片');const next=rotateProjectImage(p,id,degrees);return {...next,images:next.images.map(image=>image.id===id?{...image,preview}:image)};});
+   const preview=await rotatePreview(image.preview,degrees,mirroring);
+   await update(p=>{if(p.id!==owner)throw new Error('画布已切换，请重新选择图片');const next=mirroring?mirrorProjectImage(p,id):rotateProjectImage(p,id,degrees);return {...next,images:next.images.map(image=>image.id===id?{...image,preview}:image)};});
   })().catch(e=>setNotice(e.message)).finally(()=>{rotationLock.current=false;setRotating(false);});
   actionTask.current=task;return task;
  }
@@ -479,7 +473,7 @@ export const StitchWorkspace=forwardRef(function StitchWorkspace({active,inspect
  const editingValue=project?.edits?.[selected];
  const visibleCanvas=transformCanvas||displayProject?.canvas,original=originalCanvas(project);
  const presetOptions=[...(original?[{value:'original',label:'原图比例'}]:[]),...CANVAS_PRESETS,{value:'custom',label:'自定义'}];
- const imageControls=placement=>editingImage&&<ImageEditor key={editingImage.id} ref={editor} image={editingImage} value={editingValue} placement={placement} open={editing===selected} mode={imageMode} hidden={!active} disabled={busy} onActivate={mode=>{if(colorView==='compare')setColorView('processed');picker.close();portrait.close();setImageMode(mode);setEditing(selected);}} onPreview={(edit,options)=>setCropDraft(edit?{id:selected,edit,...options}:null)} onCommit={edit=>commitCrop(selected,edit)} splitDraft={splitDraft} onSplitDraft={value=>setSplitDraft(value?{...value,id:selected}:null)} onSplit={(axis,at)=>splitImage(selected,axis,at)} onRemove={()=>removeImage(selected)} onRotate={degrees=>rotateImage(selected,degrees)} onAnglePreview={(angle,revision)=>setAngleDraft(angle==null?null:{id:selected,angle,revision})} onAngleCommit={(angle,revision)=>commitAngle(selected,angle,revision)} onClose={()=>{setAngleDraft(null);setEditing(current=>current===selected?null:current);setCropDraft(current=>current?.id===selected?null:current);setSplitDraft(current=>current?.id===selected?null:current);}}/>;
+ const imageControls=placement=>editingImage&&<ImageEditor key={editingImage.id} ref={editor} image={editingImage} value={editingValue} placement={placement} open={editing===selected} mode={imageMode} hidden={!active} disabled={busy} onActivate={mode=>{if(colorView==='compare')setColorView('processed');picker.close();portrait.close();setImageMode(mode);setEditing(selected);}} onPreview={(edit,options)=>setCropDraft(edit?{id:selected,edit,...options}:null)} onCommit={edit=>commitCrop(selected,edit)} splitDraft={splitDraft} onSplitDraft={value=>setSplitDraft(value?{...value,id:selected}:null)} onSplit={(axis,at)=>splitImage(selected,axis,at)} onRemove={()=>removeImage(selected)} onRotate={degrees=>orientImage(selected,degrees)} onMirror={()=>orientImage(selected,0,true)} onAnglePreview={(angle,revision)=>setAngleDraft(angle==null?null:{id:selected,angle,revision})} onAngleCommit={(angle,revision)=>commitAngle(selected,angle,revision)} onClose={()=>{setAngleDraft(null);setEditing(current=>current===selected?null:current);setCropDraft(current=>current?.id===selected?null:current);setSplitDraft(current=>current?.id===selected?null:current);}}/>;
  return <>
   <input ref={input} type="file" className="sr-only" multiple accept=".jpg,.jpeg,.png,.webp,.avif,.tif,.tiff" aria-label="选择画布图片文件" onChange={e=>importFiles(e.target.files)}/>
   <section className="stage stitch-stage" onBlurCapture={finishInput} aria-label="图像编辑工作台">
@@ -525,7 +519,7 @@ export const StitchWorkspace=forwardRef(function StitchWorkspace({active,inspect
    {colorMode?<ColorInspector key={project.id} images={project.images} selected={selected} draft={colorDraft}
     onDraft={previewColor} onCommit={commitColorDraft} onCancel={clearColorDraft}
     onChange={applyColorEdits} onMatch={matchColors} matching={matching} matchMessage={matchMessage}
-    picker={picker} reference={colorReference} onReference={chooseColorReference} onImportReference={importColorReference} disabled={busy||!inspectorOpen}/>:portraitMode?<PortraitPanel key={project.id} portrait={portrait}
+    picker={picker} reference={colorReference} onReference={chooseColorReference} onImportReference={file=>repository.importReference(file)} disabled={busy||!inspectorOpen}/>:portraitMode?<PortraitPanel key={project.id} portrait={portrait}
     value={(colorDraft?.id===selected?colorDraft.color:portraitImage?.color)?.retouch} disabled={busy||!inspectorOpen}
     onDraft={retouch=>previewColor(selected,{...(colorGesture.current?.id===selected?colorGesture.current.color:portraitImage?.color),retouch})}
     onCommit={commitColorDraft} onCancel={clearColorDraft}

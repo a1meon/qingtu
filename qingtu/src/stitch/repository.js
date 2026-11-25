@@ -11,6 +11,7 @@ import {optimizationSettings} from '../../engine/optimization-settings.mjs';
 import {validateImportSizes} from '../../engine/import-sizes.mjs';
 import {normalizeImageColor,validateColorReference} from '../../engine/image-color.mjs';
 import {profileColorReference} from './color-preview.js';
+import {imageMirrored} from '../../engine/image-source.mjs';
 
 import {db,request,readAssetRecords,commitProject,deleteProjects} from './database.js';
 
@@ -99,11 +100,11 @@ export const repository={
   }
   const rotating=new Map();
   return {...project,images:await Promise.all(project.images.map(async image=>{
-   const original=byId.get(image.assetId),turn=image.rotation||0;
-   if(!turn)return {...image,preview:original};
-   const key=`${image.assetId}:${turn}`,cached=sourcePreviews.get(key);
+   const original=byId.get(image.assetId),turn=image.rotation||0,mirrored=imageMirrored(image);
+   if(!turn&&!mirrored)return {...image,preview:original};
+   const key=`${image.assetId}:${turn}:${mirrored}`,cached=sourcePreviews.get(key);
    if(cached)return {...image,preview:cached};
-   if(!rotating.has(key))rotating.set(key,rotatePreview(original,turn).then(url=>{
+   if(!rotating.has(key))rotating.set(key,rotatePreview(original,turn,mirrored).then(url=>{
     sourcePreviews.set(key,url,2*url.length);return url;
    }));
    return {...image,preview:await rotating.get(key)};

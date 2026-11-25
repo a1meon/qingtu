@@ -1,9 +1,9 @@
 import {lazy,Suspense,useEffect,useId,useState} from 'react';
-import {ArrowCounterClockwise, Plus, SpinnerGap} from '@phosphor-icons/react';
+import {createPortal} from 'react-dom';
+import {ArrowCounterClockwise, CaretRight, Plus, SpinnerGap} from '@phosphor-icons/react';
 import {colorControls} from '../../engine/image-color.mjs';
-import {Dropdown} from '../Dropdown.jsx';
 import {ColorSlider} from './ColorSlider.jsx';
-import {ColorReferenceDialog, ColorReferenceThumbnail} from './ColorReferenceDialog.jsx';
+import {ColorClonePicker, ColorHoverPreview, ColorReferenceThumbnail, colorPreviewPosition} from './ColorReferenceDialog.jsx';
 
 const tabs=[{key:'basic',label:'基础'},{key:'hsl',label:'HSL'},{key:'curves',label:'曲线'},{key:'wheels',label:'色轮'}];
 const basicGroups=['色彩','明度','效果'];
@@ -14,10 +14,21 @@ export function ColorInspector({images, selected, draft, onDraft, onCommit, onCa
   const [targetIds, setTargetIds] = useState(null);
   const [matchLuminance, setMatchLuminance] = useState(false);
   const [choosing, setChoosing] = useState(false);
+  const [referenceHover, setReferenceHover] = useState(null);
   const [tab,setTab]=useState('basic'),tabId=useId();
-  useEffect(() => setTargetIds(null), [reference?.id]);
+  useEffect(() => {
+    if (!referenceHover) return;
+    const hide = () => setReferenceHover(null);
+    window.addEventListener('resize',hide);
+    window.addEventListener('scroll',hide,true);
+    return () => {
+      window.removeEventListener('resize',hide);
+      window.removeEventListener('scroll',hide,true);
+    };
+  },[referenceHover]);
 
   function switchTab(key){
+    setReferenceHover(null);
     setTab(key);
     if(key!=='hsl')picker.close();
   }
@@ -25,6 +36,7 @@ export function ColorInspector({images, selected, draft, onDraft, onCommit, onCa
   const current = images.find(image => image.id === selected);
   const chosen = images.filter(image => (targetIds || [selected]).includes(image.id)).map(image => image.id);
   const matchTargets = chosen.filter(id => id !== reference?.id);
+  const firstTarget = images.find(image => image.id === matchTargets[0]);
   const syncTargets = chosen.filter(id => id !== selected);
   const color = draft?.id === selected ? draft.color : current?.color;
   const match = color?.match;
@@ -39,6 +51,15 @@ export function ColorInspector({images, selected, draft, onDraft, onCommit, onCa
 
   function draftColor(update){onDraft(selected,{...color,...update});}
   function resetColor(key){onChange(new Map([[selected,{...color,[key]:undefined,...(key==='hsl'&&{hslSamples:undefined})}]]));}
+  function applySelection(source, targets) {
+    if (source !== reference) onReference(source.id ? {imageId: source.id} : source);
+    setTargetIds(targets);
+    setChoosing(false);
+  }
+  function openPicker() {
+    setReferenceHover(null);
+    setChoosing(true);
+  }
 
   return <div className="settings-scroll color-settings">
     <div className="color-panel-tabs" role="tablist" aria-label="调色类型" onKeyDown={event=>{
@@ -62,20 +83,33 @@ export function ColorInspector({images, selected, draft, onDraft, onCommit, onCa
           <ArrowCounterClockwise size={14} aria-hidden="true"/>重置
         </button>
       </div>
-      <div className="color-field"><label htmlFor={`${tabId}-reference`}>参考图片</label>
-      <button type="button" id={`${tabId}-reference`} className="color-reference-trigger" disabled={disabled}
-        aria-haspopup="dialog" aria-label={reference ? '更换参考图' : '添加参考图'} onClick={() => setChoosing(true)}>
-        {reference&&<ColorReferenceThumbnail image={reference}/>}
-        <span className="color-reference-trigger-name" title={reference?.name}>{reference?.name || '添加参考图'}</span>
-        <Plus size={18} aria-hidden="true"/>
-      </button></div>
-      {choosing&&<ColorReferenceDialog images={images} reference={reference} onSelect={onReference} onImport={onImportReference} onClose={() => setChoosing(false)}/>}
+      <div className="color-field">
+        <label htmlFor={`${tabId}-reference`}>参考图片</label>
+        <button type="button" id={`${tabId}-reference`} className="color-reference-trigger" disabled={disabled}
+          data-filled={!!reference} aria-haspopup="dialog" aria-label={reference ? `更换参考图，${reference.name}` : '添加参考图'}
+          title={reference?.name}
+          onPointerEnter={event => {
+            if (reference && event.pointerType === 'mouse') setReferenceHover(colorPreviewPosition(event.currentTarget));
+          }} onPointerLeave={() => setReferenceHover(null)} onClick={openPicker}>
+          {reference?<><span className="color-reference-thumb"><ColorReferenceThumbnail image={reference} maxEdge={88}/></span>
+            <span className="color-reference-option-name">{reference.name}</span>
+            <CaretRight size={14} aria-hidden="true"/></>:<Plus size={18} aria-hidden="true"/>}
+        </button>
+        <label htmlFor={`${tabId}-targets`}>处理图片</label>
+        <button type="button" id={`${tabId}-targets`} className="color-target-trigger" aria-haspopup="dialog"
+          aria-label={matchTargets.length ? `选择处理图片，已选 ${matchTargets.length} 张` : '选择处理图片'}
+          disabled={disabled} onClick={openPicker}>
+          {firstTarget&&<span className="color-target-thumb"><ColorReferenceThumbnail image={firstTarget} maxEdge={72} graded={false}/></span>}
+          <span className="color-target-summary">
+            {matchTargets.length ? `已选 ${matchTargets.length} 张` : '选择图片'}
+          </span>
+          <CaretRight size={14} aria-hidden="true"/>
+        </button>
+      </div>
+      {referenceHover&&reference&&!choosing&&createPortal(<ColorHoverPreview image={reference} style={referenceHover}/>,document.body)}
+      {choosing&&<ColorClonePicker images={images} reference={reference} targets={chosen}
+        onApply={applySelection} onImport={onImportReference} onClose={() => setChoosing(false)}/>}
       {reference&&<>
-        <div className="color-field"><label htmlFor={`${tabId}-targets`}>处理图片</label>
-        <Dropdown id={`${tabId}-targets`} label="处理图片" className="color-target-picker" multiple value={matchTargets} onChange={setTargetIds}
-          triggerText={matchTargets.length?`已选 ${matchTargets.length} 张`:'未选择图片'} maxHeight={250} minMenuWidth={252}
-          disabled={disabled || !images.some(image => image.id !== reference.id)}
-          options={images.flatMap((image,index) => image.id===reference.id ? [] : [{value:image.id,label:`${index+1} · ${image.name}`}])}/></div>
         <label className="color-check">
           同时匹配明暗
           <input type="checkbox" role="switch" checked={luminance} disabled={disabled} onChange={event => {

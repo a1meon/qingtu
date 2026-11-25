@@ -1,6 +1,6 @@
 import {useId,useState} from 'react';
 import {ArrowCounterClockwise,ArrowUUpLeft,ArrowUUpRight,Hand} from '@phosphor-icons/react';
-import {maxLiquifyStrokes} from '../../engine/portrait-retouch.mjs';
+import {hasLimitedLegRoom,maxLiquifyStrokes,portraitPoint} from '../../engine/portrait-retouch.mjs';
 import {ColorSlider} from './ColorSlider.jsx';
 
 export function PortraitPanel({portrait,value,disabled,onDraft,onCommit,onCancel,onChange}){
@@ -14,6 +14,13 @@ export function PortraitPanel({portrait,value,disabled,onDraft,onCommit,onCancel
   const tab=(tabs.find(item=>item.key===preference&&item.available)||tabs.find(item=>item.available))?.key;
   const strokes=value?.strokes||[],atLimit=strokes.length>=maxLiquifyStrokes;
   const slider={disabled,onCommit,onCancel,min:0,max:100,suffix:'%'};
+  const turn=value?.turn||0,mirrored=!!value?.mirrored;
+  function retouchBox(box){
+    if(!box)return box;
+    const center=portraitPoint(box,mirrored?turn:(360-turn)%360,mirrored);
+    return {...center,rx:turn%180?box.ry:box.rx,ry:turn%180?box.rx:box.ry};
+  }
+  const retouchLegs=turn&&value.legs||(!turn&&mirrored&&legs?{...legs,x:1-legs.x}:legs)||value?.legs;
   function choose(key){setPreference(key);if(key!=='manual')portrait.close();}
   return <div className="settings-scroll color-settings">
     <div className="color-panel-tabs portrait-tabs" role="tablist" aria-label="人像工具" onKeyDown={event=>{
@@ -37,18 +44,19 @@ export function PortraitPanel({portrait,value,disabled,onDraft,onCommit,onCancel
         <button type="button" className="portrait-icon" aria-label="重置美颜" title="重置美颜" disabled={disabled||!value?.slim&&!value?.skin}
           onClick={()=>onChange({...value,slim:0,skin:0})}><ArrowCounterClockwise size={16}/></button>
       </div>
-      <ColorSlider label="瘦脸" value={value?.slim||0} onChange={slim=>onDraft({...value,face:value?.face||face,slim})} {...slider}/>
-      <ColorSlider label="磨皮" value={value?.skin||0} onChange={skin=>onDraft({...value,face:value?.face||face,skin})} {...slider}/>
+      <ColorSlider label="瘦脸" value={value?.slim||0} onChange={slim=>onDraft({...value,face:value?.face||retouchBox(face),slim})} {...slider}/>
+      <ColorSlider label="磨皮" value={value?.skin||0} onChange={skin=>onDraft({...value,face:value?.face||retouchBox(face),skin})} {...slider}/>
     </section>}
     {tab==='body'&&<section className="control-section color-section" aria-label="身形">
       <div className="color-section-heading"><h2>身形</h2>
         <button type="button" className="portrait-icon" aria-label="重置美体" title="重置美体" disabled={disabled||!value?.length&&!value?.headSize}
           onClick={()=>onChange({...value,length:0,headSize:0})}><ArrowCounterClockwise size={16}/></button>
       </div>
-      <ColorSlider label="拉长腿" value={value?.length||0} onChange={length=>onDraft({...value,legs:value?.turn&&value.legs||legs||value?.legs,length})}
+      <ColorSlider label="拉长腿" value={value?.length||0} onChange={length=>onDraft({...value,legs:retouchLegs,length})}
         {...slider} disabled={disabled||!legs}/>
       {!legs&&<p className="color-hint">拉长腿需要看得到髋部、膝盖和脚踝。</p>}
-      <ColorSlider label="小头" value={value?.headSize||0} onChange={headSize=>onDraft({...value,head:value?.turn&&value.head||head||value?.head,headSize})}
+      {hasLimitedLegRoom(legs)&&<p className="color-hint">脚下留白较少，拉伸幅度受限。</p>}
+      <ColorSlider label="小头" value={value?.headSize||0} onChange={headSize=>onDraft({...value,head:(turn||mirrored)&&value?.head||retouchBox(head)||value?.head,headSize})}
         {...slider} disabled={disabled||!head}/>
       {!head&&<p className="color-hint">小头需要完整拍到头部。</p>}
     </section>}

@@ -1,50 +1,73 @@
-import {useMemo, useRef, useState} from 'react';
-import {CheckCircle, Plus, SpinnerGap, X} from '@phosphor-icons/react';
+import {useId, useMemo, useRef, useState} from 'react';
+import {Check, Plus, SpinnerGap, X} from '@phosphor-icons/react';
 import {Modal} from '../Modal.jsx';
 import {hasImageColor} from '../../engine/image-color.mjs';
 import {ColorLayer} from './ColorLayer.jsx';
 import {colorPreviewWindow} from './color-preview.js';
 
-export function ColorReferenceThumbnail({image, maxEdge = 192}) {
+export function ColorReferenceThumbnail({image, maxEdge = 192, graded = true, detail = false}) {
   const crop = useMemo(() => image.source ? colorPreviewWindow(image) : undefined, [image]);
+  const color=graded?image.color:undefined;
   return <span className="color-reference-thumbnail" aria-hidden="true">
-    {crop || hasImageColor(image.color)
-      ? <ColorLayer preview={image.preview} color={image.color} crop={crop} maxEdge={maxEdge}/>
-      : <img src={image.thumbnail || image.preview} alt="" draggable={false}/>}
+    {crop || hasImageColor(color)
+      ? <ColorLayer preview={image.preview} color={color} crop={crop} maxEdge={maxEdge}/>
+      : <img src={(detail && image.preview) || image.thumbnail || image.preview} alt="" draggable={false}/>}
   </span>;
 }
 
-function previewPosition(frame) {
-  const gap = 12, inset = 12;
-  const anchor = frame.getBoundingClientRect(), dialog = frame.closest('dialog').getBoundingClientRect();
-  const width = Math.min(280, window.innerWidth - inset * 2);
-  const height = Math.min(280, window.innerHeight - inset * 2);
-  const fit = (value, available, size) => Math.max(inset, Math.min(value, available - size - inset));
-  const sides = [dialog.left - gap - width, dialog.right + gap];
-  if (anchor.left + anchor.right > dialog.left + dialog.right) sides.reverse();
-  const outside = sides.find(left => left >= inset && left + width <= window.innerWidth - inset);
-  if (outside !== undefined) return {width,height,left:outside,top:fit(anchor.top,window.innerHeight,height)};
-  const below = anchor.bottom + gap;
-  return {width,height,left:fit(anchor.left,window.innerWidth,width),
-    top:fit(below + height <= window.innerHeight - inset ? below : anchor.top - gap - height,window.innerHeight,height)};
+export function colorPreviewPosition(element) {
+  const inset = 8, gap = 8, anchor = element.getBoundingClientRect();
+  const above = anchor.top - gap - inset, below = window.innerHeight - anchor.bottom - gap - inset;
+  const useAbove = above >= 105 || above >= below;
+  const size = Math.min(240, window.innerWidth - 2 * inset, useAbove ? above : below);
+  if (size < 1) return null;
+  const left = Math.max(inset, Math.min(anchor.left + (anchor.width - size) / 2, window.innerWidth - size - inset));
+  return {width:size,height:size,left,top:useAbove ? anchor.top - gap - size : anchor.bottom + gap};
 }
 
-export function ColorReferenceDialog({images, reference, onSelect, onImport, onClose}) {
+export function ColorHoverPreview({image, style}) {
+  return <div className="color-reference-hover" style={style} aria-hidden="true">
+    <ColorReferenceThumbnail key={image.id || image.name} image={image} maxEdge={480} detail/>
+  </div>;
+}
+
+export function ColorClonePicker({images, reference, targets, onApply, onImport, onClose}) {
+  const sourceHeading = useId(), targetHeading = useId();
   const input = useRef(), picking = useRef(false);
   const [loading, setLoading] = useState(false), [error, setError] = useState('');
-  const [hover, setHover] = useState(null);
-  function showPreview(image, frame) {
-    setHover({image, style: previewPosition(frame)});
+  const [source, setSource] = useState(reference);
+  const [uploaded, setUploaded] = useState(reference?.id ? null : reference);
+  const [chosen, setChosen] = useState(targets);
+  const options = images.map((image,index) => ({image,index}));
+  const targetOptions = options.filter(({image}) => image.id !== source?.id);
+  const eligible = targetOptions.map(({image}) => image.id);
+  const selectedTargets = eligible.filter(id => chosen.includes(id));
+  const allSelected = eligible.length > 0 && selectedTargets.length === eligible.length;
+
+  function renderCard(image, index, isReference) {
+    const isSource = image.id ? image.id === source?.id : image === source;
+    const checked = isReference ? isSource : selectedTargets.includes(image.id);
+    return <button key={image.id || 'uploaded'} type="button" className="color-reference-option"
+      aria-pressed={checked} disabled={loading}
+      onClick={() => isReference ? setSource(image) :
+        setChosen(ids => checked ? ids.filter(id => id !== image.id) : [...ids,image.id])}>
+      <span className="color-reference-frame">
+        <ColorReferenceThumbnail image={image} maxEdge={120} graded={isReference && isSource}/>
+        {isSource ? <span className="color-picker-badge">参考图</span> :
+          !isReference&&<span className="color-picker-check" aria-hidden="true">{checked&&<Check size={14} weight="bold"/>}</span>}
+      </span>
+      <span className="color-reference-option-name" title={image.name}>{image.id ? `${index + 1} · ` : ''}{image.name}</span>
+    </button>;
   }
   async function upload(event) {
     const [file] = event.target.files;
     event.target.value = '';
     if (!file || picking.current) return;
     picking.current = true;
-    setLoading(true);setError('');setHover(null);
+    setLoading(true);setError('');
     try {
-      await onImport(file);
-      onClose();
+      const image = await onImport(file);
+      setUploaded(image);setSource(image);
     } catch (error) {
       setError(error.message);
     } finally {
@@ -52,42 +75,44 @@ export function ColorReferenceDialog({images, reference, onSelect, onImport, onC
       setLoading(false);
     }
   }
-  return <Modal label="选择色彩参考图" className="color-reference-dialog" onCancel={loading ? undefined : onClose}>
+  return <Modal label="色彩克隆选图" className="color-reference-dialog" onCancel={loading ? undefined : onClose}>
     <header className="color-reference-dialog-header">
-      <h2>选择色彩参考图</h2>
-      <button type="button" className="icon-button" aria-label="关闭参考图选择" disabled={loading} onClick={onClose}>
+      <h2>色彩克隆选图</h2>
+      <button type="button" className="icon-button" aria-label="取消选图" disabled={loading} onClick={onClose}>
         <X size={17} aria-hidden="true"/>
       </button>
     </header>
-    <div className="color-reference-grid" aria-busy={loading} onScroll={() => setHover(null)}>
-      {images.map((image, index) => {
-        const selected = reference?.id === image.id;
-        return <button key={image.id} type="button" className="color-reference-option"
-          aria-pressed={selected} disabled={loading} onClick={() => {onSelect({imageId: image.id});onClose();}}
-          onFocus={event => {if (event.currentTarget.matches(':focus-visible')) showPreview(image,event.currentTarget.firstElementChild);}}
-          onBlur={() => setHover(null)}>
-          <span className="color-reference-frame" onPointerEnter={event => {
-            if (event.pointerType === 'mouse') showPreview(image,event.currentTarget);
-          }} onPointerLeave={() => setHover(null)}>
-            <ColorReferenceThumbnail image={image}/>
-            {selected&&<CheckCircle className="color-reference-check" size={20} weight="fill" aria-hidden="true"/>}
-          </span>
-          <span className="color-reference-option-name" title={image.name}>{index + 1} · {image.name}</span>
-        </button>;
-      })}
-      <button type="button" className="color-reference-option color-reference-upload" disabled={loading} onClick={() => input.current.click()}>
-        <span className="color-reference-frame">
-          <span className="color-reference-thumbnail">
-            {loading ? <SpinnerGap className="spin" size={25} aria-hidden="true"/> : <Plus size={26} aria-hidden="true"/>}
-          </span>
-        </span>
-        <span className="color-reference-option-name">{loading ? '正在读取…' : '上传参考图'}</span>
-      </button>
+    <div className="color-picker-body" aria-busy={loading}>
+      <section className="color-picker-section" aria-labelledby={sourceHeading}>
+        <div className="color-picker-tools">
+          <h3 id={sourceHeading}>参考图片</h3>
+          <button type="button" className="color-picker-action" disabled={loading} onClick={() => input.current.click()}>
+            {loading ? <SpinnerGap className="spin" size={15}/> : <Plus size={15}/>}
+            {loading ? '正在读取…' : '上传参考图'}
+          </button>
+        </div>
+        {(uploaded || images.length > 0)&&<div className="color-reference-grid color-reference-sources">
+          {uploaded&&renderCard(uploaded,0,true)}
+          {options.map(({image,index}) => renderCard(image,index,true))}
+        </div>}
+        {error&&<p className="dialog-error" role="alert">{error}</p>}
+      </section>
+      <section className="color-picker-section" aria-labelledby={targetHeading}>
+        <div className="color-picker-tools">
+          <h3 id={targetHeading}>处理图片</h3>
+          <button type="button" className="color-picker-action" disabled={loading || !eligible.length}
+            onClick={() => setChosen(allSelected ? [] : eligible)}>{allSelected ? '清空' : '全选'}</button>
+        </div>
+        {targetOptions.length > 0&&<div className="color-reference-grid color-reference-targets">
+          {targetOptions.map(({image,index}) => renderCard(image,index,false))}
+        </div>}
+      </section>
     </div>
-    {hover&&!loading&&<div className="color-reference-hover" style={hover.style} aria-hidden="true">
-      <ColorReferenceThumbnail key={hover.image.id} image={hover.image} maxEdge={480}/>
-    </div>}
+    <footer className="stitch-dialog-actions color-picker-footer">
+      <span role="status">{eligible.length ? `已选 ${selectedTargets.length} / ${eligible.length} 张处理图片` : '没有可处理的图片'}</span>
+      <button type="button" className="dialog-confirm color-picker-confirm" disabled={loading || !source}
+        onClick={() => onApply(source,selectedTargets)}>完成</button>
+    </footer>
     <input ref={input} type="file" hidden accept=".jpg,.jpeg,.png,.webp,.avif,.tif,.tiff" aria-label="上传一张参考图" onChange={upload}/>
-    {error&&<p className="dialog-error" role="alert">{error}</p>}
   </Modal>;
 }

@@ -18,7 +18,7 @@ export function resizeCanvasViewport(previous,{key,width,height,scale}){
  return {key,width,height,maxScale,scale:Math.min(scale,maxScale)};
 }
 
-export const imageToolbarWidth=154;
+export const imageToolbarWidth=190;
 
 // The image and the visible editor bounds use the same CSS pixel coordinates.
 export function placeImageControls(bounds,rect,mode='crop'){
@@ -30,6 +30,7 @@ export function placeImageControls(bounds,rect,mode='crop'){
   tools:{
    left:Math.max(left,Math.min(centerX-toolbarWidth/2,left+bounds.width-toolbarWidth)),
    top:toolsTop,
+   width:toolbarWidth,
   },
   panel:{left:centerX-panelWidth/2,top:rect.y+rect.height+(rotation?18:10),width:panelWidth},
  };

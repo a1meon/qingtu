@@ -1,5 +1,5 @@
 import {forwardRef,useEffect,useLayoutEffect,useImperativeHandle,useRef,useState} from 'react';
-import {Crop,Scissors,Trash,LinkSimple,LinkSimpleBreak,ArrowCounterClockwise,ArrowClockwise} from '@phosphor-icons/react';
+import {Crop,Scissors,Trash,FlipHorizontal,LinkSimple,LinkSimpleBreak,ArrowCounterClockwise,ArrowClockwise} from '@phosphor-icons/react';
 import {createPortal} from 'react-dom';
 import {cropEdges,changeCropEdge} from '../../engine/stitch-edits.mjs';
 import {addFlushHandler} from '../lifecycle.js';
@@ -13,7 +13,7 @@ import {CROP_HANDLES} from '../../engine/crop-transform.mjs';
 const empty={left:0,right:0,top:0,bottom:0};
 const names={left:'左',right:'右',top:'上',bottom:'下'};
 const pairs=[{axis:'horizontal',sides:['left','right'],name:'左右'},{axis:'vertical',sides:['top','bottom'],name:'上下'}];
-export const ImageEditor=forwardRef(function ImageEditor({image,value,open,mode='crop',placement,hidden,onActivate,onPreview,onCommit,onSplit,splitDraft,onSplitDraft,onClose,onRemove,onRotate,onAnglePreview,onAngleCommit,disabled},ref){
+export const ImageEditor=forwardRef(function ImageEditor({image,value,open,mode='crop',placement,hidden,onActivate,onPreview,onCommit,onSplit,splitDraft,onSplitDraft,onClose,onRemove,onRotate,onMirror,onAnglePreview,onAngleCommit,disabled},ref){
  const original=()=>({edges:cropEdges(image,value),links:{horizontal:value?.links?.horizontal??true,vertical:value?.links?.vertical??false}});
  const initial=()=>value==null?{edges:{...empty,left:Math.min(50,Math.floor((image.width-1)/2)),right:Math.min(50,Math.floor((image.width-1)/2))},links:{horizontal:true,vertical:false}}:original();
  const [panelOffset,setPanelOffset]=useState({x:0,y:0}),panelDrag=useRef(),panelMove=useRef(),panelRoot=useRef(),toolsRoot=useRef(),rotatingCorner=useRef(false),rotationEditor=useRef(),rotationGesture=useRef();
@@ -112,6 +112,7 @@ export const ImageEditor=forwardRef(function ImageEditor({image,value,open,mode=
    <button aria-label="裁剪" title="裁剪" className={open&&mode==='crop'?'active':''} aria-pressed={open&&mode==='crop'} disabled={disabled} onClick={()=>activate('crop')}><Crop size={17} aria-hidden/></button>
    <button aria-label="分割" title="分割" className={open&&mode==='split'?'active':''} aria-pressed={open&&mode==='split'} disabled={disabled||image.width<2&&image.height<2} onClick={()=>activate('split')}><Scissors size={17} aria-hidden/></button>
    <button aria-label="旋转" title="旋转" className={open&&mode==='rotate'?'active':''} aria-pressed={open&&mode==='rotate'} disabled={disabled} onClick={()=>activate('rotate')}><ArrowClockwise size={17} aria-hidden/></button>
+   <button aria-label="水平镜像" title="水平镜像" className={image.mirrored?'active':''} aria-pressed={!!image.mirrored} disabled={disabled} onClick={onMirror}><FlipHorizontal size={17} aria-hidden/></button>
    <button className="image-delete" aria-label="删除图片" title="删除图片" disabled={disabled} onClick={onRemove}><Trash size={17} aria-hidden/></button>
   </div>,document.body)}
   {open&&createPortal(<section hidden={hidden} ref={panelRoot} className="image-editor inline-image-editor image-editor-portal" aria-label={mode==='rotate'?'旋转设置':mode==='split'?'分割设置':'裁剪设置'} style={panelStyle}>

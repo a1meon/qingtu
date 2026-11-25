@@ -1,4 +1,4 @@
-import {applyPortraitRetouch,hasPortraitRetouch} from './portrait-retouch.mjs';
+import {applyPortraitRetouch,hasPortraitRetouch,portraitForCrop} from './portrait-retouch.mjs';
 import {defaultCanvasName,nameOrDefault} from './output-name.mjs';
 import sharp from 'sharp';
 import {randomUUID} from 'node:crypto';
@@ -10,7 +10,7 @@ import {imageGeometry} from './stitch-edits.mjs';
 import {encodeJpeg} from './jpeg-quality.mjs';
 import {clipRectangle} from './canvas-clip.mjs';
 import {rotatedImageBounds} from './image-rotation.mjs';
-import {sourceWindow,imageRotation,imageAngle} from './image-source.mjs';
+import {sourceWindow,imageRotation,imageAngle,imageMirrored} from './image-source.mjs';
 import {applyImageColor} from './image-color.mjs';
 import {colorEffectFrame} from './color-effects.mjs';
 
@@ -31,16 +31,19 @@ export async function composeProject(project,store,{isObsolete}={}){
   const angle=imageRotation(image),baseWidth=rotated?meta.height:meta.width,baseHeight=rotated?meta.width:meta.height;
   if(window.fullWidth!==(angle%180?baseHeight:baseWidth)||window.fullHeight!==(angle%180?baseWidth:baseHeight)||image.bytes!==source.length)throw new Error('原图副本与项目尺寸不一致，请检查项目数据');
   let pipeline=sharp(source,INPUT_OPTIONS).rotate().toColourspace('srgb');
-  if(angle){
-   // Auto-orient EXIF first. Sharp supports only one explicit rotation per
-   // pipeline; separate raw stages retain every oriented source pixel.
+  const mirrored=imageMirrored(image);
+  if(angle||mirrored){
+   // Apply the user orientation to EXIF-oriented pixels before any geometry edits.
    const oriented=await pipeline.ensureAlpha().raw().toBuffer({resolveWithObject:true});check();
-   const turned=await sharp(oriented.data,{raw:oriented.info}).rotate(angle).raw().toBuffer({resolveWithObject:true});check();
+   const transform=sharp(oriented.data,{raw:oriented.info});
+   if(mirrored)transform.flop();
+   if(angle)transform.rotate(angle);
+   const turned=await transform.raw().toBuffer({resolveWithObject:true});check();
    pipeline=sharp(turned.data,{raw:turned.info});
   }
   if(hasPortraitRetouch(image.color?.retouch)){
    const original=await pipeline.ensureAlpha().raw().toBuffer({resolveWithObject:true});check();
-   applyPortraitRetouch(original.data,image.color.retouch,original.info);check();
+   applyPortraitRetouch(original.data,portraitForCrop(image.color.retouch,rect.crop),original.info);check();
    pipeline=sharp(original.data,{raw:original.info});
   }
   const geometry=imageGeometry(image,project.edits?.[image.id]);

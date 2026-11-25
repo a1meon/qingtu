@@ -4,7 +4,9 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import sharp from 'sharp';
-import {rotateProjectImage} from '../engine/image-rotation.mjs';
+import {mirrorProjectImage,rotateProjectImage,setProjectImageAngle} from '../engine/image-rotation.mjs';
+import {stitchRenderKey} from '../engine/stitch-render-input.mjs';
+import {applyPortraitRetouch} from '../engine/portrait-retouch.mjs';
 import {sourceWindow} from '../engine/image-source.mjs';
 import {imageGeometry} from '../engine/stitch-edits.mjs';
 import {splitProjectImage} from '../engine/stitch-split.mjs';
@@ -13,6 +15,57 @@ import {ImageService} from '../engine/service.mjs';
 import {StitchService,composeProject} from '../engine/stitch-service.mjs';
 const image={id:'a',assetId:'a'.repeat(64),width:80,height:40,bytes:100},pose={x:30,y:50,width:160,height:80};
 const project=()=>({id:'rotation',canvasMode:'fixed',heightLocked:true,canvasSizing:'manual',canvas:{width:300,height:300},layout:'horizontal',images:[image],initialOrder:['a'],positions:{a:pose},edits:{},importSizes:{a:{width:160,height:80}},layoutStates:{horizontal:{a:pose},free:{a:{x:-20,y:10,width:80,height:40}}},export:{format:'png',targetBytes:1000000,longEdge:300}});
+test('horizontal mirror reflects crop and rotation, while a second click restores the same render key',()=>{
+ const first={...project(),images:[{...image,width:30,height:20,source:{left:10,top:5,width:30,height:20,fullWidth:80,fullHeight:40}}],
+  edits:{a:{edges:{left:1,top:2,right:3,bottom:4},links:{horizontal:false,vertical:false}}}};
+ const base=setProjectImageAngle(rotateProjectImage(first,'a',90),'a',105);
+ const result=mirrorProjectImage(base,'a'),mirrored=result.images[0];
+ assert.equal(mirrored.rotation,270);assert.equal(mirrored.angle,-15);
+ assert.equal(mirrored.mirrored,true);assert.equal(mirrored.assetId,image.assetId);
+ assert.deepEqual(result.positions,base.positions);
+ assert.deepEqual(result.edits.a.edges,{left:2,right:4,top:1,bottom:3});
+ assert.equal(sourceWindow(mirrored).left,5);
+ assert.notEqual(stitchRenderKey(result),stitchRenderKey(base));
+ assert.equal(stitchRenderKey(mirrorProjectImage(result,'a')),stitchRenderKey(base));
+});
+
+test('a mirrored export preserves the cropped, EXIF-oriented pixels and survives reload',async t=>{
+ const root=await fs.mkdtemp(path.join(os.tmpdir(),'qingtu-mirror-'));t.after(()=>fs.rm(root,{recursive:true,force:true}));
+ const store=new ProjectStore(root);
+ const original=await sharp(Buffer.from('<svg width="80" height="40"><rect width="80" height="40" fill="#779944"/><rect x="31" y="8" width="25" height="33" fill="#cc4477"/></svg>')).jpeg({quality:100}).withMetadata({orientation:6}).toBuffer();
+ const item=await store.import(original,'oriented.jpg');delete item.preview;
+ const piece={...item,width:20,height:40,source:{left:10,top:20,width:20,height:40,fullWidth:40,fullHeight:80}};
+ const base=rotateProjectImage({...project(),images:[piece],initialOrder:[piece.id],
+  positions:{[piece.id]:{x:24,y:24,width:14,height:32}},edits:{[piece.id]:{edges:{left:2,top:3,right:4,bottom:5}}},
+  layoutStates:undefined,importSizes:undefined,canvas:{width:80,height:80}},piece.id,90);
+ const previous=await composeProject(base,store),rect=previous.layout.rects[0];
+ const mirrored=mirrorProjectImage(base,piece.id);await store.save(mirrored);
+ const loaded=await store.load(base.id);
+ assert.equal(loaded.images[0].mirrored,true);
+ const before=await sharp(previous.data,{raw:previous.info}).extract({left:rect.x,top:rect.y,width:rect.width,height:rect.height}).raw().toBuffer({resolveWithObject:true});
+ const expected=await sharp(before.data,{raw:before.info}).flop().raw().toBuffer();
+ const result=await composeProject(loaded,store);
+ const actual=await sharp(result.data,{raw:result.info}).extract({left:rect.x,top:rect.y,width:rect.width,height:rect.height}).raw().toBuffer();
+ assert.deepEqual(actual,expected);assert.deepEqual(await store.readAsset(item.assetId),original);
+});
+test('existing portrait adjustments follow the reflected image pixels',()=>{
+ const width=64,height=52,frame={width,height};
+ const source=Uint8ClampedArray.from(Array.from({length:width*height},(_,i)=>[(i%width)*3,(i*13)%253,70,255]).flat());
+ const flip=pixels=>{
+  const output=new Uint8ClampedArray(pixels.length);
+  for(let y=0;y<height;y++)for(let x=0;x<width;x++){
+   const index=(y*width+x)*4;
+   output.set(pixels.subarray(index,index+4),(y*width+width-x-1)*4);
+  }
+  return output;
+ };
+ const retouch={turn:90,head:{x:.31,y:.43,rx:.13,ry:.19},headSize:87};
+ const p={...project(),images:[{...image,color:{retouch}}]};
+ const reflected=mirrorProjectImage(p,'a').images[0].color.retouch;
+ const actual=applyPortraitRetouch(flip(source),reflected,frame);
+ const expected=flip(applyPortraitRetouch(source.slice(),retouch,frame));
+ assert.ok(actual.every((pixel,i)=>Math.abs(pixel-expected[i])<=1));
+});
 test('quarter turns preserve image centre, original asset, canvas, order and all layout memories',()=>{
  const p=project(),before=structuredClone(p),next=rotateProjectImage(p,'a',90);
  assert.deepEqual(next.positions.a,{x:70,y:10,width:80,height:160});assert.equal(next.images[0].rotation,90);assert.deepEqual([next.images[0].width,next.images[0].height],[40,80]);assert.deepEqual(next.layoutStates.free.a,{x:0,y:-10,width:40,height:80});assert.deepEqual(next.importSizes.a,{width:80,height:160});

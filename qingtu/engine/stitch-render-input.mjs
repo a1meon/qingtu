@@ -3,7 +3,7 @@ import {hasImageColor, normalizeImageColor} from './image-color.mjs';
 // Only pixel-affecting edits, source assets and encoding parameters affect the result.
 export function stitchRenderKey(project){
  const {id,canvasMode,canvas,sourceCanvas,layout,grid,positions}=project;
- const images=project.images.map(({id,assetId,width,height,bytes,source,rotation=0,angle=0,color})=>({id,assetId,width,height,bytes,source,rotation,angle,color:hasImageColor(color)?normalizeImageColor(color):undefined}));
+ const images=project.images.map(({id,assetId,width,height,bytes,source,rotation=0,angle=0,mirrored=false,color})=>({id,assetId,width,height,bytes,source,rotation,angle,mirrored,color:hasImageColor(color)?normalizeImageColor(color):undefined}));
  const edits=Object.entries(project.edits||{}).map(([id,edit])=>{
   if(!edit?.edges)return [id,edit];
   const {left,right,top,bottom}=edit.edges;
@@ -15,7 +15,7 @@ export function stitchRenderKey(project){
 
 export function fullCanvasImage(project,layout){
  const [image]=project.images,rect=layout?.rects[0];
- if(!rect||project.images.length!==1||image.source||image.rotation||image.angle||hasImageColor(image.color))return null;
+ if(!rect||project.images.length!==1||image.source||image.rotation||image.angle||image.mirrored||hasImageColor(image.color))return null;
  if(rect.autoCrop||rect.x!==0||rect.y!==0||rect.width!==layout.width||rect.height!==layout.height||
     Object.values(rect.crop||{}).some(Boolean))return null;
  return image;

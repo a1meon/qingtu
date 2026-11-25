@@ -1,4 +1,4 @@
-import {extendLiquifyPath} from '../../engine/portrait-retouch.mjs';
+import {extendLiquifyPath,portraitForCrop} from '../../engine/portrait-retouch.mjs';
 import {sampleCanvasPixel,layerPoint} from './canvas-pick.js';
 import {createPortal} from 'react-dom';
 import {rotateVector,rotatedImageBounds} from '../../engine/image-rotation.mjs';
@@ -239,7 +239,8 @@ export function StitchCanvas({project:sourceProject,layout:sourceLayout,onChange
      const badges=colorMode&&!ghost&&colorReference===rect.id&&<span className="color-reference-badge">参考</span>;
      if(comparisonOriginal)return <div data-original-id={rect.id} className="stitch-layer" key={rect.id} style={geometry}><img src={image.preview} alt="" draggable={false} style={imageStyle}/>{badges}</div>;
      const interactive=colorDraft?.projectId===project.id&&colorDraft.id===image.id;
-     const color=interactive?colorDraft.color:image.color;
+     const grade=interactive?colorDraft.color:image.color;
+     const color=grade?.retouch?.length?{...grade,retouch:portraitForCrop(grade.retouch,rect.crop)}:grade;
      const graded=!(colorMode&&colorView==='original')&&hasImageColor(color);
      const brush=!ghost&&selected===rect.id?portraitBrush:null;
      const brushStyle=brush?{width:brush.size,height:brush.size}:undefined;

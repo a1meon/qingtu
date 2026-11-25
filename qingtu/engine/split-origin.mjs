@@ -5,9 +5,9 @@ import {imageGeometry} from './stitch-edits.mjs';
 // Store only geometry and identity. Every descendant still uses the immutable
 // asset, and carries the same root even after more splits, reordering or reload.
 export function splitOrigin(project,image){
- const {id,name,width,height,rotation,angle}=image;
+ const {id,name,width,height,rotation,angle,mirrored}=image;
  const layouts=Object.fromEntries(Object.entries(project.layoutStates||{}).filter(([,state])=>state[id]).map(([mode,state])=>[mode,state[id]]));
- return {id,name,width,height,rotation,angle,position:project.positions[id],size:project.importSizes?.[id],layouts};
+ return {id,name,width,height,rotation,angle,...(mirrored&&{mirrored}),position:project.positions[id],size:project.importSizes?.[id],layouts};
 }
 
 function legacyOrigin(project,image,name){
@@ -60,12 +60,13 @@ export function rejoinSplitImages(project,order){
   seen.add(id);
   let image=piece;
   if(root){
-   const {source,splitOrigin,rotation,angle,...rest}=piece;
+   const {source,splitOrigin,rotation,angle,mirrored,...rest}=piece;
    image={...rest,id,width:root.width,height:root.height};
    if(root.name!==undefined)image.name=root.name;else delete image.name;
    if(root.rotation!==undefined)image.rotation=root.rotation;
    if(root.angle!==undefined)image.angle=root.angle;
-   if((rotation||0)!==(root.rotation||0))delete image.preview;
+   if(root.mirrored)image.mirrored=true;
+   if((rotation||0)!==(root.rotation||0)||!!mirrored!==!!root.mirrored)delete image.preview;
   }else if(project.edits?.[id])edits[id]=project.edits[id];
   images.push(image);positions[id]=root?.position??project.positions[id];
   const size=root?root.size:project.importSizes?.[id];if(size)importSizes[id]=size;

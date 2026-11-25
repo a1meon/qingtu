@@ -23,7 +23,7 @@ self.onmessage = ({data: {image, color, maxEdge, crop,interactive}}) => {
         source.brushKey=key;
         source.brushBase=hasPortraitRetouch(prior)?applyPortraitRetouch(original.slice(),prior,frame):original;
       }
-      base=applyPortraitRetouch(source.brushBase.slice(),{turn:portrait.turn,strokes:[strokes.at(-1)]},frame);
+      base=applyPortraitRetouch(source.brushBase.slice(),{turn:portrait.turn,mirrored:portrait.mirrored,strokes:[strokes.at(-1)]},frame);
     }else{
       const retouch=JSON.stringify(portrait);
       if(source.retouch!==retouch){
