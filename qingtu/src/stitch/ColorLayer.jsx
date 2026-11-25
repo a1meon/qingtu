@@ -1,28 +1,36 @@
-import {useEffect, useRef, useState} from 'react';
-import {loadPreview} from './load-preview.js';
-import {paintColorPreview} from './color-preview.js';
+import {useEffect, useMemo, useRef, useState} from 'react';
+import {colorRaster} from './color-raster.js';
 
-export function ColorLayer({preview, color, style, maxEdge, crop}) {
+export function ColorLayer({preview, color, style, maxEdge = Infinity, crop, interactive = false}) {
   const canvas = useRef();
-  const [decoded, setDecoded] = useState(null), [painted, setPainted] = useState(null);
+  const queue = useRef(Promise.resolve());
+  const [painted, setPainted] = useState(null);
+  const grade = useMemo(() => JSON.stringify(color ?? null),[color]);
+  const {left, top, right, bottom} = crop || {};
+  const inputs = useMemo(() => ({preview,maxEdge,crop:{left,top,right,bottom}}),[preview,maxEdge,left,top,right,bottom]);
+  const current = useRef(inputs);
+  current.current = {inputs,interactive};
   useEffect(() => {
     let active = true;
-    loadPreview(preview).then(image => {
-      if (active) setDecoded({preview, image});
-    }).catch(() => {
-      if (active) setDecoded(null);
-    });
-    return () => { active = false; };
-  }, [preview]);
-
-  useEffect(() => {
-    if (decoded?.preview !== preview) return;
     const frame = requestAnimationFrame(() => {
-      paintColorPreview(canvas.current, decoded.image, color, maxEdge, crop);
-      setPainted(preview);
+      // Only the most recent slider value proceeds once the previous raster finishes.
+      queue.current = queue.current.then(async () => {
+        if (!active) return;
+        const pixels = await colorRaster(inputs.preview,grade,inputs.maxEdge,inputs.crop,interactive);
+        // During a drag an intermediate frame can remain useful until the next
+        // value finishes. It must never replace the full-size result on release.
+        if (!canvas.current||current.current.inputs!==inputs||(!active&&!(interactive&&current.current.interactive))) return;
+        const target = canvas.current;
+        if (target.width !== pixels.width) target.width = pixels.width;
+        if (target.height !== pixels.height) target.height = pixels.height;
+        const context=target.getContext('2d');
+        if(pixels.data)context.putImageData(pixels,0,0);
+        else {context.clearRect(0,0,target.width,target.height);context.drawImage(pixels,0,0);}
+        setPainted(preview);
+      }).catch(() => {});
     });
-    return () => cancelAnimationFrame(frame);
-  }, [decoded, preview, color, maxEdge, crop]);
+    return () => {active = false;cancelAnimationFrame(frame);};
+  }, [preview,grade,inputs,interactive]);
 
   return <>
     {!crop&&<img src={preview} alt="" draggable={false} style={style} hidden={painted === preview}/>}

@@ -3,7 +3,7 @@ import {constrainCamera,panLimits,stepCanvasZoom,wheelZoomFactor,zoomCanvasCamer
 
 const home={zoom:1,x:0,y:0};
 const sameCamera=(a,b)=>a.zoom===b.zoom&&a.x===b.x&&a.y===b.y;
-const isControl=target=>target.closest('button,input,textarea,select,[contenteditable="true"],.inline-image-editor,.inline-image-tools');
+const isControl=target=>target.closest('button,input,textarea,select,[contenteditable="true"],.inline-image-editor,.inline-image-tools,.stitch-compare-drag');
 
 export function useCanvasNavigation({area,projectId,blocked=false,viewport,content,dragByDefault=false}){
  const [stored,setStored]=useState({...home,id:projectId}),latest=useRef(),held=useRef(false);

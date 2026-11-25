@@ -2,12 +2,13 @@ import {memo,useEffect,useLayoutEffect,useRef,useState} from 'react';
 import {createPortal} from 'react-dom';
 import {ZoomControls} from './ZoomControls.jsx';
 import {useCanvasNavigation} from './stitch/useCanvasNavigation.js';
-import {CaretLeft,CaretRight,SpinnerGap,ImageSquare} from '@phosphor-icons/react';
+import {SpinnerGap,ImageSquare} from '@phosphor-icons/react';
+import {ComparisonDivider} from './ComparisonDivider.jsx';
 
 // Comparison-slider movement bypasses React. Multiple events in one frame
 // collapse into one local CSS update, leaving the queue and inspector untouched.
 export const ImagePreview=memo(function ImagePreview({selected,output,processing,view,error,navigationSlot}){
- const canvas=useRef(),slider=useRef(),frame=useRef(0),split=useRef(50),bounds=useRef(null);
+ const canvas=useRef(),split=useRef(50);
  const [viewport,setViewport]=useState({width:0,height:0});
  useLayoutEffect(()=>{
   const node=canvas.current;
@@ -38,22 +39,6 @@ export const ImagePreview=memo(function ImagePreview({selected,output,processing
   element.style.setProperty('--loading-x',`${right>left?(left+right)/2:(divider+width)/2}px`);
  }
  useLayoutEffect(()=>{positionLoader(viewport);},[viewport,selected.width,selected.height,compare,navigation.zoom,navigation.x]);
- function update(value){
-  split.current=Math.max(0,Math.min(100,value));
-  if(frame.current)return;
-  frame.current=requestAnimationFrame(()=>{
-   frame.current=0;
-   canvas.current?.style.setProperty('--split',`${split.current}%`);
-   positionLoader(bounds.current);
-   if(slider.current)slider.current.value=split.current;
-  });
- }
- function move(event){
-  if(!event.buttons)return;
-  const rect=bounds.current||canvas.current.getBoundingClientRect();
-  update((event.clientX-rect.left)/rect.width*100);
- }
- useEffect(()=>()=>cancelAnimationFrame(frame.current),[]);
  const previewError=error||(output?.preview&&decodeFailure===output.preview?'预览加载失败':'');
  const waiting=view!=='original'&&!previewError&&(processing||!!output?.preview&&decoded!==output.preview);
  const source=view==='original'?selected.preview:output?.preview===decoded?decoded:null;
@@ -65,9 +50,7 @@ export const ImagePreview=memo(function ImagePreview({selected,output,processing
   {compare&&<>
    <div className="original-slice"><img className="compare-image original-image" src={selected.preview} alt="原始图片" draggable={false}/></div>
    <span className="image-label original-label">原图</span>
-   <div className="split-line"><span className="split-handle"><CaretLeft size={13}/><CaretRight size={13}/></span></div>
-   <input ref={slider} className="compare-slider" type="range" aria-label="原图与处理结果对比" defaultValue={split.current} min="0" max="100" onInput={e=>update(Number(e.target.value))}/>
-   <div className="drag-comparison" aria-hidden onPointerDown={e=>{bounds.current=canvas.current.getBoundingClientRect();e.currentTarget.setPointerCapture(e.pointerId);update((e.clientX-bounds.current.left)/bounds.current.width*100);}} onPointerMove={move} onPointerUp={e=>{if(bounds.current)update((e.clientX-bounds.current.left)/bounds.current.width*100);bounds.current=null;}} onPointerCancel={()=>{bounds.current=null;}}/>
+   <ComparisonDivider container={canvas} position={split} onChange={positionLoader}/>
   </>}
   {!waiting&&<span className="image-label processed-label">{view==='original'?'原图':previewError?'未生成':output?output.unchanged?'处理后 · 未改动':'处理后':'待处理'}</span>}
  </div>{navigationSlot&&createPortal(<ZoomControls navigation={navigation}/>,navigationSlot)}</>;

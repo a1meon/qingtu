@@ -132,8 +132,15 @@ test('wheel zoom accumulates fractional input, normalizes wheel units and limits
  assert.ok(Math.abs(factor(pinchDelta)**12-1.5)<1e-12);
  assert.equal(factor(-3,1),factor(-48));
  assert.ok(Math.abs(factor(-120)*factor(120)-1)<1e-12);
- assert.ok(factor(-120)>1.45&&factor(-120)<2);
- assert.equal(factor(-1,2),1.6);
- assert.equal(factor(1,2),1/1.6);
+ assert.equal(factor(-120),1.14);
+ assert.equal(factor(-1,2),1.14);
+ assert.equal(factor(1,2),1/1.14);
  assert.equal(factor(0),1);
+});
+
+test('a zoomed image toolbar can overlay the preview header without reaching the window title bar',()=>{
+ const bounds={left:56,top:120,width:510,height:390,toolbarFloor:72};
+ const image={x:56,y:-250,width:180,height:600};
+ assert.deepEqual(placeImageControls(bounds,image).tools,{left:69,top:72});
+ assert.deepEqual(placeImageControls(bounds,{...image,y:162}).tools,{left:69,top:119});
 });

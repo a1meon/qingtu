@@ -1,3 +1,4 @@
+import {applyPortraitRetouch} from '../../engine/portrait-retouch.mjs';
 import {calculateLayout} from '../../engine/stitch-layout.mjs';
 import {sourceWindow,imageRotation,imageAngle} from '../../engine/image-source.mjs';
 import {rotatedImageBounds} from '../../engine/image-rotation.mjs';
@@ -5,6 +6,7 @@ import {readAsset} from '../stitch/database.js';
 import {inputFormat,oriented} from './codec.js';
 import {applyImageColor,hasImageColor} from '../../engine/image-color.mjs';
 import {clipRectangle} from '../../engine/canvas-clip.mjs';
+import {colorEffectFrame} from '../../engine/color-effects.mjs';
 
 export async function compose(project,layout=calculateLayout(project)){
   const canvas=new OffscreenCanvas(layout.width,layout.height);
@@ -22,6 +24,7 @@ export async function compose(project,layout=calculateLayout(project)){
       if(image.width!==source.fullWidth||image.height!==source.fullHeight||file.size!==layer.bytes)throw new Error('原图副本与项目尺寸不一致');
       return image.getPixels(p=>new ImageData(new Uint8ClampedArray(p.toByteArray(0,0,image.width,image.height,'RGBA')),image.width,image.height));
     });
+    applyPortraitRetouch(pixels.data,layer.color?.retouch,pixels);
     const bitmap=await createImageBitmap(pixels),{left=0,right=0,top=0,bottom=0}=rect.crop||{};
     const x=Math.round(rect.x),y=Math.round(rect.y),w=Math.max(1,Math.round(rect.x+rect.width)-x),h=Math.max(1,Math.round(rect.y+rect.height)-y);
     const sourceX=left*bitmap.width,sourceY=top*bitmap.height;
@@ -41,7 +44,7 @@ export async function compose(project,layout=calculateLayout(project)){
       layerContext.drawImage(bitmap,sourceX+sourceLeft/w*sourceWidth,sourceY+sourceTop/h*sourceHeight,
         sourceWidth*width/w,sourceHeight*height/h,0,0,width,height);
       const layerPixels=layerContext.getImageData(0,0,width,height);
-      applyImageColor(layerPixels.data,layer.color);
+      applyImageColor(layerPixels.data,layer.color,{...colorEffectFrame({...rect,width:w,height:h},clipped),retouchApplied:true});
       layerContext.putImageData(layerPixels,0,0);
       ctx.drawImage(raster,sourceLeft-w/2,sourceTop-h/2);
     }finally{ctx.restore();bitmap.close();}

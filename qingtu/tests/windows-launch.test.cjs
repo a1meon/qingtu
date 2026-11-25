@@ -42,3 +42,22 @@ test('Windows shortcuts reuse the first window during startup and after minimiza
   app.emit('second-instance');
   assert.deepEqual(actions, []);
 });
+
+test('a Windows shortcut can reopen the workspace while a desktop toy keeps the process running', async () => {
+  const app = new EventEmitter();
+  app.requestSingleInstanceLock = () => true;
+  const actions = [];
+  const oldWindow = {isDestroyed: () => true};
+  const newWindow = {
+    isDestroyed: () => false,
+    isMinimized: () => false,
+    show: () => actions.push('show'),
+    focus: () => actions.push('focus')
+  };
+  await launchWindows(app, async () => ({
+    win: oldWindow,
+    ensureMainWindow: () => newWindow
+  }));
+  app.emit('second-instance');
+  assert.deepEqual(actions, ['show', 'focus']);
+});

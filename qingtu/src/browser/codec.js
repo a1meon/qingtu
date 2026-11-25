@@ -57,9 +57,9 @@ function write(image,format){
   const coder=format==='jpeg'?MagickFormat.Jpeg:image.hasAlpha?MagickFormat.Png32:MagickFormat.Png24;
   return image.write(coder,bytes=>new Blob([bytes],{type:`image/${format}`}));
 }
-export function preview(bytes){
+export function preview(bytes,{width=1600,height=1200}={}){
   return oriented(bytes,image=>{
-    const scale=Math.min(1,1600/image.width,1200/image.height);
+    const scale=Math.min(1,width/image.width,height/image.height);
     resize(image,{width:Math.max(1,Math.round(image.width*scale)),height:Math.max(1,Math.round(image.height*scale))});
     return {preview:write(image,'png'),previewWidth:image.width,previewHeight:image.height};
   });

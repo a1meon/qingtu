@@ -24,15 +24,11 @@ export const imageToolbarWidth=154;
 export function placeImageControls(bounds,rect,mode='crop'){
  const rotation=mode==='rotate',panelWidth=rotation?220:300,centerX=rect.x+rect.width/2;
  const toolbarWidth=imageToolbarWidth,toolbarHeight=39,left=bounds.left??0,top=bounds.top??0;
- const dockedTop=top-toolbarHeight-4;
+ const dockedTop=bounds.toolbarFloor??top-toolbarHeight-4;
  const toolsTop=Math.max(dockedTop,Math.min(rect.y-(rotation?59:43),top+bounds.height-toolbarHeight));
- const slot=bounds.toolbarSlot;
- const inHeader=slot&&toolsTop<slot.bottom;
- const minX=inHeader?Math.max(left,slot.left):left;
- const maxX=inHeader?Math.min(left+bounds.width,slot.right):left+bounds.width;
  return {
   tools:{
-   left:Math.max(minX,Math.min(centerX-toolbarWidth/2,maxX-toolbarWidth)),
+   left:Math.max(left,Math.min(centerX-toolbarWidth/2,left+bounds.width-toolbarWidth)),
    top:toolsTop,
   },
   panel:{left:centerX-panelWidth/2,top:rect.y+rect.height+(rotation?18:10),width:panelWidth},
@@ -88,7 +84,7 @@ export function stepCanvasZoom(zoom,direction){
  return Math.max(.1,Math.min(8,zoom+direction*.25));
 }
 
-const maxWheelExponent=Math.log(1.6);
+const maxWheelExponent=Math.log(1.14);
 export function wheelZoomFactor(deltaY,deltaMode,pageHeight){
  const unit=deltaMode===1?16:deltaMode===2?pageHeight:1;
  // Pixel-mode pinch deltas encode -100 * ln(scale). Cap a single large mouse-wheel tick.

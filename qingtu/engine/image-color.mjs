@@ -1,3 +1,7 @@
+import {applyPortraitRetouch,hasPortraitRetouch,normalizePortraitRetouch} from './portrait-retouch.mjs';
+import {applyAdvancedColor,applySampledHsl,hasAdvancedColor,hasSampledHsl,normalizeAdvancedColor} from './advanced-color.mjs';
+import {applyColorEffects} from './color-effects.mjs';
+
 const redWeight = .2126;
 const greenWeight = .7152;
 const blueWeight = .0722;
@@ -5,19 +9,28 @@ const limit = (value, low, high) => Math.min(high, Math.max(low, value));
 const luminance = (red, green, blue) =>
   redWeight * red + greenWeight * green + blueWeight * blue;
 
+export const colorReferenceSampleEdge = 384;
+
 export const colorControls = [
-  {key: 'temperature', label: '色温', max: 100},
-  {key: 'tint', label: '色调', max: 100},
-  {key: 'exposure', label: '曝光', max: 3, step: .01},
-  {key: 'contrast', label: '对比度', max: 100},
-  {key: 'highlights', label: '高光', max: 100},
-  {key: 'shadows', label: '阴影', max: 100},
-  {key: 'whites', label: '白色色阶', max: 100},
-  {key: 'blacks', label: '黑色色阶', max: 100},
-  {key: 'vibrance', label: '自然饱和度', max: 100},
-  {key: 'saturation', label: '饱和度', max: 100},
+  {key:'temperature', label:'色温', max:100, group:'色彩'},
+  {key:'tint', label:'色调', max:100, group:'色彩'},
+  {key:'vibrance', label:'自然饱和度', max:100, group:'色彩'},
+  {key:'saturation', label:'饱和度', max:100, group:'色彩'},
+  {key:'exposure', label:'曝光', max:3, step:.01, group:'明度'},
+  {key:'brightness', label:'亮度', max:100, group:'明度'},
+  {key:'contrast', label:'对比度', max:100, group:'明度'},
+  {key:'highlights', label:'高光', max:100, group:'明度'},
+  {key:'shadows', label:'阴影', max:100, group:'明度'},
+  {key:'whites', label:'白色色阶', max:100, group:'明度'},
+  {key:'blacks', label:'黑色色阶', max:100, group:'明度'},
+  {key:'glow', label:'光感', max:100, group:'明度'},
+  {key:'sharpen', label:'锐化', min:0, max:100, group:'效果'},
+  {key:'clarity', label:'清晰', max:100, group:'效果'},
+  {key:'grain', label:'颗粒', min:0, max:100, group:'效果'},
+  {key:'fade', label:'褪色', min:0, max:100, group:'效果'},
+  {key:'vignette', label:'暗角', max:100, group:'效果'},
 ];
-const controlLimits = new Map(colorControls.map(({key, max}) => [key, max]));
+const controlLimits = new Map(colorControls.map(control=>[control.key,control]));
 
 function boundedVector(vector, low, high) {
   return Array.isArray(vector) && vector.length === 3 &&
@@ -29,7 +42,10 @@ export function normalizeImageColor(color) {
   const {adjustments = {}, match} = color;
   if (typeof color !== 'object' || Array.isArray(color) ||
       !adjustments || typeof adjustments !== 'object' || Array.isArray(adjustments) ||
-      Object.entries(adjustments).some(([key, value]) => !Number.isFinite(value) || !(Math.abs(value) <= controlLimits.get(key)))) {
+      Object.entries(adjustments).some(([key,value])=>{
+        const range=controlLimits.get(key);
+        return !range||!Number.isFinite(value)||value<(range.min??-range.max)||value>range.max;
+      })) {
     throw new Error('调色参数无效');
   }
   if (match !== undefined && (!match ||
@@ -40,7 +56,9 @@ export function normalizeImageColor(color) {
     throw new Error('参考色匹配参数无效');
   }
   const active = Object.fromEntries(colorControls.filter(({key}) => adjustments[key]).map(({key}) => [key, adjustments[key]]));
-  const normalized = Object.keys(active).length ? {adjustments: active} : {};
+  const normalized = {...normalizeAdvancedColor(color),...(Object.keys(active).length&&{adjustments:active})};
+  const retouch=normalizePortraitRetouch(color.retouch);
+  if(retouch)normalized.retouch=retouch;
   if (match) normalized.match = {
     gain: [...match.gain], offset: [...match.offset], strength: match.strength, luminance: !!match.luminance,
     ...(match.whitePoint !== undefined ? {whitePoint: match.whitePoint} : {}),
@@ -50,7 +68,7 @@ export function normalizeImageColor(color) {
 
 export function hasImageColor(color) {
   const match = color?.match;
-  return !!(color?.adjustments && Object.values(color.adjustments).some(Boolean) ||
+  return !!(hasPortraitRetouch(color?.retouch)||hasAdvancedColor(color)||hasSampledHsl(color) || color?.adjustments && Object.values(color.adjustments).some(Boolean) ||
     match?.strength > 0 && match.gain.some((gain, index) => (index !== 0 || match.luminance) &&
       (gain !== 1 || match.offset[index] !== 0)));
 }
@@ -78,6 +96,25 @@ function whiteWeight(light, chroma, fullWeight = .86) {
   const start = fullWeight - .09;
   if (light <= start || chroma >= .11) return 0;
   return smoothstep(start, fullWeight, light) * (1 - smoothstep(.045, .11, chroma));
+}
+
+function cloneGain(gain, axis) {
+  return axis === 0 ? limit(gain, .78, 1.4) : limit(gain, .65, 1.8);
+}
+
+// Roll off the last part of a brightness shift instead of clipping shadow
+// and highlight texture. A shift away from the boundary is left alone.
+function shiftLuminance(light, shift) {
+  const shifted = light + shift;
+  if (shift > 0 && shifted > .94) {
+    const knee = Math.max(light, .94), room = 1 - knee, excess = shifted - knee;
+    return knee + room * excess / (Math.max(.06, room) + excess);
+  }
+  if (shift < 0 && shifted < .06) {
+    const knee = Math.min(light, .06), excess = knee - shifted;
+    return knee - knee * excess / (Math.max(.06, knee) + excess);
+  }
+  return shifted;
 }
 
 function moments(sums, squares, weight) {
@@ -127,7 +164,7 @@ export function matchImageColor(target, reference) {
     reference = reference.white.foreground;
   }
   // Bound the spread adjustment to retain contrast and avoid amplifying noise.
-  const gain = target.deviation.map((value, axis) => value < .008 ? 1 : limit(reference.deviation[axis] / value, .4, 2.5));
+  const gain = target.deviation.map((value, axis) => value < .008 ? 1 : cloneGain(reference.deviation[axis] / value, axis));
   const offset = target.mean.map((mean, axis) => reference.mean[axis] - gain[axis] * mean);
   return {gain, offset, ...(whitePoint !== undefined ? {whitePoint} : {})};
 }
@@ -153,17 +190,25 @@ function gamutScale(light, red, green, blue) {
   return Math.min(1, max > 0 ? (1 - light) / max : 1, min < 0 ? -light / min : 1);
 }
 
-export function applyImageColor(pixels, color) {
-  if (!hasImageColor(color)) return pixels;
-  const {
-    exposure = 0, contrast = 0, temperature = 0, tint = 0, saturation = 0, vibrance = 0,
-    shadows = 0, highlights = 0, whites = 0, blacks = 0,
-  } = color.adjustments || {};
-  const match = color.match, adjusted = !!color.adjustments;
+export function colorMatchParameters(match) {
   const strength = (match?.strength || 0) / 100;
   const protectedWhite = match?.whitePoint === undefined ? null : Math.max(.77, match.whitePoint - .025);
-  const gain = [0, 1, 2].map(axis => axis === 0 && !match?.luminance ? 1 : 1 + strength * ((match?.gain[axis] ?? 1) - 1));
-  const offset = [0, 1, 2].map(axis => axis === 0 && !match?.luminance ? 0 : strength * (match?.offset[axis] ?? 0));
+  const gain = [0, 1, 2].map(axis => axis === 0 && !match?.luminance ? 1 : 1 + strength * (cloneGain(match?.gain[axis] ?? 1, axis) - 1));
+  // Keep legacy matches centred on the midtones when limiting their contrast.
+  const offset = [0, 1, 2].map(axis => {
+    if (axis === 0) return match?.luminance ? strength * (match.offset[0] + (match.gain[0] - cloneGain(match.gain[0], 0)) * .5) : 0;
+    return strength * (match?.offset[axis] ?? 0);
+  });
+  return {strength,protectedWhite,gain,offset};
+}
+
+function applyBaseColor(pixels, adjustments, match) {
+  const {
+    exposure = 0, contrast = 0, temperature = 0, tint = 0, saturation = 0, vibrance = 0,
+    shadows = 0, highlights = 0, whites = 0, blacks = 0, brightness=0, glow=0, fade=0,
+  } = adjustments || {};
+  const adjusted = !!adjustments;
+  const {strength,protectedWhite,gain,offset}=colorMatchParameters(match);
   const blueBalance = -.0016 * temperature + .0009 * tint;
   const redBalance = .0012 * temperature + .0009 * tint;
   const exposureGain = 2 ** exposure;
@@ -178,9 +223,10 @@ export function applyImageColor(pixels, color) {
       const dark = 1 - y, darkSquared = dark * dark, lightSquared = y * y;
       light = limit(.5 + (y * exposureGain - .5) * contrastGain +
         .004 * (shadows * y * darkSquared + highlights * dark * lightSquared) +
-        .0025 * (whites * lightSquared * lightSquared + blacks * darkSquared * darkSquared), 0, 1);
+        .0025 * (whites * lightSquared * lightSquared + blacks * darkSquared * darkSquared) +
+        .008 * brightness * y * dark + .009 * glow * lightSquared * dark + .0021 * fade * darkSquared, 0, 1);
       const chroma = Math.max(red, green, blue) - Math.min(red, green, blue);
-      const saturationScale = saturationGain * (1 + .009 * vibrance * (1 - chroma));
+      const saturationScale = saturationGain * (1 + .009 * vibrance * (1 - chroma)) * (1 - .002 * fade);
       blueDelta = (blueDelta + blueBalance) * saturationScale;
       redDelta = (redDelta + redBalance) * saturationScale;
       if (strength) {
@@ -198,7 +244,7 @@ export function applyImageColor(pixels, color) {
         const chroma = Math.max(redDelta, greenDelta, blueDelta) - Math.min(redDelta, greenDelta, blueDelta);
         amount -= whiteWeight(light, chroma, protectedWhite);
       }
-      light = limit(light + amount * ((gain[0] - 1) * light + offset[0]), 0, 1);
+      light = shiftLuminance(light, amount * ((gain[0] - 1) * light + offset[0]));
       blueDelta += amount * ((gain[1] - 1) * blueDelta + offset[1]);
       redDelta += amount * ((gain[2] - 1) * redDelta + offset[2]);
     }
@@ -209,5 +255,22 @@ export function applyImageColor(pixels, color) {
     pixels[index + 1] = Math.round(255 * (light + scale * greenDelta));
     pixels[index + 2] = Math.round(255 * (light + scale * blueDelta));
   }
+  return pixels;
+}
+
+const spatialEffects=new Set(['sharpen','clarity','grain','vignette']);
+
+export function applyImageColor(pixels,color,frame){
+  if(!hasImageColor(color))return pixels;
+  const {adjustments,match,retouch}=color;
+  if(frame&&!frame.retouchApplied)applyPortraitRetouch(pixels,retouch,frame);
+  const base=adjustments&&Object.entries(adjustments).some(([key,value])=>value&&!spatialEffects.has(key))?adjustments:undefined;
+  if(hasAdvancedColor(color)){
+    if(base)applyBaseColor(pixels,base);
+    applyAdvancedColor(pixels,color);
+    if(match?.strength)applyBaseColor(pixels,undefined,match);
+  }else if(base||match?.strength)applyBaseColor(pixels,base,match);
+  if(adjustments)applyColorEffects(pixels,adjustments,frame);
+  if(hasSampledHsl(color))applySampledHsl(pixels,color.hslSamples);
   return pixels;
 }

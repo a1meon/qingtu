@@ -10,6 +10,7 @@ import {dimensions} from '../engine/image-dimensions.mjs';
 import {useSuccessTimeout} from './useSuccessTimeout.js';
 import {PreviewMetrics} from './PreviewMetrics.jsx';
 import {ImagePreview} from './ImagePreview.jsx';
+import {PreviewViewSwitch} from './PreviewViewSwitch.jsx';
 import {ToolNavigation} from './ToolNavigation.jsx';
 import {InspectorHeading,InspectorToggle} from './InspectorHeading.jsx';
 import {AppUpdates} from './AppUpdates.jsx';
@@ -39,7 +40,7 @@ export function CompressionApp(){
  const [preview,setPreview]=useState(null),[processing,setProcessing]=useState(false),[error,setError]=useState(''),[notice,setNotice]=useState(null);
  const folder=useOutputFolder('compression',text=>setNotice({type:'error',text}));
  const [zoomSlot,setZoomSlot]=useState(null);
- const [view,setView]=useState('compare'),[previewReset,setPreviewReset]=useState(0),[batch,setBatch]=useState(null),[statuses,setStatuses]=useState({}),[dragging,setDragging]=useState(false);
+ const [viewChoice,setViewChoice]=useState(null),[previewReset,setPreviewReset]=useState(0),[batch,setBatch]=useState(null),[statuses,setStatuses]=useState({}),[dragging,setDragging]=useState(false);
  const [inspectorOpen,setInspectorOpenState]=useState(()=>!window.matchMedia('(max-width:760px)').matches),[inspectorRevision,setInspectorRevision]=useState(0);
  const inspectorManual=useRef(false);
  const setInspectorOpen=value=>{inspectorManual.current=true;setInspectorOpenState(value);setInspectorRevision(revision=>revision+1);};
@@ -72,6 +73,8 @@ export function CompressionApp(){
  const settingsError=validateSettings(target,settings)||pngRange.message;
  const key=JSON.stringify(settings);
  const output=preview && preview.fileId===selected?.id && preview.key===key && !batch ? preview.result : null;
+ const defaultView=output&&!output.unchanged?'compare':'original';
+ const view=viewChoice?.id===selected?.id?viewChoice?.value??defaultView:defaultView;
  const scaleLimited=resize.type==='scale'&&selected&&Math.max(selected.width,selected.height)*Number(resize.percent)/100>MAX_EDGE;
  const scale=scaleLimited?Math.round(MAX_EDGE/Math.max(selected.width,selected.height)*1000)/10:resize.type==='scale'?resize.percent:selected?Math.round(Number(size.width)/selected.width*1000)/10:100;
  useEffect(()=>{
@@ -165,9 +168,7 @@ export function CompressionApp(){
      <div className="file-toolbar">
       <div className="compression-name-slot">{selected?<CompressionName key={selected.id} ref={nameEditor} file={selected} onRename={rename} active={module==='compress'} disabled={loading||deleting||!!batch}/>:<span className="file-toolbar-name">未选择图片</span>}</div>
       <div className="preview-actions">
-       <div className="view-switch" role="group" aria-label="预览方式">
-        {[{value:'original',label:'原图',aria:'查看原图'},{value:'compare',label:'对比',aria:'对比原图与结果'},{value:'processed',label:'处理后',aria:'查看处理后图片'}].map(option=><button key={option.value} className={view===option.value?'active':''} disabled={!selected} aria-label={option.aria} aria-pressed={view===option.value} onClick={()=>setView(option.value)}>{option.label}</button>)}
-       </div>
+       <PreviewViewSwitch view={view} onChange={value=>setViewChoice({id:selected.id,value})} disabled={!selected}/>
        {!inspectorOpen&&<InspectorToggle panelId="export-inspector" expanded={false} setOpen={setInspectorOpen}/>}
       </div>
      </div>

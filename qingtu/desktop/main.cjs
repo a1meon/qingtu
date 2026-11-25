@@ -1,10 +1,18 @@
-const { app, BrowserWindow, ipcMain, dialog, Menu, shell, net } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, Menu, shell, net, nativeTheme } = require('electron');
 const path=require('node:path');
 const fs=require('node:fs/promises');
 const {pathToFileURL}=require('node:url');
+const {revealWindow}=require('./reveal-window.cjs');
+const appIcon = path.join(__dirname, '../build/icon.png');
 
 async function start(options={}) {
   await app.whenReady();
+  // Match the native macOS frame to the renderer's light interface.
+  if (process.platform === 'darwin') nativeTheme.themeSource = 'light';
+  // Tahoe can place the legacy bundle icon inside a grey Dock tile.
+  if (process.platform === 'darwin' && process.getSystemVersion().split('.')[0] === '26') {
+    app.dock.setIcon(appIcon);
+  }
   const {ImageService}=await import('../engine/service.mjs');
   const service=new ImageService();
   const {ProjectStore}=await import('../engine/project-store.mjs');
@@ -31,6 +39,21 @@ async function start(options={}) {
   }
   const describeFolder=folder=>({name:path.basename(folder),path:folder});
   let samplePromise,win;
+  const mainWindow=()=>win&&!win.isDestroyed()?win:null;
+  const sendToMain=(channel,value)=>mainWindow()?.webContents.send(channel,value);
+  const toy=require('./toy-window.cjs').createToyWindow({index,owner:mainWindow,
+    notify:state=>sendToMain('qingtu:toy-state',state),hidden:options.hidden,offscreen:options.offscreen===true});
+  ipcMain.handle('qingtu:toy-kind',event=>{
+    if(!toy.validSender(event))throw new Error('无效窗口');
+    return toy.state().kind;
+  });
+  ipcMain.handle('qingtu:toy-exit',event=>{
+    if(!toy.validSender(event))throw new Error('无效窗口');
+    toy.close();
+  });
+  ipcMain.on('qingtu:toy-drag',(event,phase,x,y)=>{
+    if(toy.validSender(event))toy.drag(phase,x,y);
+  });
   let activeOperations=0,startupChecked=false,chunkTransport,closeApproved=false,closePending=false,quitRequested=false,rendererReady=false;
   app.on('before-quit',()=>{quitRequested=true;});
   const flushRequests=new Map();
@@ -80,7 +103,7 @@ async function start(options={}) {
   };
   function createWindow(){
     rendererReady=false;
-    win=new BrowserWindow({width:1280,height:820,minWidth:980,minHeight:700,...(process.platform==='darwin'?{frame:true,titleBarStyle:'hidden',trafficLightPosition:{x:14,y:18}}:{frame:false}),backgroundColor:'#f0faff',show:!options.hidden,title:'轻图',icon:path.join(__dirname,'../build/icon.png'),webPreferences:{offscreen:options.offscreen===true,preload:path.join(__dirname,'preload.cjs'),contextIsolation:true,nodeIntegration:false,sandbox:true}});
+    win=new BrowserWindow({width:1280,height:820,minWidth:980,minHeight:700,...(process.platform==='darwin'?{frame:true,titleBarStyle:'hidden',trafficLightPosition:{x:14,y:18}}:{frame:false}),backgroundColor:'#f0faff',show:!options.hidden,title:'轻图',icon:appIcon,webPreferences:{offscreen:options.offscreen===true,preload:path.join(__dirname,'preload.cjs'),contextIsolation:true,nodeIntegration:false,sandbox:true}});
     win.webContents.setWindowOpenHandler(()=>({action:'deny'}));
     // The renderer's dirty-state effect can lag a committed save by one frame.
     // Only bypass beforeunload after the trusted flush protocol has completed.
@@ -102,6 +125,8 @@ async function start(options={}) {
   ipcMain.handle('qingtu:call',async(event,method,args=[])=>{
     if(!validSender(event))throw new Error('无效窗口');
     if(!Array.isArray(args))throw new Error('无效参数');
+    if(method==='toyState')return toy.state();
+    if(method==='setToy')return toy.set(args[0]);
     const stitchMethods=['stitchList','stitchLoad','stitchSave','stitchDelete','stitchImport','stitchChooseFiles','stitchPreviews','stitchMissing','stitchRender','stitchRelease'];
     if(stitchMethods.includes(method)){
       if(updater.status().phase==='installing')throw new Error('正在安装更新，请稍后再操作');
@@ -116,7 +141,7 @@ async function start(options={}) {
           const paths=options.testFiles||(await dialog.showOpenDialog(win,{title:args[0]==='open'?'打开图片':'添加图片',properties:['openFile','multiSelections'],filters:[{name:'图片',extensions:['jpg','jpeg','png','webp','avif','tif','tiff']}]})).filePaths;
           const result={items:[],errors:[]};for(const p of paths||[])try{if((await fs.stat(p)).size>100*1024*1024)throw new Error('单张图片须小于 100 MB');result.items.push(await store.import(await fs.readFile(p),path.basename(p)));}catch(e){result.errors.push(path.basename(p)+'：'+e.message);}return result;
         }
-        if(method==='stitchPreviews'){if(!Array.isArray(args[0])||args[0].length>100)throw new Error('图片参数无效');const out=[];for(const id of args[0])out.push(await store.preview(id));return out;}
+        if(method==='stitchPreviews')return await store.previews(args[0]);
         if(method==='stitchMissing'){if(!Array.isArray(args[0])||args[0].length>100)throw new Error('图片参数无效');const out=[];for(const id of args[0])try{await fs.access(store.assetFile(id));}catch(error){if(error.code!=='ENOENT')throw error;out.push(id);}return out;}
         if(method==='stitchRender')return await stitching.render(...args);
         if(method==='stitchRelease'){stitching.release(args[0]);return true;}
@@ -184,15 +209,24 @@ async function start(options={}) {
   });
   Menu.setApplicationMenu(Menu.buildFromTemplate([
     ...(process.platform==='darwin'?[{label:'轻图',submenu:[{role:'about'},{type:'separator'},{role:'hide'},{role:'hideOthers'},{role:'unhide'},{type:'separator'},{role:'quit'}]}]:[]),
-    {label:'文件',submenu:[{label:'添加图片',accelerator:'CmdOrCtrl+O',click:()=>win.webContents.send('qingtu:menu','import')},{label:'导出图片',accelerator:'CmdOrCtrl+Shift+S',click:()=>win.webContents.send('qingtu:menu','export')}, {type:'separator'},process.platform==='darwin'?{role:'close'}:{role:'quit'}]},
-    {label:'编辑',submenu:[{label:'撤销',accelerator:'CmdOrCtrl+Z',click:()=>win.webContents.send('qingtu:menu','undo')},{label:'重做',accelerator:'CmdOrCtrl+Shift+Z',click:()=>win.webContents.send('qingtu:menu','redo')},{type:'separator'},{role:'cut'},{role:'copy'},{role:'paste'},{role:'selectAll'}]},
+    {label:'文件',submenu:[{label:'添加图片',accelerator:'CmdOrCtrl+O',click:()=>sendToMain('qingtu:menu','import')},{label:'导出图片',accelerator:'CmdOrCtrl+Shift+S',click:()=>sendToMain('qingtu:menu','export')}, {type:'separator'},process.platform==='darwin'?{role:'close'}:{role:'quit'}]},
+    {label:'编辑',submenu:[{label:'撤销',accelerator:'CmdOrCtrl+Z',click:()=>sendToMain('qingtu:menu','undo')},{label:'重做',accelerator:'CmdOrCtrl+Shift+Z',click:()=>sendToMain('qingtu:menu','redo')},{type:'separator'},{role:'cut'},{role:'copy'},{role:'paste'},{role:'selectAll'}]},
     {label:'窗口',submenu:[{role:'minimize'},{role:'zoom'}]}
   ]));
+  function ensureMainWindow(){
+    const current=mainWindow();
+    if(current)return current;
+    service.files.clear();service.results.clear();service.totalBytes=0;samplePromise=null;folders.clear();closeApproved=false;
+    return createWindow();
+  }
   createWindow();
-  app.on('activate',()=>{if(BrowserWindow.getAllWindows().length===0){service.files.clear();service.results.clear();service.totalBytes=0;samplePromise=null;folders.clear();closeApproved=false;createWindow();}});
+  app.on('activate',()=>{
+    const current=ensureMainWindow();
+    if(!options.hidden)revealWindow(current);
+  });
   app.on('window-all-closed',()=>{if(process.platform!=='darwin'||options.hidden||quitRequested)app.quit();});
   app.on('will-quit',()=>{chunkTransport?.close();nativeUpdater.close?.();});
-  return {win,service,updater,store,stitching};
+  return {win,service,updater,store,stitching,ensureMainWindow};
 }
 module.exports={start};
 if (require.main === module) {

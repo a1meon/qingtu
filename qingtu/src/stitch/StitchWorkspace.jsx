@@ -1,3 +1,6 @@
+import {usePortraitDetection} from './portrait-detector.js';
+import {hslSampleKey,maxHslSamples} from '../../engine/advanced-color.mjs';
+import {maxLiquifyStrokes,portraitPoint} from '../../engine/portrait-retouch.mjs';
 import {AspectRatioButton} from '../AspectRatioButton.jsx';
 import {MAX_EDGE} from '../../engine/canvas-limits.mjs';
 import {forwardRef,useEffect,useLayoutEffect,useImperativeHandle,useMemo,useRef,useState} from 'react';
@@ -7,6 +10,7 @@ import {OutputFolder,useOutputFolder} from '../OutputFolder.jsx';
 import {originalCanvasImage,stitchRenderKey} from '../../engine/stitch-render-input.mjs';
 import {PreviewCache} from '../../engine/preview-cache.mjs';
 import {PreviewMetrics} from '../PreviewMetrics.jsx';
+import {PreviewViewSwitch} from '../PreviewViewSwitch.jsx';
 import {originalBytes} from '../../engine/image-source.mjs';
 import {usePngBudgetRange} from '../usePngBudgetRange.js';
 import {useSuccessTimeout} from '../useSuccessTimeout.js';
@@ -41,7 +45,10 @@ import {rotateProjectImage,setProjectImageAngle} from '../../engine/image-rotati
 import {rotatePreview} from './rotate-preview.js';
 import {hasImageColor,setImageColors} from '../../engine/image-color.mjs';
 import {ColorInspector} from './ColorInspector.jsx';
+import {PortraitPanel} from './PortraitPanel.jsx';
 import {colorsFromReference,resolveColorReference} from './color-preview.js';
+
+
 
 export const StitchWorkspace=forwardRef(function StitchWorkspace({active,inspectorOpen,inspectorRevision,setInspectorOpen,onBusy,onCount},ref){
  const {projects,project,update,travel,open,leaveProject,create,remove,clear,loading,saving,saveError,flush,retry,conflict,getCurrent}=useProjects();
@@ -51,14 +58,75 @@ export const StitchWorkspace=forwardRef(function StitchWorkspace({active,inspect
  const folder=useOutputFolder('stitch',text=>setNotice({type:'error',text}));
  const [context,setContext]=useState(null),[confirmation,setConfirmation]=useState(null),[optimization,setOptimization]=useState(null),[optimizing,setOptimizing]=useState(false),[splitting,setSplitting]=useState(false),[rotating,setRotating]=useState(false);
  const [viewRevision,setViewRevision]=useState(0);
- const [grading,setGrading]=useState(false),[colorBefore,setColorBefore]=useState(false);
+ const [workspaceMode,setWorkspaceMode]=useState('layout'),[colorView,setColorView]=useState('processed');
  const [colorDraft,setColorDraft]=useState(null),colorGesture=useRef(null);
  const [matching,setMatching]=useState(false),matchingLock=useRef(false),[matchMessage,setMatchMessage]=useState(null);
- const colorMode=grading&&!!project?.images.length;
+ const colorMode=workspaceMode==='color'&&!!project?.images.length;
+ const portraitMode=workspaceMode==='portrait'&&!!project?.images.length,editMode=colorMode||portraitMode;
  const colorReference=resolveColorReference(project);
- const canCompareColor=project?.images.some(image=>hasImageColor(image.color));
- useEffect(()=>{setColorBefore(false);setMatchMessage(null);},[project?.id]);
- useEffect(()=>{if(!canCompareColor)setColorBefore(false);},[canCompareColor]);
+ const [pickerActive,setPickerActive]=useState(false),[pickerSample,setPickerSample]=useState(null);
+ const [brushMode,setBrushMode]=useState(null),[brushSize,setBrushSize]=useState(42),[brushHistory,setBrushHistory]=useState({});
+ const portraitImage=project?.images.find(image=>image.id===selected);
+
+ useEffect(()=>{setBrushMode(null);},[selected,project?.id]);
+ useEffect(()=>{if(!active||!colorMode)setPickerActive(false);if(!active||!portraitMode)setBrushMode(null);},[active,colorMode,portraitMode]);
+ useEffect(()=>{
+  if(!pickerActive&&!brushMode)return;
+  const escape=event=>{
+   if(event.key!=='Escape')return;
+   setPickerActive(false);setBrushMode(null);clearColorDraft();
+  };
+  document.addEventListener('keydown',escape);
+  return()=>document.removeEventListener('keydown',escape);
+ },[pickerActive,brushMode]);
+ const picker={active:pickerActive,sample:pickerSample?.id===selected?pickerSample:null,
+  close:()=>setPickerActive(false),toggle:()=>setPickerActive(value=>!value)};
+ function pickColor(id,pixel){
+  if(!pixel||pixel[3]===0)return;
+  const image=getCurrent()?.images.find(item=>item.id===id);
+  if(!image)return;
+  const rgb=[pixel[0],pixel[1],pixel[2]],key=hslSampleKey(rgb),samples=image.color?.hslSamples||[];
+  const index=samples.findIndex(sample=>hslSampleKey(sample.rgb)===key);
+  if(index<0||index>0){
+   const others=samples.filter((_,i)=>i!==index);
+   if(others.length>=maxHslSamples){
+    const unused=others.findLastIndex(sample=>!Object.values(sample.adjustment||{}).some(Boolean));
+    if(unused<0){setNotice('取色已达到上限，请先重置一个采样色的调色数值。');setPickerActive(false);return;}
+    others.splice(unused,1);
+   }
+   const hslSamples=[samples[index]||{rgb,adjustment:{}},...others];
+   applyColorEdits(new Map([[id,{...image.color,hslSamples}]]),false);
+  }
+  setPickerSample({id,key});setPickerActive(false);
+ }
+ function draftBrush(path){
+  const image=getCurrent()?.images.find(item=>item.id===selected);
+  if(!image||!path.length)return;
+  const value=image.color?.retouch,turn=value?.turn||0,inverse=(360-turn)%360;
+  const strokes=value?.strokes||[];
+  if(strokes.length>=maxLiquifyStrokes)return;
+  const points=path.map(dab=>{
+   const point=portraitPoint(dab,inverse),offset=portraitPoint({x:.5+dab.dx,y:.5+dab.dy},inverse);
+   return {...point,dx:offset.x-.5,dy:offset.y-.5,radius:turn%180?dab.radiusY:dab.radius,
+    radiusY:turn%180?dab.radius:dab.radiusY};
+  });
+  previewColor(image.id,{...image.color,retouch:{...value,strokes:[...strokes,{path:points,kind:'push',soft:true}]}},'liquify');
+ }
+ const historyKey=`${project?.id}:${selected}`,redoStrokes=brushHistory[historyKey]||[];
+ function setRedo(strokes){setBrushHistory(previous=>({...previous,[historyKey]:strokes}));}
+ function travelBrush(operation){
+  const image=getCurrent()?.images.find(item=>item.id===selected);
+  if(!image)return;
+  const retouch=image.color?.retouch,strokes=retouch?.strokes||[];
+  if(operation==='undo'&&!strokes.length||operation==='redo'&&!redoStrokes.length)return;
+  const next=operation==='undo'?strokes.slice(0,-1):operation==='redo'?[...strokes,redoStrokes[0]]:[];
+  setRedo(operation==='undo'?[strokes.at(-1),...redoStrokes]:operation==='redo'?redoStrokes.slice(1):[]);
+  applyColorEdits(new Map([[image.id,{...image.color,retouch:{...retouch,strokes:next}}]]));
+ }
+ const canCompareColor=hasImageColor(colorDraft?.color)||project?.images.some(image=>hasImageColor(image.color));
+ const visibleColorView=canCompareColor?colorView:'original';
+ useEffect(()=>{setColorView('processed');setMatchMessage(null);},[project?.id]);
+ useEffect(()=>{if(!canCompareColor)setColorView('processed');},[canCompareColor]);
  const fieldSession=useRef(null),renameInput=useRef(null);
  const [blankTitle,setBlankTitle]=useState(null);
  useEffect(()=>setBlankTitle(null),[active,project?.id]);
@@ -85,35 +153,67 @@ export const StitchWorkspace=forwardRef(function StitchWorkspace({active,inspect
  const displayProject=useMemo(()=>{
   if(splitDraft&&project?.images.some(image=>image.id===splitDraft.id)){const edits={...project.edits};delete edits[splitDraft.id];return {...project,edits,positions:{...project.positions,[splitDraft.id]:fullSourcePosition(project,splitDraft.id)}};}
   const cropped=cropDraft?setImageEdit(project,cropDraft.id,cropDraft.edit):project;
-  const rotated=angleDraft&&cropped?setProjectImageAngle(cropped,angleDraft.id,angleDraft.angle):cropped;
-  return colorDraft&&rotated?.id===colorDraft.projectId?setImageColors(rotated,new Map([[colorDraft.id,colorDraft.color]])):rotated;
- },[project,cropDraft,splitDraft?.id,angleDraft,colorDraft]);
+  return angleDraft&&cropped?setProjectImageAngle(cropped,angleDraft.id,angleDraft.angle):cropped;
+ },[project,cropDraft,splitDraft?.id,angleDraft]);
  const calculation=useMemo(()=>{try{return {layout:calculateLayout(displayProject||{})};}catch(e){try{return {layout:calculateLayout(displayProject||{},{draft:true}),error:e.message};}catch{return {error:e.message};}}},[displayProject]);
  const {layout}=calculation;
+ const portraitRect=layout?.rects.find(rect=>rect.id===selected);
+ const detection=usePortraitDetection(portraitImage?.preview,active&&portraitMode&&!cropDraft&&!splitDraft,portraitRect?.crop,portraitImage&&`${portraitImage.assetId}:${portraitImage.rotation||0}`);
+ const {left=0,right=0,top=0,bottom=0}=portraitRect?.crop||{};
+ const inVisibleImage=point=>!!(portraitRect&&point&&point.x>=left&&point.x<=1-right&&point.y>=top&&point.y<=1-bottom);
+ const portraitFace=inVisibleImage(detection?.face)?detection.face:null;
+ const detectedLegs=detection?.legs;
+ const portraitLegs=detectedLegs&&inVisibleImage({x:detectedLegs.x,y:detectedLegs.hip})&&
+  inVisibleImage({x:detectedLegs.x,y:detectedLegs.ankle})?detectedLegs:null;
+ const portraitHead=inVisibleImage(detection?.head)?detection.head:null;
+ const portraitBody=!!(portraitLegs||inVisibleImage(detection?.body));
+ const status=empty=>!selected?'选择画布中的图片':detection?.error?'本机识别暂不可用':
+  detection?.done?empty:'正在识别当前图片…';
+ const portrait={face:portraitFace,legs:portraitLegs,head:portraitHead,body:portraitBody,selected:!!portraitImage,
+  size:brushSize,mode:brushMode,canRedo:!!redoStrokes.length,
+  faceStatus:status('当前图片未识别到人脸'),bodyStatus:status('当前图片未识别到人体'),
+  close:()=>setBrushMode(null),setSize:setBrushSize,setMode:mode=>{setBrushMode(mode);if(mode)showGradedPreview();},
+  undo:()=>travelBrush('undo'),redo:()=>travelBrush('redo'),reset:()=>travelBrush('reset')};
+ const portraitBrush=brushMode&&portraitMode&&portraitImage&&(portraitImage.color?.retouch?.strokes?.length||0)<maxLiquifyStrokes?{
+  update:draftBrush,commit:()=>{if(colorGesture.current?.id===selected)setRedo([]);commitColorDraft();},
+  cancel:clearColorDraft,size:brushSize,
+ }:null;
  const pngRange=usePngBudgetRange(project?.export.format==='png'&&project.canvas&&!(originalCanvasImage(project,layout)?.format==='png')?[project.canvas]:[],project?.export.targetBytes);
 
  const busy=loading||changingEntry||importing||!!batch||optimizing||splitting||rotating||matching||!!confirmation||!!optimization;
  const exportableIds=exportProjectIds(projects,project),exportIds=exportProjectIds(projects,project,exportSelection);
  function selectExport(id,checked){setExportSelection(previous=>{const ids=exportProjectIds(projects,getCurrent(),previous);return checked?[...ids,id]:ids.filter(value=>value!==id);});}
  useEffect(()=>setContext(null),[active,project?.id,busy]);
+ useEffect(()=>{
+  if(!active||!selected||busy)return;
+  function deselectBlank(event){
+   const target=event.target;
+   if(event.button!==0||!(target instanceof Element)||!target.closest('.app'))return;
+   if(target.closest('button,input,select,textarea,label,a,summary,[contenteditable],[tabindex]:not([tabindex="-1"]),[role="menu"],[role="listbox"],dialog,.stitch-layer,.stitch-ghost,.resize-handle,.canvas-rotation-target,.inline-image-controls,.stitch-compare-drag,.compare-slider,.toy-panel'))return;
+   selectImage(null);
+  }
+  document.addEventListener('pointerdown',deselectBlank);
+  return()=>document.removeEventListener('pointerdown',deselectBlank);
+ },[active,selected,busy,editing]);
  useEffect(()=>{onBusy(busy||saving||processing||!!saveError||!!cropDraft||!!splitDraft||!!transformCanvas||!!angleDraft||!!colorDraft);onCount(project?.images.length||0);},[busy,saving,processing,saveError,cropDraft,splitDraft,transformCanvas,angleDraft,!!colorDraft,project?.images.length]);
  useEffect(()=>{
   const removeSelected=event=>{
-   if(!active||busy||colorMode||renaming||transformCanvas||cropDraft?.gesture||!selected||event.defaultPrevented||event.isComposing||event.repeat||event.ctrlKey||event.metaKey||event.altKey||!['Delete','Backspace'].includes(event.key))return;
-   if(event.target instanceof Element&&event.target.closest('input,textarea,select,[contenteditable]:not([contenteditable="false"]),[role="textbox"]'))return;
+   if(!active||busy||editMode||renaming||transformCanvas||cropDraft?.gesture||!selected||event.defaultPrevented||event.isComposing||event.repeat||event.ctrlKey||event.metaKey||event.altKey||!['Delete','Backspace'].includes(event.key))return;
+   if(event.target instanceof Element&&event.target.closest('input,textarea,select,[contenteditable]:not([contenteditable="false"]),[role="textbox"],.toy-panel'))return;
    if(!getCurrent()?.images.some(image=>image.id===selected))return;
    event.preventDefault();removeImage(selected);
   };
   window.addEventListener('keydown',removeSelected);return()=>window.removeEventListener('keydown',removeSelected);
- },[active,busy,colorMode,renaming,transformCanvas,cropDraft?.gesture,selected,project?.id]);
+ },[active,busy,editMode,renaming,transformCanvas,cropDraft?.gesture,selected,project?.id]);
  function clearColorDraft(){
   colorGesture.current=null;setColorDraft(null);
  }
- function previewColor(id,color){
+ function showGradedPreview(){if(colorView==='original')setColorView('processed');}
+ function previewColor(id,color,kind){
   const current=getCurrent();
   if(!current?.images.some(image=>image.id===id))return;
-  const draft={projectId:current.id,id,color};
-  colorGesture.current=draft;setColorDraft(draft);setColorBefore(false);
+  const draft={projectId:current.id,id,color,kind};
+  colorGesture.current=draft;setColorDraft(draft);showGradedPreview();
  }
  function commitColorDraft(){
   const draft=colorGesture.current;
@@ -123,20 +223,18 @@ export const StitchWorkspace=forwardRef(function StitchWorkspace({active,inspect
   return update(p=>setImageColors(p,new Map([[draft.id,draft.color]]))).catch(error=>setNotice(error.message));
  }
  async function flushEditor(){await editor.current?.flush();await commitColorDraft();}
- async function setGradingMode(value){
-  if(value===colorMode)return;
+ async function switchWorkspace(value){
+  if(value===workspaceMode)return;
   try{
    await settleEditor();
-   setGrading(value);setColorBefore(false);setMatchMessage(null);
-   if(value){
-    setInspectorOpen(true);
-    if(!selected)setSelected(getCurrent()?.images[0]?.id||null);
-   }
+   setSelected(null);setContext(null);
+   setWorkspaceMode(value);setColorView('processed');setMatchMessage(null);
+   if(value!=='layout')setInspectorOpen(true);
   }catch(error){setNotice(error.message);}
  }
- function applyColorEdits(changes){
+ function applyColorEdits(changes,reveal=true){
   const task=(async()=>{
-   await commitColorDraft();setColorBefore(false);setMatchMessage(null);
+   await commitColorDraft();if(reveal)showGradedPreview();setMatchMessage(null);
    await update(p=>setImageColors(p,changes));
   })().catch(error=>setNotice(error.message));
   actionTask.current=task;return task;
@@ -153,13 +251,14 @@ export const StitchWorkspace=forwardRef(function StitchWorkspace({active,inspect
  }
  function importColorReference(file){
   const owner=getCurrent()?.id;
-  const task=repository.importReference(file).then(reference=>saveColorReference(reference,owner));
-  actionTask.current=task.catch(()=>{});
-  return task;
+  const ready=repository.importReference(file).then(reference=>({saved:saveColorReference(reference,owner)}));
+  // The reference is usable immediately while the normal save queue persists it.
+  actionTask.current=ready.then(({saved})=>saved).catch(()=>{});
+  return ready;
  }
  function matchColors(ids,options){
   if(busy||matchingLock.current)return actionTask.current;
-  matchingLock.current=true;setMatching(true);setMatchMessage(null);setColorBefore(false);
+  matchingLock.current=true;setMatching(true);setMatchMessage(null);showGradedPreview();
   const task=(async()=>{
    await commitColorDraft();
    const current=getCurrent(),reference=resolveColorReference(current);
@@ -204,7 +303,7 @@ export const StitchWorkspace=forwardRef(function StitchWorkspace({active,inspect
  },[active,renderKey,busy,!!cropDraft,!!splitDraft,!!transformCanvas,!!angleDraft,!!colorDraft,pngRange.message,pngRange.checking]);
  async function settleEditor(){await flushEditor();setEditing(null);setCropDraft(null);setSplitDraft(null);setAngleDraft(null);}
  async function selectImage(id){try{if(editing&&editing!==id)await settleEditor();setSelected(id);}catch(error){setNotice(error.message);}}
- async function editImage(id){try{if(editing!==id)await settleEditor();setSelected(id);setImageMode('crop');setEditing(id);}catch(e){setNotice(e.message);}}
+ async function editImage(id){try{if(editing!==id)await settleEditor();if(colorView==='compare')setColorView('processed');picker.close();portrait.close();setSelected(id);setImageMode('crop');setEditing(id);}catch(e){setNotice(e.message);}}
  function commitCrop(id,edit){setCropDraft(null);return update(p=>setImageEdit(p,id,edit));}
  async function runOptimize(){
   let phase='calculate';
@@ -380,29 +479,30 @@ export const StitchWorkspace=forwardRef(function StitchWorkspace({active,inspect
  const editingValue=project?.edits?.[selected];
  const visibleCanvas=transformCanvas||displayProject?.canvas,original=originalCanvas(project);
  const presetOptions=[...(original?[{value:'original',label:'原图比例'}]:[]),...CANVAS_PRESETS,{value:'custom',label:'自定义'}];
- const imageControls=placement=>editingImage&&<ImageEditor key={editingImage.id} ref={editor} image={editingImage} value={editingValue} placement={placement} open={editing===selected} mode={imageMode} hidden={!active} disabled={busy} onActivate={mode=>{setImageMode(mode);setEditing(selected);}} onPreview={(edit,options)=>setCropDraft(edit?{id:selected,edit,...options}:null)} onCommit={edit=>commitCrop(selected,edit)} splitDraft={splitDraft} onSplitDraft={value=>setSplitDraft(value?{...value,id:selected}:null)} onSplit={(axis,at)=>splitImage(selected,axis,at)} onRemove={()=>removeImage(selected)} onRotate={degrees=>rotateImage(selected,degrees)} onAnglePreview={(angle,revision)=>setAngleDraft(angle==null?null:{id:selected,angle,revision})} onAngleCommit={(angle,revision)=>commitAngle(selected,angle,revision)} onClose={()=>{setAngleDraft(null);setEditing(current=>current===selected?null:current);setCropDraft(current=>current?.id===selected?null:current);setSplitDraft(current=>current?.id===selected?null:current);}}/>;
+ const imageControls=placement=>editingImage&&<ImageEditor key={editingImage.id} ref={editor} image={editingImage} value={editingValue} placement={placement} open={editing===selected} mode={imageMode} hidden={!active} disabled={busy} onActivate={mode=>{if(colorView==='compare')setColorView('processed');picker.close();portrait.close();setImageMode(mode);setEditing(selected);}} onPreview={(edit,options)=>setCropDraft(edit?{id:selected,edit,...options}:null)} onCommit={edit=>commitCrop(selected,edit)} splitDraft={splitDraft} onSplitDraft={value=>setSplitDraft(value?{...value,id:selected}:null)} onSplit={(axis,at)=>splitImage(selected,axis,at)} onRemove={()=>removeImage(selected)} onRotate={degrees=>rotateImage(selected,degrees)} onAnglePreview={(angle,revision)=>setAngleDraft(angle==null?null:{id:selected,angle,revision})} onAngleCommit={(angle,revision)=>commitAngle(selected,angle,revision)} onClose={()=>{setAngleDraft(null);setEditing(current=>current===selected?null:current);setCropDraft(current=>current?.id===selected?null:current);setSplitDraft(current=>current?.id===selected?null:current);}}/>;
  return <>
   <input ref={input} type="file" className="sr-only" multiple accept=".jpg,.jpeg,.png,.webp,.avif,.tif,.tiff" aria-label="选择画布图片文件" onChange={e=>importFiles(e.target.files)}/>
   <section className="stage stitch-stage" onBlurCapture={finishInput} aria-label="图像编辑工作台">
    <div className="preview-workspace">
-    <div className="file-toolbar stitch-file-toolbar" data-with-modes={!!project?.images.length||undefined} data-color-mode={colorMode||undefined}>
-     <input className="project-name" aria-label="项目名称" maxLength="80" value={project?(blankTitle??project.name):''} disabled={busy||!project} onChange={editTitle} onBlur={()=>setBlankTitle(null)} onKeyDown={e=>{if(e.key==='Enter'&&!e.nativeEvent.isComposing){setBlankTitle(null);e.currentTarget.blur();}}}/>
-     {!!project?.images.length&&<div className="view-switch stitch-mode-switch" role="group" aria-label="编辑模式">
-      <button type="button" className={!colorMode?'active':''} aria-pressed={!colorMode} disabled={busy} onClick={()=>setGradingMode(false)}>布局</button>
-      <button type="button" className={colorMode?'active':''} aria-pressed={colorMode} disabled={busy} onClick={()=>setGradingMode(true)}>调色</button>
+    <div className="file-toolbar stitch-file-toolbar" data-with-modes={!!project?.images.length||undefined}>
+     <div className="stitch-toolbar-heading">
+     <input className="project-name" title={project?.name} aria-label="项目名称" maxLength="80" value={project?(blankTitle??project.name):''} disabled={busy||!project} onChange={editTitle} onBlur={()=>setBlankTitle(null)} onKeyDown={e=>{if(e.key==='Enter'&&!e.nativeEvent.isComposing){setBlankTitle(null);e.currentTarget.blur();}}}/>
+     {!!project?.images.length&&<div className="view-switch stitch-mode-switch" style={{'--mode-index':portraitMode?2:colorMode?1:0}} role="group" aria-label="编辑模式">
+      <button type="button" className={!editMode?'active':''} aria-pressed={!editMode} disabled={busy} onClick={()=>switchWorkspace('layout')}>布局</button>
+      <button type="button" className={colorMode?'active':''} aria-pressed={colorMode} disabled={busy} onClick={()=>switchWorkspace('color')}>调色</button>
+      <button type="button" className={portraitMode?'active':''} aria-pressed={portraitMode} disabled={busy} onClick={()=>switchWorkspace('portrait')}>人像</button>
      </div>}
+     </div>
      <div className="preview-actions">
       <span className={`save-status ${saveError?'error':''}`} role="status">{saveError?'未保存':saving?'保存中…':project?'已自动保存':''}</span>
-      {colorMode?<div className="view-switch color-view-switch" role="group" aria-label="调色预览方式">
-       <button type="button" className={colorBefore?'active':''} aria-pressed={colorBefore} aria-label="查看原图" disabled={!canCompareColor||busy} onClick={()=>setColorBefore(true)}>原图</button>
-       <button type="button" className={!colorBefore?'active':''} aria-pressed={!colorBefore} aria-label="查看处理后图片" disabled={!canCompareColor||busy} onClick={()=>setColorBefore(false)}>处理后</button>
-      </div>:<CanvasTools project={project} busy={busy} onReset={()=>canvasCommand('reset')} onOptimize={optimize} onSettings={setOptimizationSettings}/>}
-      {!inspectorOpen&&<InspectorToggle panelId="stitch-export-inspector" expanded={false} setOpen={setInspectorOpen} settingsName={colorMode?"调色设置":undefined}/>}
+      {editMode?<PreviewViewSwitch className="color-view-switch" label={colorMode?'调色预览方式':'人像预览方式'}
+       view={visibleColorView} onChange={setColorView} disabled={!canCompareColor||busy}/>:<CanvasTools project={project} busy={busy} onReset={()=>canvasCommand('reset')} onOptimize={optimize} onSettings={setOptimizationSettings}/>}
+      {!inspectorOpen&&<InspectorToggle panelId="stitch-export-inspector" expanded={false} setOpen={setInspectorOpen} settingsName={colorMode?"调色设置":portraitMode?"人像设置":undefined}/>}
      </div>
     </div>
     {project?.images.length?<>
      <div className="canvas-area stitch-image-area"><div className="canvas-content"><div className="stitch-editing-surface">
-      <StitchCanvas viewRevision={viewRevision} navigationTarget={navigationSlot} navigationDisabled={busy||!!angleDraft} viewportMode={`${inspectorRevision}:${inspectorOpen}`} project={displayProject} layout={layout} preview={!colorMode&&!cropDraft&&!splitDraft&&!angleDraft&&output?output.preview:null} selected={selected} onSelect={selectImage} onEdit={editImage} onContext={contextImage} onReorder={reorder} onChange={(positions,operation)=>update(p=>applyCanvasTransform(p,positions,operation))} onResizePreview={setTransformCanvas} renderControls={colorMode?null:imageControls} colorMode={colorMode} showOriginal={colorMode&&colorBefore} colorReference={colorReference?.id} cropping={!!selected&&editing===selected&&imageMode==='crop'&&!splitDraft} rotationOpen={!!selected&&editing===selected&&imageMode==='rotate'} cropGesture={!!cropDraft?.gesture} split={splitDraft} onSplitChange={value=>setSplitDraft({...value,id:editing})} disabled={busy||!!cropDraft||!!splitDraft||!!angleDraft} splitDisabled={busy}/>
+      <StitchCanvas viewRevision={viewRevision} navigationTarget={navigationSlot} navigationDisabled={busy||!!angleDraft} viewportMode={`${inspectorRevision}:${inspectorOpen}`} project={displayProject} layout={layout} preview={!editMode&&!cropDraft&&!splitDraft&&!angleDraft&&output?output.preview:null} selected={selected} onSelect={selectImage} onEdit={editImage} onContext={contextImage} onReorder={reorder} onChange={(positions,operation)=>update(p=>applyCanvasTransform(p,positions,operation))} onResizePreview={setTransformCanvas} renderControls={imageControls} colorMode={editMode} colorView={visibleColorView} colorDraft={colorDraft} colorReference={colorMode?colorReference?.id:null} colorPicker={pickerActive?pickColor:null} portraitBrush={portraitBrush} cropping={!!selected&&editing===selected&&imageMode==='crop'&&!splitDraft} rotationOpen={!!selected&&editing===selected&&imageMode==='rotate'} cropGesture={!!cropDraft?.gesture} split={splitDraft} onSplitChange={value=>setSplitDraft({...value,id:editing})} disabled={busy||!!cropDraft||!!splitDraft||!!angleDraft} splitDisabled={busy}/>
      </div>
      <div className="preview-info stitch-info" aria-live="polite">
       <PreviewMetrics dimensionLabel={layout?.rects.some(r=>r.autoCrop)?'画布 · 9:16 居中裁切':'画布'} dimensions={visibleCanvas||layout||output} sources={project.images} sourceBytes={originalBytes(project.images)} output={output} processing={processing} status={cropDraft||splitDraft||transformCanvas||angleDraft||colorDraft?'编辑中…':undefined} multiple={project.images.length>1} selectedImage={editingImage}/>
@@ -420,12 +520,16 @@ export const StitchWorkspace=forwardRef(function StitchWorkspace({active,inspect
    </div>
    <CanvasCards projects={projects} currentId={project?.id} disabled={busy} onOpen={openCanvas} onCreate={()=>startImage('choose')} onClear={requestClear} onContext={contextCanvas} exportableIds={exportableIds} exportIds={exportIds} onSelectExport={selectExport} onSelectAll={checked=>setExportSelection(checked?null:[])} renamingId={renaming} renameInput={renameInput} onRenameStart={startRename} onRename={renameCanvas} onRenameEnd={endRename}/>
   </section>
-  <div className="inspector-shell"><aside className="inspector" id="stitch-export-inspector" onBlurCapture={finishInput} aria-label={colorMode?"图像调色设置":"图像编辑导出设置"} aria-hidden={!inspectorOpen} inert={!inspectorOpen}>
-   <InspectorHeading title={colorMode?"调色":"设置"} panelId="stitch-export-inspector" setOpen={setInspectorOpen} settingsName={colorMode?"调色设置":undefined}/>
+  <div className="inspector-shell"><aside className="inspector" id="stitch-export-inspector" onBlurCapture={finishInput} aria-label={colorMode?"图像调色设置":portraitMode?"图像人像设置":"图像编辑导出设置"} aria-hidden={!inspectorOpen} inert={!inspectorOpen}>
+   <InspectorHeading title={colorMode?"调色":portraitMode?"人像":"设置"} panelId="stitch-export-inspector" setOpen={setInspectorOpen} settingsName={colorMode?"调色设置":portraitMode?"人像设置":undefined}/>
    {colorMode?<ColorInspector key={project.id} images={project.images} selected={selected} draft={colorDraft}
     onDraft={previewColor} onCommit={commitColorDraft} onCancel={clearColorDraft}
     onChange={applyColorEdits} onMatch={matchColors} matching={matching} matchMessage={matchMessage}
-    reference={colorReference} onReference={chooseColorReference} onImportReference={importColorReference} disabled={busy||!inspectorOpen}/>:<div className="settings-scroll">
+    picker={picker} reference={colorReference} onReference={chooseColorReference} onImportReference={importColorReference} disabled={busy||!inspectorOpen}/>:portraitMode?<PortraitPanel key={project.id} portrait={portrait}
+    value={(colorDraft?.id===selected?colorDraft.color:portraitImage?.color)?.retouch} disabled={busy||!inspectorOpen}
+    onDraft={retouch=>previewColor(selected,{...(colorGesture.current?.id===selected?colorGesture.current.color:portraitImage?.color),retouch})}
+    onCommit={commitColorDraft} onCancel={clearColorDraft}
+    onChange={retouch=>applyColorEdits(new Map([[selected,{...portraitImage?.color,retouch}]]))}/>:<div className="settings-scroll">
     <div className="control-section"><label htmlFor="stitch-target">大小上限</label><div className="target-control"><input id="stitch-target" aria-describedby={pngRange.message?'stitch-png-range':undefined} type="number" min={unit==='KB'?pngRange.minimum:1} max={unit==='MB'?100:100000} step="1" disabled={busy||!project} value={project?(project.export.targetBytes/(unit==='MB'?1000000:1000)):30} onChange={e=>setExport({targetBytes:Number(e.target.value)*(unit==='MB'?1000000:1000)},inputGroup(e))}/><Dropdown label="画布大小单位" className="unit-dropdown" minMenuWidth={0} value={unit} onChange={setUnit} disabled={busy||!project||!inspectorOpen} options={[{value:'MB',label:'MB'},{value:'KB',label:'KB'}]}/></div>{pngRange.message&&<small id="stitch-png-range" className="png-budget-range" role="status">{pngRange.message}</small>}
     </div>
     <div className="control-section"><div className="canvas-settings-heading"><h2>画布</h2><Dropdown id="canvas-preset" label="画布预设" className="canvas-preset" value={currentCanvasPreset(project,visibleCanvas)} options={presetOptions} disabled={busy||!project||!inspectorOpen} onChange={setPreset}/></div><div className="dimension-inputs canvas-dimensions"><div className="number-with-unit"><input id="stitch-width" aria-label="画布宽度" type="number" min="1" max={MAX_EDGE} disabled={busy||!project} value={visibleCanvas?.width||''} onChange={e=>editDimension('width',e)}/><span>px</span></div>

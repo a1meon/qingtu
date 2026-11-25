@@ -139,16 +139,37 @@ test('a valid backup remains discoverable when the primary is invalid, mismatche
 });
 
 test('an external color reference can be profiled without writing a canvas asset', async t => {
- const {root,store}=await setup(t),source=await fixture();
+ const {root,store}=await setup(t);
+ const source=await sharp({create:{width:1920,height:1440,channels:4,background:'#7799aa80'}}).png().toBuffer();
  const reference=await store.import(source,'reference.png',{reference:true});
- assert.deepEqual([reference.name,reference.width,reference.height],['reference.png',80,60]);
- assert.ok(reference.preview.startsWith('data:image/png;base64,'));
+ assert.deepEqual([reference.name,reference.width,reference.height],['reference.png',1920,1440]);
+ const previewSize=async value=>{
+  assert.ok(value.startsWith('data:image/png;base64,'));
+  const {width,height}=await sharp(Buffer.from(value.split(',')[1],'base64')).metadata();
+  return [width,height];
+ };
+ assert.deepEqual(await previewSize(reference.preview),[384,288]);
  assert.equal(reference.assetId,undefined);
  await assert.rejects(fs.readdir(path.join(root,'assets')), {code:'ENOENT'});
- const image=await store.import(source,'canvas.png');delete image.preview;
+ const image=await store.import(source,'canvas.png');
+ assert.deepEqual(await previewSize(image.preview),[1600,1200]);delete image.preview;
  const colorReference={name:reference.name,thumbnail:reference.preview,statistics:{mean:[.5,.03,-.1],deviation:[.02,.03,.01]}};
  const p={...project(image),colorReference};
  await store.save(p);
  assert.deepEqual((await new ProjectStore(root).load(p.id)).colorReference,colorReference);
  assert.throws(()=>store.save({...p,colorReference:{...colorReference,statistics:{mean:[],deviation:[]}}}),/参考图数据/);
+});
+
+test('source preview cache survives a fresh store, regenerates and does not stand in for a missing original',async t=>{
+ const {root,store}=await setup(t);
+ const image=await store.import(await fixture(),'cached.png'),path=store.previewFile(image.assetId);
+ const cached=await fs.readFile(path),before=(await fs.stat(path)).mtimeMs;
+ const reopened=new ProjectStore(root);
+ assert.deepEqual(await reopened.previews([image.assetId,image.assetId]),[image.preview,image.preview]);
+ assert.equal((await fs.stat(path)).mtimeMs,before);
+ await fs.writeFile(path,cached.subarray(0,28));
+ assert.equal(await reopened.preview(image.assetId),image.preview);
+ assert.deepEqual(await fs.readFile(path),cached);
+ await fs.rename(store.assetFile(image.assetId),store.assetFile(image.assetId)+'.temporarily-moved');
+ await assert.rejects(reopened.preview(image.assetId),{code:'ENOENT'});
 });

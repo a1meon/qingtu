@@ -1,25 +1,23 @@
+const {revealWindow}=require('./reveal-window.cjs');
+
 async function launchWindows(app, startPrimary) {
   if (!app.requestSingleInstanceLock()) {
     app.quit();
     return;
   }
 
-  let win;
+  let desktop;
   let activationPending = false;
   function activate() {
-    if (!win) {
+    if (!desktop) {
       activationPending = true;
       return;
     }
-    if (win.isDestroyed()) return;
-    if (win.isMinimized()) win.restore();
-    win.show();
-    win.focus();
+    revealWindow(desktop.ensureMainWindow?desktop.ensureMainWindow():desktop.win);
   }
 
   app.on('second-instance', activate);
-  const desktop = await startPrimary();
-  win = desktop.win;
+  desktop = await startPrimary();
   if (activationPending) activate();
 }
 

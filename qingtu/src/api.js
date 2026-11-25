@@ -24,7 +24,7 @@ export const api={
   stitchChooseFiles:mode=>call('stitchChooseFiles',mode),
   stitchPreviews:ids=>call('stitchPreviews',ids),
   stitchMissing:ids=>call('stitchMissing',ids),
-  stitchRender:({colorReference,...project},options)=>call('stitchRender',{...project,images:project.images.map(({preview,...image})=>image)},options),
+  stitchRender:({colorReference,...project},options)=>call('stitchRender',{...project,images:project.images.map(({preview,previewBlob,...image})=>image)},options),
   stitchRelease:id=>call('stitchRelease',id),
   updateStatus:()=>desktop?call('updateStatus'):Promise.resolve({version:appPackage.version,phase:'preview',visible:false}),
   checkUpdate:()=>desktop?call('checkUpdate'):Promise.resolve({version:appPackage.version,phase:'preview',visible:true}),

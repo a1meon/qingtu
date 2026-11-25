@@ -39,7 +39,7 @@ async function waitFor(win,expr){for(let n=0;n<160;n++){if(await win.webContents
   async function confirmDialog(){await waitFor(win,"!!document.querySelector('.stitch-dialog[open]')");await js("document.querySelector('.dialog-confirm').click()");await waitFor(win,"!document.querySelector('.stitch-dialog')");}
 
   await waitFor(win,"!!document.querySelector('#width')");
-  assert.deepEqual(await js("[...document.querySelectorAll('.tool-nav button')].map(e=>e.getAttribute('aria-label'))"),['图像编辑','压缩调整']);
+  assert.deepEqual(await js("[...document.querySelectorAll('.tool-nav button')].map(e=>e.getAttribute('aria-label'))"),['图像编辑','压缩调整','摸鱼玩具']);
   assert.equal(await js("document.querySelector('.tool-nav [aria-current=page]').getAttribute('aria-label')"),'图像编辑','launch opens the first menu');
   await js("document.querySelector('[aria-label=\"压缩调整\"]').click()");
   assert.equal(await js("document.querySelector('#width').value"),'3840','empty dimensions use 4K');
@@ -342,8 +342,8 @@ async function waitFor(win,expr){for(let n=0;n<160;n++){if(await win.webContents
   await win.webContents.debugger.sendCommand('Emulation.setEmulatedMedia',{features:[]});
 
   await js("document.querySelector('.add-tile').click()");
-  await waitFor(win,"document.querySelector('.processed-label')?.textContent.startsWith('处理后')");
-  assert.equal(await js("document.querySelector('.preview-status').textContent"),'无损','show the actual encoding category before the file sizes');
+  await waitFor(win,"!!document.querySelector('.module-content:not([hidden]) .size-comparison strong')");
+  assert.equal(await js("document.querySelector('.module-content:not([hidden]) .preview-status').textContent"),'无损','show the actual encoding category before the file sizes');
   assert.equal(await js("document.querySelector('label[for=target-size]').textContent"),'大小上限');
   assert.deepEqual(await metricStyles(),editorMetrics,'both modules show dimensions then file size with identical typography');
   const sizeComparison=await js("document.querySelector('.module-content:not([hidden]) .size-comparison').textContent");

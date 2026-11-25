@@ -1,6 +1,6 @@
 {
   "name": "qingtu",
-  "version": "0.5.1",
+  "version": "0.5.2",
   "private": true,
   "type": "module",
   "scripts": {
@@ -70,12 +70,14 @@
   },
   "devDependencies": {
     "@imagemagick/magick-wasm": "0.0.46",
+    "@mediapipe/tasks-vision": "0.10.21",
     "@vitejs/plugin-react": "5.0.4",
     "electron": "44.7.0",
     "electron-builder": "26.15.3",
     "electron-sparkle": "0.2.0",
     "fake-indexeddb": "6.2.8",
     "node-api-headers": "1.7.0",
+    "onnxruntime-web": "1.20.1",
     "vite": "6.4.2"
   },
   "description": "轻图 — 本地图片压缩与尺寸调整",

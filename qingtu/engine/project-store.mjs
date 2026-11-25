@@ -11,7 +11,7 @@ import {validateImportOrder} from './stitch-reset.mjs';
 import {defaultCanvasName,nameOrDefault} from './output-name.mjs';
 import {originalBytes} from './image-source.mjs';
 import {validateLayoutStates} from './canvas-layout-state.mjs';
-import {normalizeImageColor,validateColorReference} from './image-color.mjs';
+import {colorReferenceSampleEdge,normalizeImageColor,validateColorReference} from './image-color.mjs';
 
 const validId=id=>typeof id==='string'&&/^[a-zA-Z0-9-]{1,80}$/.test(id);
 export async function atomicWrite(destination,bytes){
@@ -24,12 +24,18 @@ export async function atomicWrite(destination,bytes){
   if(process.platform!=='win32'){const dir=await fs.open(path.dirname(destination),'r');try{await dir.sync();}finally{await dir.close();}}
  }finally{await fs.rm(temporary,{force:true});}
 }
-async function sourcePreview(buffer){
- const data=await sharp(buffer,INPUT_OPTIONS).rotate().resize({width:1600,height:1200,fit:'inside',withoutEnlargement:true}).png().toBuffer();
- return 'data:image/png;base64,'+data.toString('base64');
+const previewDataUrl=buffer=>'data:image/png;base64,'+buffer.toString('base64');
+async function sourcePreview(input,{width=1600,height=1200}={}){
+ return sharp(input,INPUT_OPTIONS).rotate().resize({width,height,fit:'inside',withoutEnlargement:true})
+  .png({compressionLevel:1,adaptiveFiltering:false}).toBuffer();
+}
+async function mapBatches(items,size,process){
+ const result=[];
+ for(let i=0;i<items.length;i+=size)result.push(...await Promise.all(items.slice(i,i+size).map(process)));
+ return result;
 }
 export class ProjectStore{
- constructor(root){this.root=root;this.pending=Promise.resolve();}
+ constructor(root){this.root=root;this.pending=Promise.resolve();this.previewJobs=new Map();}
  file(id,suffix='.json'){if(!validId(id))throw new Error('项目标识无效');return path.join(this.root,'projects',id+suffix);}
  assetFile(id){if(!/^[a-f0-9]{64}$/.test(id))throw new Error('图片标识无效');return path.join(this.root,'assets',id);}
  async import(buffer,name,{reference=false}={}){
@@ -38,7 +44,7 @@ export class ProjectStore{
   if(!SUPPORTED.includes(meta.format)||meta.pages>1||meta.depth!=='uchar')throw new Error('图像编辑支持单帧 8 位 JPEG、PNG、WebP、AVIF、TIFF');
   const rotated=[5,6,7,8].includes(meta.orientation);
   const file={name:path.basename(String(name).replaceAll('\\','/')).slice(0,200),width:rotated?meta.height:meta.width,height:rotated?meta.width:meta.height};
-  if(reference)return {...file,preview:await sourcePreview(buffer)};
+  if(reference)return {...file,preview:previewDataUrl(await sourcePreview(buffer,{width:colorReferenceSampleEdge,height:colorReferenceSampleEdge}))};
   const assetId=createHash('sha256').update(buffer).digest('hex');
   try{await fs.access(this.assetFile(assetId));}catch{await atomicWrite(this.assetFile(assetId),buffer);}
   return {...file,id:randomUUID(),assetId,format:meta.format,bytes:buffer.length,preview:await this.preview(assetId)};
@@ -46,7 +52,30 @@ export class ProjectStore{
  async readAsset(id){return fs.readFile(this.assetFile(id));}
  // Editor layers are visible immediately, before full composition/encoding.
  // Keep enough pixels for Retina canvas viewing; card thumbnails stay 160px.
- async preview(id){return sourcePreview(await this.readAsset(id));}
+ previewFile(id){this.assetFile(id);return path.join(this.root,'source-previews-v1',id+'.png');}
+ async preview(id){
+  if(this.previewJobs.has(id))return this.previewJobs.get(id);
+  const task=(async()=>{
+   const source=this.assetFile(id),cache=this.previewFile(id);
+   await fs.access(source);
+   const hit=await fs.readFile(cache).catch(()=>null);
+   if(hit?.length>=24&&hit.readUInt32BE(0)===0x89504e47&&hit.subarray(-8,-4).toString()==='IEND')return previewDataUrl(hit);
+   const data=await sourcePreview(source);
+   const temp=cache+'.'+randomUUID()+'.tmp';
+   // Derived previews can be regenerated. Keep manifest writes durable and
+   // cache failures separate from the project or its verified originals.
+   try{
+    await fs.mkdir(path.dirname(cache),{recursive:true});await fs.writeFile(temp,data);await fs.rename(temp,cache);
+   }catch{await fs.rm(temp,{force:true}).catch(()=>{});}
+   return previewDataUrl(data);
+  })().finally(()=>this.previewJobs.delete(id));
+  this.previewJobs.set(id,task);
+  return task;
+ }
+ previews(ids){
+  if(!Array.isArray(ids)||ids.length>100)throw new Error('图片参数无效');
+  return mapBatches(ids,4,id=>this.preview(id));
+ }
  async load(id){
   const read=async suffix=>{
    const project=JSON.parse(await fs.readFile(this.file(id,suffix),'utf8'));
@@ -93,12 +122,13 @@ export class ProjectStore{
  }
  async list(){
   await fs.mkdir(path.join(this.root,'projects'),{recursive:true});
-  const names=await fs.readdir(path.join(this.root,'projects')),out=[];
-  const ids=new Set(names.filter(n=>n.endsWith('.json')).map(n=>n.replace(/(?:\.backup)?\.json$/,'')));
-  for(const id of ids){
-   try{const p=await this.load(id);out.push({id:p.id,name:nameOrDefault(p.name,defaultCanvasName(p)),updatedAt:p.updatedAt,count:p.images.length,recovered:p.recovered,thumbnail:p.thumbnail});}
-   catch{out.push({id,name:'项目恢复失败',error:'项目文件损坏，请保留数据并检查备份'});}
-  }return out.sort((a,b)=>(b.updatedAt||0)-(a.updatedAt||0));
+  const names=await fs.readdir(path.join(this.root,'projects'));
+  const ids=[...new Set(names.filter(n=>n.endsWith('.json')).map(n=>n.replace(/(?:\.backup)?\.json$/,'')))];
+  const out=await mapBatches(ids,8,async id=>{
+   try{const p=await this.load(id);return {id:p.id,name:nameOrDefault(p.name,defaultCanvasName(p)),updatedAt:p.updatedAt,count:p.images.length,recovered:p.recovered,thumbnail:p.thumbnail};}
+   catch{return {id,name:'项目恢复失败',error:'项目文件损坏，请保留数据并检查备份'};}
+  });
+  return out.sort((a,b)=>(b.updatedAt||0)-(a.updatedAt||0));
  }
  async remove(id,retained=[]){
   await this.pending;await fs.rm(this.file(id),{force:true});await fs.rm(this.file(id,'.backup.json'),{force:true});
@@ -107,7 +137,9 @@ export class ProjectStore{
   const referenced=new Set(retained);
   const names=await fs.readdir(path.join(this.root,'projects'));
   for(const name of names.filter(n=>n.endsWith('.json')))try{for(const image of JSON.parse(await fs.readFile(path.join(this.root,'projects',name))).images)referenced.add(image.assetId);}catch{return true;}
-  for(const name of await fs.readdir(path.join(this.root,'assets')).catch(()=>[]))if(/^[a-f0-9]{64}$/.test(name)&&!referenced.has(name))await fs.rm(this.assetFile(name));
+  for(const name of await fs.readdir(path.join(this.root,'assets')).catch(()=>[]))if(/^[a-f0-9]{64}$/.test(name)&&!referenced.has(name)){
+   await fs.rm(this.assetFile(name));await fs.rm(this.previewFile(name),{force:true}).catch(()=>{});
+  }
   return true;
  }
  flush(){return this.pending;}

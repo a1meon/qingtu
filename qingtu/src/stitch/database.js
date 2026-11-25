@@ -14,7 +14,20 @@ export async function readAsset(id){
  return (await request(tx.objectStore('assets').get(id)))?.blob;
 }
 
-export async function commitProject(value,expectedRevision,originals){
+export async function readAssetRecords(ids){
+ const tx=(await db()).transaction('assets'),assets=tx.objectStore('assets');
+ const values=await Promise.all(ids.map(id=>request(assets.get(id))));
+ return new Map(ids.map((id,i)=>[id,values[i]]));
+}
+
+export async function cacheAssetPreview(id,preview){
+ const tx=(await db()).transaction('assets','readwrite'),assets=tx.objectStore('assets');
+ const done=finished(tx),read=assets.get(id);
+ read.onsuccess=()=>{if(read.result&&!read.result.sourcePreview)assets.put({...read.result,sourcePreview:preview});};
+ return done;
+}
+
+export async function commitProject(value,expectedRevision,originals,previews=new Map()){
  const tx=(await db()).transaction(['projects','assets'],'readwrite',{durability:'strict'});
  const done=finished(tx),projects=tx.objectStore('projects'),assets=tx.objectStore('assets');
  // Schedule dependent writes in IDB callbacks, while the transaction is active.
@@ -37,7 +50,7 @@ export async function commitProject(value,expectedRevision,originals){
    lookup.onsuccess=()=>{
     if(lookup.result!==undefined)return;
     const blob=originals.get(id);
-    if(blob)assets.put({id,blob});
+    if(blob)assets.put({id,blob,sourcePreview:previews.get(id)});
     else if(!failure){failure=new Error('原图副本缺失，项目尚未保存');tx.abort();}
    };
   }

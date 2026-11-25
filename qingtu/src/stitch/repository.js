@@ -12,13 +12,13 @@ import {validateImportSizes} from '../../engine/import-sizes.mjs';
 import {normalizeImageColor,validateColorReference} from '../../engine/image-color.mjs';
 import {profileColorReference} from './color-preview.js';
 
-import {db,request,readAsset,commitProject,deleteProjects} from './database.js';
+import {db,request,readAssetRecords,commitProject,deleteProjects} from './database.js';
 
 // Keep the active editor's originals available if a different tab deletes its manifest.
 let originals=new Map();
 const sourcePreviews=new PreviewCache();
 const storageError=error=>new Error(error?.name==='QuotaExceededError'?'本地空间不足，项目尚未保存。请释放空间后重试':`项目保存失败：${error?.message||'本地存储不可用'}`);
-function clean(project){validateImportSizes(project);validateColorReference(project.colorReference);for(const image of project.images)normalizeImageColor(image.color);return {...project,optimization:optimizationSettings(project.optimization),images:project.images.map(({preview,...image})=>image),updatedAt:Date.now()};}
+function clean(project){validateImportSizes(project);validateColorReference(project.colorReference);for(const image of project.images)normalizeImageColor(image.color);return {...project,optimization:optimizationSettings(project.optimization),images:project.images.map(({preview,previewBlob,...image})=>image),updatedAt:Date.now()};}
 export const repository={
  rememberImports(items){for(const image of items)if(image.preview)sourcePreviews.set(image.assetId,image.preview,2*image.preview.length);},
  setOriginals(files=new Map()){originals=files;},
@@ -37,7 +37,9 @@ export const repository={
   try{
    value.thumbnail=await canvasThumbnail(project);
    if(desktop)return await api.stitchSave(value);
-   return await commitProject(value,expectedRevision,originals);
+   const previews=new Map(project.images.filter(image=>image.previewBlob).map(image=>[image.assetId,image.previewBlob]));
+   try{return await commitProject(value,expectedRevision,originals,previews);}
+   catch(error){if(error.name!=='QuotaExceededError'||!previews.size)throw error;return await commitProject(value,expectedRevision,originals);}
   }catch(error){if(error.code==='PROJECT_CONFLICT')throw error;throw storageError(error);}
  },
  async import(file,retained=originals){
@@ -61,11 +63,12 @@ export const repository={
   project=restoreSingleImportFrame(project);
   const ids=[...new Set(project.images.map(i=>i.assetId))];
   if(!ids.length)return project;
-  if(retain&&!desktop)await Promise.all(ids.map(async id=>{
-   const file=originals.get(id)||await readAsset(id);
+  const records=!desktop&&(retain||staticBrowser&&previews)?await readAssetRecords(ids):null;
+  if(retain&&!desktop)for(const id of ids){
+   const file=originals.get(id)||records.get(id)?.blob;
    if(!file)throw new Error('原图副本缺失，项目无法恢复');
    retain.set(id,file);
-  }));
+  }
   if(!desktop&&!staticBrowser){
    const missing=await api.stitchMissing(ids);
    for(const id of missing){
@@ -75,18 +78,36 @@ export const repository={
    }
   }
   if(!previews)return project;
-  const byId=new Map(),missing=[];
+  const byId=new Map(),missing=[],disk=[];
   for(const id of ids){
    const url=sourcePreviews.get(id);
-   if(url)byId.set(id,url);else missing.push(id);
+   if(url)byId.set(id,url);
+   else if(staticBrowser&&records.get(id)?.sourcePreview)disk.push(id);
+   else missing.push(id);
+  }
+  if(disk.length){
+   const {dataUrl}=await import('../browser-engine.js');
+   await Promise.all(disk.map(async id=>{
+    const url=await dataUrl(records.get(id).sourcePreview);
+    byId.set(id,url);sourcePreviews.set(id,url,2*url.length);
+   }));
   }
   if(desktop&&byId.size&&(await api.stitchMissing([...byId.keys()])).length)throw new Error('原图副本缺失，项目无法恢复');
   if(missing.length){
    const urls=await api.stitchPreviews(missing);
    missing.forEach((id,n)=>{byId.set(id,urls[n]);sourcePreviews.set(id,urls[n],2*urls[n].length);});
   }
-  const rotatedPreviews=new Map();
-  return {...project,images:await Promise.all(project.images.map(async image=>{const key=`${image.assetId}:${image.rotation||0}`;if(!rotatedPreviews.has(key))rotatedPreviews.set(key,rotatePreview(byId.get(image.assetId),image.rotation||0));return {...image,preview:await rotatedPreviews.get(key)};}))};
+  const rotating=new Map();
+  return {...project,images:await Promise.all(project.images.map(async image=>{
+   const original=byId.get(image.assetId),turn=image.rotation||0;
+   if(!turn)return {...image,preview:original};
+   const key=`${image.assetId}:${turn}`,cached=sourcePreviews.get(key);
+   if(cached)return {...image,preview:cached};
+   if(!rotating.has(key))rotating.set(key,rotatePreview(original,turn).then(url=>{
+    sourcePreviews.set(key,url,2*url.length);return url;
+   }));
+   return {...image,preview:await rotating.get(key)};
+  }))};
  },
  async remove(selection,retained=[]){
   if(desktop){for(const {id} of selection)await api.stitchDelete(id,retained);}

@@ -1,0 +1,7 @@
+Rubber Hose UI by Justin Finkelman
+https://github.com/finktheartist/rubber-hose-ui
+Upstream revision 9608c12ca34057ad5ebfd64d88f9bc0194df6c2c
+
+button.js and toggle.js are bundled verbatim under the MIT License.
+The scripts embed Patrick Hand under the SIL Open Font License 1.1.
+See LICENSE and PATRICK-HAND-OFL.txt.

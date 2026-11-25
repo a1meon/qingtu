@@ -1,3 +1,4 @@
+import {applyPortraitRetouch,hasPortraitRetouch} from './portrait-retouch.mjs';
 import {defaultCanvasName,nameOrDefault} from './output-name.mjs';
 import sharp from 'sharp';
 import {randomUUID} from 'node:crypto';
@@ -11,6 +12,7 @@ import {clipRectangle} from './canvas-clip.mjs';
 import {rotatedImageBounds} from './image-rotation.mjs';
 import {sourceWindow,imageRotation,imageAngle} from './image-source.mjs';
 import {applyImageColor} from './image-color.mjs';
+import {colorEffectFrame} from './color-effects.mjs';
 
 export async function composeProject(project,store,{isObsolete}={}){
  const check=()=>{if(isObsolete?.())throw new Error('预览参数已更新');};
@@ -36,6 +38,11 @@ export async function composeProject(project,store,{isObsolete}={}){
    const turned=await sharp(oriented.data,{raw:oriented.info}).rotate(angle).raw().toBuffer({resolveWithObject:true});check();
    pipeline=sharp(turned.data,{raw:turned.info});
   }
+  if(hasPortraitRetouch(image.color?.retouch)){
+   const original=await pipeline.ensureAlpha().raw().toBuffer({resolveWithObject:true});check();
+   applyPortraitRetouch(original.data,image.color.retouch,original.info);check();
+   pipeline=sharp(original.data,{raw:original.info});
+  }
   const geometry=imageGeometry(image,project.edits?.[image.id]);
   if(rect.proportionalCrop){
    if(image.source)pipeline=pipeline.extract({left:window.left,top:window.top,width:window.width,height:window.height});
@@ -57,7 +64,7 @@ export async function composeProject(project,store,{isObsolete}={}){
    pipeline=sharp(resized.data,{raw:resized.info}).extract({left:Math.floor((resized.info.width-rect.width)/2),top:0,width:rect.width,height:rect.height});
   }else {if(image.source||geometry.width!==image.width||geometry.height!==image.height)pipeline=pipeline.extract({left:window.left+geometry.left,top:window.top+geometry.top,width:geometry.width,height:geometry.height});pipeline=pipeline.resize(rect.width,rect.height,{fit:'fill'});if(layout.fixed)pipeline=pipeline.extract({left:clipped.sourceLeft,top:clipped.sourceTop,width:clipped.width,height:clipped.height});}
   let part=await pipeline.ensureAlpha().raw().toBuffer(),destination=clipped;
-  applyImageColor(part,image.color);
+  applyImageColor(part,image.color,{...colorEffectFrame(rect,clipped),retouchApplied:true});
   if(fine){
    const turned=await sharp(part,{raw:{width:clipped.width,height:clipped.height,channels:4}}).rotate(fine,{background:'#00000000'}).raw().toBuffer({resolveWithObject:true});check();
    destination=clipRectangle({x:Math.round(pose.x+pose.width/2-turned.info.width/2),y:Math.round(pose.y+pose.height/2-turned.info.height/2),width:turned.info.width,height:turned.info.height},layout);

@@ -5,8 +5,9 @@ import {calculateLayout} from '../../engine/stitch-layout.mjs';
 import {fullCanvasImage,stitchRenderKey} from '../../engine/stitch-render-input.mjs';
 import {PreviewCache} from '../../engine/preview-cache.mjs';
 import {compose} from './compose.js';
-import {readAsset} from '../stitch/database.js';
+import {readAsset,readAssetRecords,cacheAssetPreview} from '../stitch/database.js';
 import {exportStem,compressionRename,defaultCanvasName,nameOrDefault} from '../../engine/output-name.mjs';
+import {colorReferenceSampleEdge} from '../../engine/image-color.mjs';
 
 const files=new Map(),exportsByToken=new Map();
 const cache=new PreviewCache(),pending=new Map();
@@ -35,7 +36,8 @@ async function metadata(file,stitch=false,sample=false,reference=false){
   const {bytes,meta}=await inspect(file);
   if(stitch&&meta.depth>8)throw new Error('图像编辑支持单帧 8 位 JPEG、PNG、WebP、AVIF、TIFF');
   const id=crypto.randomUUID(),name=file.name.replaceAll('\\','/').split('/').pop().slice(0,200);
-  const item={id,name,width:meta.width,height:meta.height,bytes:file.size,...preview(bytes)};
+  const bounds=reference?{width:colorReferenceSampleEdge,height:colorReferenceSampleEdge}:undefined;
+  const item={id,name,width:meta.width,height:meta.height,bytes:file.size,...preview(bytes,bounds)};
   if(reference)return item;
   if(stitch){
     const digest=new Uint8Array(await crypto.subtle.digest('SHA-256',bytes));
@@ -61,7 +63,15 @@ const actions={
   remove(id){const entry=files.get(id);if(entry){totalBytes-=entry.file.size;files.delete(id);}cache.delete(id);pending.delete(id);return true;},
   stitchImport:(file,reference)=>metadata(file,true,false,reference===true),
   async stitchPreviews(ids){
-    const images=[];for(const id of ids){const file=await readAsset(id);if(!file)throw new Error('原图副本缺失，项目无法恢复');images.push(preview(new Uint8Array(await file.arrayBuffer())).preview);}return images;
+    const assets=await readAssetRecords(ids),images=[];
+    for(const id of ids){
+      const asset=assets.get(id);
+      if(!asset?.blob)throw new Error('原图副本缺失，项目无法恢复');
+      const source=asset.sourcePreview||preview(new Uint8Array(await asset.blob.arrayBuffer())).preview;
+      if(!asset.sourcePreview)await cacheAssetPreview(id,source).catch(()=>{});
+      images.push(source);
+    }
+    return images;
   },
   async stitchRender(project,options){
     const result=await cached(project.id,stitchRenderKey(project),async()=>{

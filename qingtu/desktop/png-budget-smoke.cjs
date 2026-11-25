@@ -18,7 +18,7 @@ async function waitFor(win,expr){for(let n=0;n<600;n++){if(await win.webContents
   const js=expr=>win.webContents.executeJavaScript(expr),reports=[];
   const edit=(selector,value)=>js(`(()=>{const input=document.querySelector(${JSON.stringify(selector)});Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(input,${JSON.stringify(String(value))});input.dispatchEvent(new Event('input',{bubbles:true}));})()`);
   await waitFor(win,"!!document.querySelector('.add-tile')");await js("document.querySelector('[aria-label=\"压缩调整\"]').click()");await js("document.querySelector('.add-tile').click()");
-  await waitFor(win,"document.querySelector('.processed-label')?.textContent.includes('未改动')");
+  await waitFor(win,"document.querySelector('.processed-label')?.textContent==='原图' && document.querySelector('.size-comparison strong')?.textContent==='不变'");
   await js("document.querySelector('#unit').click()");await waitFor(win,"!!document.querySelector('[role=option]')");await js("[...document.querySelectorAll('[role=option]')].find(e=>e.textContent==='KB').click()");await edit('#target-size',1);
   await waitFor(win,"document.querySelector('.processed-label')?.textContent==='处理后'&&document.querySelector('.module-content:not([hidden]) .size-comparison')?.textContent.includes(' B')");
   assert.equal(await js("document.querySelector('#width').value"),'300');

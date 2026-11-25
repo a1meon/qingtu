@@ -18,6 +18,7 @@ export function rotateProjectImage(project,id,degrees){
   const image=next.images[index],window=sourceWindow(image),rotation=(imageRotation(image)+90)%360;
   const source=image.source?{left:window.fullHeight-window.top-window.height,top:window.left,width:window.height,height:window.width,fullWidth:window.fullHeight,fullHeight:window.fullWidth}:undefined;
   const turned={...image,width:image.height,height:image.width,rotation,...(source?{source}:{})};
+  if(image.color?.retouch)turned.color={...image.color,retouch:{...image.color.retouch,turn:((image.color.retouch.turn||0)+90)%360}};
   const layoutStates=next.layoutStates&&Object.fromEntries(Object.entries(next.layoutStates).map(([mode,state])=>[mode,state[id]?{...state,[id]:turnPose(state[id])}:state]));
   const size=next.importSizes?.[id];
   next={...next,images:next.images.map((value,i)=>i===index?turned:value),positions:{...next.positions,[id]:turnPose(next.positions[id])},edits:{...next.edits,...(next.edits?.[id]?{[id]:turnEdit(next.edits[id])}:{})},...(layoutStates?{layoutStates}:{}),...(size?{importSizes:{...next.importSizes,[id]:{width:size.height,height:size.width}}}:{})};

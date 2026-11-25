@@ -72,13 +72,14 @@ async function waitFor(win,expr){for(let n=0;n<100;n++){if(await win.webContents
   assert.equal(await win.webContents.executeJavaScript("document.querySelector('.export-button').disabled"),true);
   for(const selector of ['#target-size','#width','#height','#scale','#format'])assert.equal(await win.webContents.executeJavaScript(`(()=>{const el=document.querySelector(${JSON.stringify(selector)});el.focus();return getComputedStyle(el).outlineStyle;})()`),'none',selector);
   await win.webContents.executeJavaScript("document.querySelector('.add-tile').click()");
-  await waitFor(win,"document.querySelectorAll('.module-content:not([hidden]) .film-select').length===1 && document.querySelector('.processed-label')?.textContent.startsWith('处理后')");
+  await waitFor(win,"document.querySelectorAll('.module-content:not([hidden]) .film-select').length===1 && !!document.querySelector('.size-comparison strong')");
   await win.webContents.executeJavaScript(`(()=>{const input=document.querySelector('#scale');Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(input,'50');input.dispatchEvent(new Event('input',{bubbles:true}));})()`);
   await waitFor(win,"document.querySelector('.size-comparison')?.textContent.includes('计算中')");
-  assert.equal(await win.webContents.executeJavaScript("!document.querySelector('.processed-image')&&!!document.querySelector('.preview-loading-source')&&!!document.querySelector('.preview-loading-spinner .spin')"),true,'pending processing uses a clearly distinguished dimmed source and spinner, without claiming an actual result');
+  assert.equal(await win.webContents.executeJavaScript("!document.querySelector('.processed-image')&&document.querySelector('.processed-label')?.textContent==='原图'"),true,'pending automatic previews show the original');
   await waitFor(win,"document.querySelector('.preview-info')?.textContent.includes('768 × 512') && document.querySelector('.processed-label')?.textContent.startsWith('处理后')");
   const file=[...service.files.values()][0].item;
   const original=await win.webContents.executeJavaScript("document.querySelector('.original-image').src");
+  await win.webContents.executeJavaScript("document.querySelector('[aria-label=\"查看处理后图片\"]').click()");
   await win.webContents.executeJavaScript("document.querySelector('[aria-label=\"查看原图\"]').click()");
   await waitFor(win,"document.querySelector('.processed-label')?.textContent==='原图'");
   assert.equal(await win.webContents.executeJavaScript("document.querySelector('.compare-image').src"),original);
@@ -107,6 +108,7 @@ async function waitFor(win,expr){for(let n=0;n<100;n++){if(await win.webContents
   async function paintPreview(){await win.webContents.executeJavaScript("Promise.all(Array.from(document.querySelectorAll('.compare-image'),img=>img.decode())).then(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))))");}
   await paintPreview();
   const compareBar=await sampleLetterbox();
+  await win.webContents.executeJavaScript("document.querySelector('[aria-label=\"查看处理后图片\"]').click()");
   await win.webContents.executeJavaScript("document.querySelector('[aria-label=\"查看原图\"]').click()");
   await waitFor(win,"document.querySelector('.processed-label')?.textContent==='原图'");
   await paintPreview();

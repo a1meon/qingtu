@@ -1,6 +1,13 @@
 const {contextBridge,ipcRenderer}=require('electron');
 const methods=['samples','chooseFiles','importFiles','process','rename','remove','chooseFolder','save','outputFolder','exportHistory','exportThumbnail','revealFolder','windowAction','updateStatus','checkUpdate','downloadUpdate','installUpdate','stitchList','stitchLoad','stitchSave','stitchDelete','stitchImport','stitchChooseFiles','stitchPreviews','stitchMissing','stitchRender','stitchRelease'];
 const api=Object.fromEntries(methods.map(method=>[method,(...args)=>ipcRenderer.invoke('qingtu:call',method,args)]));
+api.toyState=()=>ipcRenderer.invoke('qingtu:call','toyState');
+api.setToy=state=>ipcRenderer.invoke('qingtu:call','setToy',[state]);
+api.onToyState=callback=>{
+ const handler=(_event,state)=>callback(state);
+ ipcRenderer.on('qingtu:toy-state',handler);
+ return ()=>ipcRenderer.removeListener('qingtu:toy-state',handler);
+};
 api.platform=process.platform;
 api.onFlush=callback=>{
  const handler=async(_event,id)=>{try{await callback();await ipcRenderer.invoke('qingtu:flushed',id);}catch(error){await ipcRenderer.invoke('qingtu:flushed',id,error.message);}};

@@ -261,3 +261,19 @@ test('saved image color invalidates the original export fast path and render cac
  assert.deepEqual(restored.images[0].color,project.images[0].color);
  assert.deepEqual(await store.readAsset(item.assetId),original);
 });
+
+test('advanced grading and corner effects survive project reload and render from the original',async t=>{
+ const {store,images,service}=await setup(t),item=await solid(store,'advanced.png',120,120,'#bf5442');
+ const original=await store.readAsset(item.assetId);
+ const color={adjustments:{vignette:80},hsl:{red:{hue:40}},curves:{rgb:[[0,0],[128,150],[255,255]]},wheels:{midtones:{x:20,y:25}}};
+ const project={id:'color-advanced',images:[{...item,color}],layout:'horizontal',export:settings};
+ await store.save(project);
+ const restored=await store.load(project.id);
+ assert.deepEqual(restored.images[0].color,color);
+ const result=await service.render(restored);
+ const raw=await sharp(images.result(result.token).output.buffer).ensureAlpha().raw().toBuffer({resolveWithObject:true});
+ const center=(Math.floor(raw.info.height/2)*raw.info.width+Math.floor(raw.info.width/2))*4;
+ assert.ok(raw.data[center+1]>100&&raw.data[center]>raw.data[0]);
+ assert.equal(raw.data[3],255);
+ assert.deepEqual(await store.readAsset(item.assetId),original);
+});
