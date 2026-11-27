@@ -1,6 +1,6 @@
 {
   "name": "qingtu",
-  "version": "0.4.9",
+  "version": "0.5.2",
   "private": true,
   "type": "module",
   "scripts": {
@@ -8,14 +8,15 @@
     "build": "vite build && node scripts/prepare-sites-build.mjs",
     "preview": "vite preview",
     "test:sites": "node --test tests/sites-worker.test.mjs",
+    "pretest": "npm run build",
     "test": "node --test tests/*.test.mjs tests/*.test.cjs",
     "desktop": "electron .",
-    "pack:mac": "npm run build && node scripts/prepare-native.mjs darwin arm64 && node scripts/prepare-sparkle-key.cjs && node scripts/prepare-sparkle.cjs arm64 && node scripts/prepare-update-build.cjs darwin arm64 && electron-builder --config build/update-builder.json --mac dmg zip --arm64 --publish never && node scripts/prepare-update-metadata.cjs darwin arm64 && node scripts/prepare-mac-release.cjs release/latest-arm64-mac.yml release/gitee-publish arm64 && node scripts/prepare-mac-installer.cjs release/gitee-publish arm64",
-    "pack:win": "npm run build && node scripts/prepare-native.mjs win32 x64 && node scripts/prepare-update-build.cjs win32 x64 && electron-builder --config build/update-builder.json --win nsis --x64 --publish never && node scripts/prepare-update-metadata.cjs win32 x64 && npm run release:chunks",
+    "pack:mac": "npm run build && node scripts/prepare-native.mjs darwin arm64 && node scripts/prepare-sparkle-key.cjs && node scripts/prepare-sparkle.cjs arm64 && node scripts/prepare-update-build.cjs darwin arm64 && electron-builder --config build/update-builder.json --mac dmg zip --arm64 --publish never && node scripts/prepare-full-release.cjs darwin arm64",
+    "pack:win": "npm run build && node scripts/prepare-native.mjs win32 x64 && node scripts/prepare-update-build.cjs win32 x64 && electron-builder --config build/update-builder.json --win nsis --x64 --publish never && node scripts/prepare-full-release.cjs win32 x64",
     "pack:win:dir": "npm run build && node scripts/prepare-native.mjs win32 x64 && node scripts/prepare-update-build.cjs win32 x64 && electron-builder --config build/update-builder.json --win --x64 --dir --publish never",
     "smoke:desktop": "electron desktop/smoke.cjs",
     "postinstall": "node node_modules/electron/install.js",
-    "pack:mac:intel": "npm run build && node scripts/prepare-native.mjs darwin x64 && node scripts/prepare-sparkle-key.cjs && node scripts/prepare-sparkle.cjs x64 && node scripts/prepare-update-build.cjs darwin x64 && electron-builder --config build/update-builder.json --mac dmg zip --x64 --publish never && node scripts/prepare-update-metadata.cjs darwin x64 && node scripts/prepare-mac-release.cjs release/latest-x64-mac.yml release/gitee-publish x64 && node scripts/prepare-mac-installer.cjs release/gitee-publish x64",
+    "pack:mac:intel": "npm run build && node scripts/prepare-native.mjs darwin x64 && node scripts/prepare-sparkle-key.cjs && node scripts/prepare-sparkle.cjs x64 && node scripts/prepare-update-build.cjs darwin x64 && electron-builder --config build/update-builder.json --mac dmg zip --x64 --publish never && node scripts/prepare-full-release.cjs darwin x64",
     "pack:win:zip": "npm run build && node scripts/prepare-native.mjs win32 x64 && node scripts/prepare-update-build.cjs win32 x64 && electron-builder --config build/update-builder.json --win zip --x64 --publish never",
     "smoke:ui": "electron desktop/ui-smoke.cjs",
     "smoke:recovery": "node scripts/smoke-stitch-recovery.cjs",
@@ -36,7 +37,9 @@
     "fixtures:stitch": "node scripts/create-stitch-fixtures.mjs",
     "smoke:update": "electron desktop/update-smoke.cjs",
     "smoke:chunks": "electron desktop/chunk-smoke.cjs",
-    "release:chunks": "node scripts/prepare-chunk-release.cjs release/latest.yml release/gitee-publish",
+    "git:sync": "node scripts/sync-git.cjs",
+    "git:commit": "node scripts/sync-git.cjs --commit",
+    "release:mirror": "node scripts/mirror-release.cjs",
     "icons": "node scripts/prepare-icons.mjs",
     "smoke:sidebar-responsive": "electron desktop/sidebar-responsive-smoke.cjs",
     "smoke:layout-polish": "electron desktop/canvas-layout-polish-smoke.cjs",
@@ -54,7 +57,9 @@
     "smoke:precise-rotation": "electron desktop/precise-rotation-smoke.cjs",
     "smoke:outside-click": "electron desktop/offcanvas-click-smoke.cjs",
     "smoke:compression-header": "electron desktop/compression-header-smoke.cjs",
-    "smoke:rotation-slider": "electron desktop/rotation-slider-smoke.cjs"
+    "smoke:rotation-slider": "electron desktop/rotation-slider-smoke.cjs",
+    "release:cnb": "node scripts/publish-cnb.cjs",
+    "release:verify": "node scripts/verify-full-release.cjs"
   },
   "dependencies": {
     "@phosphor-icons/react": "2.1.10",
@@ -64,11 +69,15 @@
     "sharp": "0.35.5"
   },
   "devDependencies": {
+    "@imagemagick/magick-wasm": "0.0.46",
+    "@mediapipe/tasks-vision": "0.10.21",
     "@vitejs/plugin-react": "5.0.4",
     "electron": "44.7.0",
     "electron-builder": "26.15.3",
     "electron-sparkle": "0.2.0",
+    "fake-indexeddb": "6.2.8",
     "node-api-headers": "1.7.0",
+    "onnxruntime-web": "1.20.1",
     "vite": "6.4.2"
   },
   "description": "轻图 — 本地图片压缩与尺寸调整",
@@ -82,6 +91,8 @@
     },
     "files": [
       "dist/client/**/*",
+      "!dist/client/assets/browser-*",
+      "!dist/client/assets/magick-*.wasm",
       "desktop/**/*",
       "engine/**/*",
       "package.json",

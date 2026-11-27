@@ -4,6 +4,12 @@ import path from 'node:path';
 import {ProjectStore} from '../engine/project-store.mjs';
 import {StitchService} from '../engine/stitch-service.mjs';
 
+export function allowsLocalRequest({method,headers}){
+  if(method!=='POST')return false;
+  try{const origin=new URL(headers.origin);return ['http:','https:'].includes(origin.protocol)&&['127.0.0.1','localhost','[::1]'].includes(origin.hostname)&&origin.host===headers.host;}
+  catch{return false;}
+}
+
 export function devBridge() {
   const service=new ImageService();
   const store=new ProjectStore(path.resolve('.cache/browser-stitch-engine'));
@@ -12,7 +18,7 @@ export function devBridge() {
   return {name:'qingtu-local-engine',configureServer(server){
     server.middlewares.use('/__qingtu',async(req,res)=>{
       res.setHeader('Content-Type','application/json');
-      if(req.method!=='POST' || (req.headers.origin && new URL(req.headers.origin).host!==req.headers.host)) {res.statusCode=403;res.end('{}');return;}
+      if(!allowsLocalRequest(req)) {res.statusCode=403;res.end('{}');return;}
       try {
         const chunks=[];let bytes=0;
         for await(const chunk of req) {bytes+=chunk.length;if(bytes>140*1024*1024) throw new Error('图片太大');chunks.push(chunk);}
@@ -20,9 +26,9 @@ export function devBridge() {
         let result;
         if(!Array.isArray(args))throw new Error('参数无效');
         if(method==='stitchImport'){
-          const f=args[0];if(!f||typeof f.base64!=='string'||f.base64.length>140*1024*1024)throw new Error('图片数据无效');result=await store.import(Buffer.from(f.base64,'base64'),f.name);
+          const f=args[0];if(!f||typeof f.base64!=='string'||f.base64.length>140*1024*1024)throw new Error('图片数据无效');result=await store.import(Buffer.from(f.base64,'base64'),f.name,{reference:args[1]===true});
         }else if(method==='stitchPreviews'){
-          if(!Array.isArray(args[0])||args[0].length>100)throw new Error('图片参数无效');result=[];for(const id of args[0])result.push(await store.preview(id));
+          result=await store.previews(args[0]);
         }else if(method==='stitchMissing'){
           if(!Array.isArray(args[0])||args[0].length>100)throw new Error('图片参数无效');result=[];for(const id of args[0])try{await fs.access(store.assetFile(id));}catch(error){if(error.code!=='ENOENT')throw error;result.push(id);}
         }else if(method==='stitchRender')result=await stitching.render(...args);
@@ -37,7 +43,7 @@ export function devBridge() {
         } else if(method==='process') result=await service.process(...args);
         else if(method==='rename')result=service.rename(...args);
         else if(method==='remove') {service.remove(args[0]);result=true;}
-        else if(method==='chooseFolder') result={name:'预览导出目录',path:path.join(server.config.root,'artifacts/browser-exports')};
+        else if(method==='outputFolder'||method==='chooseFolder') result={name:'预览导出目录',path:path.join(server.config.root,'artifacts/browser-exports')};
         else if(method==='save') {
           const folder=path.join(server.config.root,'artifacts/browser-exports');
           await fs.mkdir(folder,{recursive:true});

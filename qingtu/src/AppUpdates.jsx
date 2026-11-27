@@ -1,6 +1,7 @@
 import {useEffect,useRef,useState} from 'react';
 import {ArrowDown,CheckCircle,SpinnerGap,CloudSlash,X} from '@phosphor-icons/react';
 import {api} from './api.js';
+import {formatFileSize} from './export-format.js';
 import appPackage from '../package.json';
 
 export function AppUpdates({busy,hasImages}){
@@ -29,8 +30,8 @@ export function AppUpdates({busy,hasImages}){
  function check(){setOpened(true);act('checkUpdate');}
  const phase=state.phase;
  const retryDownload=phase==='error'&&state.availableVersion&&state.failureStage!=='install';
- const titles={checking:'检查更新',available:'发现新版本',downloading:'正在下载',installing:'正在安装更新',ready:'更新已就绪',current:'已是最新版本',offline:'暂时无法连接',error:state.failureStage==='install'?'安装未完成':retryDownload?'下载未完成':'检查未完成',unconfigured:'暂未开启更新',preview:'桌面版更新',idle:'检查更新'};
- const statusText={checking:'稍等一下…',available:`轻图 ${state.availableVersion}`,downloading:`${state.percent||0}%`,installing:'完成后自动打开',ready:`轻图 ${state.availableVersion}`,current:`当前版本 ${state.version}`,offline:'请联网后重试',error:state.message||'请稍后重试',unconfigured:'更新源尚未配置',preview:'请在 Mac 或 Windows 桌面版检查更新',idle:''};
+ const titles={checking:'检查更新',available:'发现新版本',downloading:state.transferMode==='delta'?'正在下载增量更新':'正在下载',installing:'正在安装更新',ready:'更新已就绪',current:'已是最新版本',offline:'暂时无法连接',error:state.failureStage==='install'?'安装未完成':retryDownload?'下载未完成':'检查未完成',development:'开发预览版',unconfigured:'暂未开启更新',preview:'桌面版更新',idle:'检查更新'};
+ const statusText={checking:'稍等一下…',available:`轻图 ${state.availableVersion}`,downloading:[state.transferMode&&state.transferBytes?formatFileSize(state.transferBytes):null,`${state.percent||0}%`].filter(Boolean).join(' · '),installing:'完成后自动打开',ready:`轻图 ${state.availableVersion}`,current:`当前版本 ${state.version}`,offline:'请联网后重试',error:state.message||'请稍后重试',development:'自动更新适用于已安装的正式版。',unconfigured:'更新源尚未配置',preview:'请在 Mac 或 Windows 桌面版检查更新',idle:''};
  const Icon=['checking','downloading','installing'].includes(phase)?SpinnerGap:['current','ready'].includes(phase)?CheckCircle:['offline','error'].includes(phase)?CloudSlash:ArrowDown;
  return <>
   <button ref={versionButton} className="version-button" aria-label={`版本 ${state.version}，检查更新`} title="检查更新" onClick={check}>v{state.version}{['available','ready'].includes(phase)&&<span className="update-dot" aria-hidden/>}</button>

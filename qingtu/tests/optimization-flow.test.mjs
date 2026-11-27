@@ -18,7 +18,7 @@ const project=()=>({id:'one',layout:'horizontal',images:[{id:'a',width:300,heigh
 const deferred=()=>{let resolve;const promise=new Promise(r=>resolve=r);return {promise,resolve};};
 test('optimization waits for committed autosave, then the real engine; no successful progress on premature completion',async()=>{
  const events=[],saved=deferred(),encoded=deferred(),p=project();
- const work=performOptimization({project:p,onPhase:phase=>events.push(phase),save:async next=>{assert.equal(next.export.longEdge,5995);await saved.promise;events.push('saved');},render:async()=>{events.push('engine');await encoded.promise;return {bytes:321};}});
+ const work=performOptimization({project:p,onPhase:phase=>events.push(phase),save:async next=>{assert.equal(next.export.longEdge,5988);await saved.promise;events.push('saved');},render:async()=>{events.push('engine');await encoded.promise;return {bytes:321};}});
  assert.deepEqual(events,['calculate','save']);saved.resolve();await new Promise(r=>setImmediate(r));assert.deepEqual(events,['calculate','save','saved','render','engine']);
  let complete=false;work.then(()=>complete=true);await new Promise(r=>setImmediate(r));assert.equal(complete,false);encoded.resolve();assert.equal((await work).result.bytes,321);assert.equal(p.edits,undefined);
 });

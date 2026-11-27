@@ -10,14 +10,7 @@ const preview=async(buffer,bounds={width:1600,height:1200})=>{
     .png().toBuffer({resolveWithObject:true});
   return {url:'data:image/png;base64,'+data.toString('base64'),width:info.width,height:info.height};
 };
-function exportStem({name,canvas,renamed,output}){
-  const ext=output.format==='jpeg'?'jpg':output.format;
-  let value=canvas?String(name||'图像'):renamed?name.replace(/\.(?:jpe?g|png|webp|avif|tiff?)$/i,''):path.parse(name).name;
-  if(canvas&&value.toLowerCase().endsWith('.'+ext))value=value.slice(0,-ext.length-1);
-  let stem=value.replace(/[<>:"/\\|?*\x00-\x1f]/g,'_').slice(0,120).replace(/[. ]+$/g,'')||(canvas?'图像':'image');
-  if(canvas&&/^(con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\.|$)/i.test(stem))stem='_'+stem;
-  return canvas?stem:stem+'-qingtu';
-}
+import {exportStem,compressionRename} from './output-name.mjs';
 export class ImageService {
   files=new Map(); results=new Map(); totalBytes=0;
   async add(buffer, name, sample=false) {
@@ -30,7 +23,7 @@ export class ImageService {
     const rotated=[5,6,7,8].includes(meta.orientation);
     const originalPreview=await preview(buffer);
     const item={id,name:path.basename(String(name).replaceAll('\\','/')).slice(0,200),width:rotated?meta.height:meta.width,height:rotated?meta.width:meta.height,bytes:buffer.length,format:meta.format,sample,preview:originalPreview.url,previewWidth:originalPreview.width,previewHeight:originalPreview.height};
-    this.files.set(id,{buffer,item});this.totalBytes+=buffer.length;
+    this.files.set(id,{buffer,item,originalName:item.name});this.totalBytes+=buffer.length;
     return item;
   }
   original(id) {
@@ -66,9 +59,9 @@ export class ImageService {
   }
   rename(id,name) {
     const file=this.original(id);
-    if(typeof name!=='string'||!name.trim()||name.length>200||/[<>:"/\\|?*\x00-\x1f]/.test(name)||/^[. ]+$/.test(name))throw new Error('图片名称须为 1–200 个字符，不能包含路径或特殊字符');
-    file.item={...file.item,name:name.trim(),renamed:true};
-    for(const result of this.results.values())if(result.id===id){result.name=file.item.name;result.renamed=true;}
+    const change=compressionRename(name,file.originalName);
+    file.item={...file.item,...change};
+    for(const result of this.results.values())if(result.id===id)Object.assign(result,change);
     return {id,name:file.item.name};
   }
   remove(id) {
@@ -82,16 +75,22 @@ export class ImageService {
     if(!result) throw new Error('处理结果已失效，请重新预览');
     return result;
   }
-  async save(token,folder) {
+  async save(token,folder,{createFolder=false}={}) {
     const result=this.result(token),{output,exportTask}=result;
     const ext=output.format==='jpeg'?'jpg':output.format;
     const stem=exportStem(result);
-    try{for(let n=1;n<=10000;n++) {
-      const destination=path.join(folder,`${stem}${n===1?'':`-${n}`}.${ext}`);
-      try {await fs.writeFile(destination,output.buffer,{flag:'wx'});const bytes=(await fs.stat(destination)).size;if(output.limitBytes&&bytes>output.limitBytes)throw new Error('保存文件超过体积上限');return {path:destination,bytes};}
-      catch(error){if(error.code!=='EEXIST') throw error;}
-    }
-    throw new Error('同名文件过多，请更换保存目录');
+    try{
+      if(createFolder)await fs.mkdir(folder,{recursive:true});
+      for(let n=1;n<=10000;n++) {
+        const destination=path.join(folder,`${stem}${n===1?'':`-${n}`}.${ext}`);
+        try {
+          await fs.writeFile(destination,output.buffer,{flag:'wx'});
+          const bytes=(await fs.stat(destination)).size;
+          if(output.limitBytes&&bytes>output.limitBytes)throw new Error('保存文件超过体积上限');
+          return {path:destination,bytes};
+        }catch(error){if(error.code!=='EEXIST')throw error;}
+      }
+      throw new Error('同名文件过多，请更换保存目录');
     }finally{if(exportTask)this.results.delete(token);}
   }
   download(token) {

@@ -10,8 +10,22 @@ const {createSmoke}=require('./portrait-smoke-helpers.cjs');
  const top=n=>`[aria-label="第 ${n} 张优化顶部裁剪比例"]`,sides=n=>`[aria-label="第 ${n} 张优化左右裁剪像素"]`;
  async function reopen(){const loaded=new Promise(resolve=>s.win.webContents.once('did-finish-load',resolve));s.win.webContents.reload();await loaded;await s.wait("!!document.querySelector('[aria-label=\"图像编辑\"]')");await s.click('[aria-label="图像编辑"]');await s.ready();}
  async function optimize(){await s.click('.canvas-optimize');await s.wait("!document.querySelector('.stitch-dialog')&&!document.querySelector('.project-name').disabled");await s.ready();}
- await openSettings();assert.equal(await s.js("document.querySelectorAll('.optimization-settings button').length"),0,'zero images has zero selection buttons');assert.equal(await s.js("document.querySelectorAll('.optimization-settings input').length"),0);await s.click('[aria-label="设置优化裁剪"]');
- await s.edit('#stitch-height',240);await s.importFiles(['01-alpine.jpg','02-cabin.jpg','03-coast.jpg','04-alpine.jpg'].map(name=>path.resolve('artifacts/stitch-fixtures',name)));
+ await openSettings();assert.equal(await s.js("document.querySelectorAll('.optimization-image-buttons button').length"),0,'zero images has zero selection buttons');assert.equal(await s.js("document.querySelectorAll('.optimization-settings input').length"),0);await s.click('[aria-label="设置优化裁剪"]');
+ await s.loadAutoCanvas(240);const files=['01-alpine.jpg','02-cabin.jpg','03-coast.jpg','04-alpine.jpg'].map(name=>path.resolve('artifacts/stitch-fixtures',name));
+ await s.importFiles(files.slice(0,3));await openSettings();
+ assert.equal(await s.js("document.querySelector('.optimization-image-buttons [aria-pressed=true]').textContent"),'2');
+ s.win.webContents.debugger.attach('1.3');
+ try{
+  const point=await s.js("(()=>{const r=document.querySelector('.optimization-help').getBoundingClientRect();return {x:r.x+r.width/2,y:r.y+r.height/2};})()");
+  await s.win.webContents.debugger.sendCommand('Input.dispatchMouseEvent',{type:'mouseMoved',...point});
+  await s.wait("document.querySelector('.optimization-settings [role=tooltip]')?.textContent.includes('2.4:1')");
+  const hints=await s.js("[...document.querySelectorAll('.optimization-help-list li')].map(item=>item.textContent)");
+  assert.equal(hints.length,5);
+  assert.ok(hints[1].includes('默认选择第 2 张')&&hints[2].includes('默认选择第 3 张'));
+  assert.ok(hints[0].includes('2.4:1')&&hints[4].includes('2.4:1'));
+  await s.capture('four-view-help.png');
+ }finally{s.win.webContents.debugger.detach();}
+ await s.click('[aria-label="设置优化裁剪"]');await s.importFiles(files.slice(3));
  const original=await s.load(),ids=original.images.map(i=>i.id),beforeCalls=s.calls();await openSettings();
  assert.deepEqual(await s.js("[...document.querySelectorAll('.optimization-image-buttons button')].map(b=>b.textContent)"),['1','2','3','4']);
  assert.equal(await s.js("document.querySelector('[aria-label=\"第 3 张特殊裁剪\"]').getAttribute('aria-pressed')"),'true');
@@ -19,7 +33,7 @@ const {createSmoke}=require('./portrait-smoke-helpers.cjs');
  await toggle(3);await toggle(1);await toggle(4);await s.edit(top(1),10);await s.edit(sides(1),50);await s.edit(top(4),20);await s.edit(sides(4),150);await s.ready();
  const configured=await s.load();assert.deepEqual(configured.optimization.specialCrops[ids[0]],{enabled:true,topPercent:10,sidePixels:50});assert.deepEqual(configured.optimization.specialCrops[ids[3]],{enabled:true,topPercent:20,sidePixels:150});assert.equal(configured.optimization.specialCrops[ids[2]].enabled,false);
  assert.deepEqual(configured.edits,original.edits);assert.deepEqual(configured.positions,original.positions);assert.equal(s.calls(),beforeCalls,'changing independent parameters never encodes a ready preview');assert.equal(await s.js("document.querySelectorAll('.optimization-image-crop').length"),2);await s.capture('multi-crop-settings.png');
- await optimize();let p=await s.load();assert.deepEqual(p.edits[ids[0]].edges,{left:50,right:50,top:410,bottom:0});assert.deepEqual(p.edits[ids[3]].edges,{left:150,right:150,top:768,bottom:0});assert.equal(p.edits[ids[1]].fraction,p.edits[ids[2]].fraction);assert.deepEqual(p.canvas,original.canvas);const multiOutput=await s.save('independent-multi-crops');assert.deepEqual([multiOutput.width,multiOutput.height],[600,240]);
+ await optimize();let p=await s.load();assert.deepEqual(p.edits[ids[0]].edges,{left:50,right:50,top:410,bottom:0});assert.deepEqual(p.edits[ids[3]].edges,{left:150,right:150,top:768,bottom:0});assert.equal(p.edits[ids[1]].fraction,p.edits[ids[2]].fraction);assert.deepEqual(p.canvas,original.canvas);const multiOutput=await s.save('independent-multi-crops');assert.deepEqual([multiOutput.width,multiOutput.height],[576,240]);
  await reopen();await openSettings();assert.deepEqual(await s.js("[...document.querySelectorAll('.optimization-image-buttons [aria-pressed=true]')].map(e=>e.textContent)"),['1','4']);
  assert.deepEqual(await s.js("[document.querySelector('[aria-label=\"第 1 张优化顶部裁剪比例\"]').value,document.querySelector('[aria-label=\"第 4 张优化顶部裁剪比例\"]').value]"),['10','20']);
  await s.js("(()=>{const e=document.querySelector('.stitch-layer');e.focus();e.dispatchEvent(new KeyboardEvent('keydown',{key:'ArrowRight',altKey:true,bubbles:true}));})()");await s.ready();p=await s.load();assert.deepEqual(p.images.map(i=>i.id),[ids[1],ids[0],ids[2],ids[3]]);assert.deepEqual(p.optimization,configured.optimization);assert.equal(await s.js("document.querySelector('[aria-label=\"第 2 张优化顶部裁剪比例\"]').value"),'10');assert.deepEqual(p.edits[ids[0]].edges,{left:50,right:50,top:410,bottom:0});
@@ -34,12 +48,12 @@ const {createSmoke}=require('./portrait-smoke-helpers.cjs');
   const width=await s.js("document.querySelector('.stitch-layer').getBoundingClientRect().width");await s.drag('[data-handle=e]',width*factor,0,shift);
   const resized=await s.load();assert.notDeepEqual(resized.positions,before.positions);assert.deepEqual(resized.edits,before.edits);assert.equal(await s.js("document.querySelector('.canvas-optimize').disabled"),false);
   if(name==='enlarge'){await reopen();assert.equal(await s.js("document.querySelector('.canvas-optimize').disabled"),false);}
-  await optimize();const next=await s.load();assert.equal(await s.js("document.querySelector('.canvas-optimize').disabled"),true);assert.deepEqual(next.canvas,resized.canvas);assert.deepEqual(next.export,resized.export);assert.deepEqual(next.importSizes,restored.importSizes);
+  await optimize();const next=await s.load();assert.equal(await s.js("document.querySelector('.canvas-optimize').disabled"),true);assert.deepEqual(next.canvas,before.canvas);assert.deepEqual(next.export,before.export);assert.deepEqual(next.importSizes,restored.importSizes);
   let x=0;for(const image of next.images){const pose=next.positions[image.id];assert.ok(Math.abs(pose.x-x)<1e-8);assert.ok(Math.abs(pose.y)<1e-8);assert.ok(Math.abs(pose.height-next.canvas.height)<1e-8);x+=pose.width;}assert.ok(Math.abs(x-next.canvas.width)<1e-8);transformations.push({name,canvas:next.canvas});
  }
  for(const image of original.images)assert.ok((await s.store.readAsset(image.assetId)).equals(await fs.readFile(path.resolve('artifacts/stitch-fixtures',image.name))));
  const output=await s.save('multi-image-special-crops'),savedFirst=(await s.load()).optimization;
- await s.click('[aria-label="新建画布"]');await s.wait("!!document.querySelector('[aria-label=\"添加画布图片\"]')&&!document.querySelector('.project-name').disabled");await s.edit('#stitch-height',240);await s.importFiles([path.resolve('artifacts/stitch-fixtures/01-alpine.jpg')]);await openSettings();assert.equal(await s.js("document.querySelectorAll('.optimization-image-buttons button').length"),1);assert.equal(await s.js("document.querySelectorAll('.optimization-image-crop').length"),0);await toggle(1);await s.edit(top(1),5);await s.edit(sides(1),10);await s.ready();
+ await s.createBlankCanvas();await s.wait("!!document.querySelector('[aria-label=\"添加画布图片\"]')&&!document.querySelector('.project-name').disabled");await s.loadAutoCanvas(240);await s.importFiles([path.resolve('artifacts/stitch-fixtures/01-alpine.jpg')]);await openSettings();assert.equal(await s.js("document.querySelectorAll('.optimization-image-buttons button').length"),1);assert.equal(await s.js("document.querySelectorAll('.optimization-image-crop').length"),0);await toggle(1);await s.edit(top(1),5);await s.edit(sides(1),10);await s.ready();
  await s.click('[aria-label="打开画布 图像 1"]');await s.ready();assert.deepEqual((await s.load()).optimization,savedFirst);
  await s.finish({passed:true,exactButtonsForZeroOneFourImages:true,multipleIndependentCrops:true,defaultThird15Percent:true,settingsOnlyNoCropOrEncode:true,autosaveAndReopen:true,parametersFollowImageAfterReorder:true,invalidNotSaved:true,deselectInvalidRecoversSavedValues:true,noSelectionUniformCrop:true,noSelectionSurvivesReopen:true,independentProjects:true,resizeReopensOptimization:true,originalsUnchanged:true,transformations,multiOutput,output});
 })().catch(error=>{console.error(error);app.exit(1);});

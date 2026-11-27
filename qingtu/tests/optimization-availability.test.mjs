@@ -12,7 +12,7 @@ test('fixed optimization becomes available again after proportional zoom, shrink
   for(const [handle,dx,dy,shift] of [['se',35,45,false],['se',-25,-30,false],['e',35,0,true]]){
    const resized=applyCanvasTransform(optimized,{...optimized.positions,a:resizeImageRect(optimized.positions.a,handle,dx,dy,shift)},'resize'),before=structuredClone(resized);
    assert.deepEqual(resized.edits,optimized.edits);assert.equal(optimizationAvailability(resized).enabled,true,`${canvasSizing} ${handle} ${dx} ${shift}`);assert.deepEqual(resized,before,'availability is read-only');
-   const result=optimizeHorizontal(resized);assert.equal(optimizationAvailability(result).enabled,false);assert.equal(optimizeHorizontal(result),result);assert.deepEqual(result.canvas,resized.canvas);assert.deepEqual(result.export,resized.export);assert.deepEqual(result.images,resized.images);assert.deepEqual(result.importSizes,resized.importSizes);
+   const result=optimizeHorizontal(resized);assert.equal(optimizationAvailability(result).enabled,false);assert.equal(optimizeHorizontal(result),result);assert.deepEqual(result.canvas,optimized.canvas);assert.deepEqual(result.export,optimized.export);assert.deepEqual(result.images,resized.images);assert.deepEqual(result.importSizes,resized.importSizes);
    let x=0;for(const image of result.images){const pose=result.positions[image.id];assert.ok(Math.abs(pose.x-x)<1e-9);assert.ok(Math.abs(pose.y)<1e-9);assert.ok(Math.abs(pose.height-result.canvas.height)<1e-9);x+=pose.width;}assert.ok(Math.abs(x-result.canvas.width)<1e-9);
   }
   const moved={...optimized,positions:{...optimized.positions,a:{...optimized.positions.a,x:optimized.positions.a.x+8,y:12}}};assert.equal(optimizationAvailability(moved).enabled,true);assert.deepEqual(optimizeHorizontal(moved).positions,optimized.positions);
@@ -20,11 +20,11 @@ test('fixed optimization becomes available again after proportional zoom, shrink
  }
 });
 const image=(id,width,height)=>({id,width,height});
-const project=images=>({images,layout:'horizontal',export:{longEdge:5999}});
+const project=images=>({images,layout:'horizontal',export:{longEdge:5988}});
 test('optimization is unavailable for empty, non-horizontal and already matching uncropped images',()=>{
  assert.equal(optimizationAvailability(null).enabled,false);assert.equal(optimizationAvailability(project([])).enabled,false);
- assert.equal(optimizationAvailability(project([image('one',300,400)])).enabled,true);
- for(const images of [[image('one',5,2)],[image('one',3,4),image('two',7,4)]])assert.equal(optimizationAvailability(project(images)).enabled,false);
+ assert.equal(optimizationAvailability(project([image('one',300,400)])).enabled,false);
+ for(const images of [[image('one',12,5)],[image('one',3,4),image('two',6,4)]])assert.equal(optimizationAvailability(project(images)).enabled,false);
  for(const layout of ['vertical','grid','free'])assert.equal(optimizationAvailability({...project([image('one',3,1)]),layout}).enabled,false);
 });
 test('the original 2.625 example stays eligible despite the existing automatic 9:16 crop; a ready equal crop disables further optimization',()=>{
@@ -41,9 +41,9 @@ test('user edits can be recomputed from originals while sub-pixel crops are unav
  assert.equal(optimizationAvailability(project([image('a',1,1),image('b',100,1)])).enabled,false);
 });
 
-test('narrow originals can optimize a widened fixed canvas after manual adjustments without changing the canvas',()=>{
+test('legacy wide frame is capped while narrow originals keep their source dimensions',()=>{
  const p={canvasMode:'fixed',canvas:{width:250,height:100},layout:'horizontal',images:[image('a',100,100),image('b',100,100)],positions:{a:{x:0,y:0,width:140,height:100},b:{x:140,y:0,width:110,height:100}},edits:{a:{axis:'horizontal',amount:10}},optimization:{specialCrops:{}},export:{format:'png',targetBytes:30000000,longEdge:250}};
  const before=structuredClone(p);assert.equal(optimizationAvailability(p).enabled,true);
- const next=optimizeHorizontal(p);assert.deepEqual(next.canvas,{width:250,height:100});assert.deepEqual(next.positions,{a:{x:0,y:0,width:125,height:100},b:{x:125,y:0,width:125,height:100}});
- for(const id of ['a','b']){assert.equal(next.edits[id].axis,'vertical');assert.ok(Math.abs(next.edits[id].fraction-.1)<1e-12);}assert.deepEqual(next.export,p.export);assert.deepEqual(p,before);assert.equal(optimizeHorizontal(next),next);assert.equal(optimizationAvailability(next).enabled,false);
+ const next=optimizeHorizontal(p);assert.deepEqual(next.canvas,{width:240,height:100});assert.deepEqual(next.positions,{a:{x:20,y:0,width:100,height:100},b:{x:120,y:0,width:100,height:100}});
+ for(const id of ['a','b']){assert.equal(next.edits[id].axis,'horizontal');assert.equal(next.edits[id].fraction,0);}assert.deepEqual(next.export,{...p.export,longEdge:240});assert.deepEqual(p,before);assert.equal(optimizeHorizontal(next),next);assert.equal(optimizationAvailability(next).enabled,false);
 });

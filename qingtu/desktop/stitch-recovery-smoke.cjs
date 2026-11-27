@@ -18,13 +18,14 @@ async function waitFor(win,expression){for(let n=0;n<300;n++){if(await win.webCo
  const js=expression=>win.webContents.executeJavaScript(expression);
  await waitFor(win,"!!document.querySelector('[aria-label=\"图像编辑\"]')");
  await js("document.querySelector('[aria-label=\"图像编辑\"]').click()");
- if(phase==='write'){await waitFor(win,"!!document.querySelector('[aria-label=\"新建画布\"]')&&!document.querySelector('[aria-label=\"新建画布\"]').disabled");await js("document.querySelector('[aria-label=\"新建画布\"]').click()");}
+ if(phase==='write'){await waitFor(win,"!!document.querySelector('[aria-label=\"新建图像\"]')&&!document.querySelector('[aria-label=\"新建图像\"]').disabled");await js("document.querySelector('.blank-canvas-button').click()");}
  await waitFor(win,"!!document.querySelector('.project-name') && !document.querySelector('.project-name').disabled");
  if(phase==='write'){
   console.log('Importing source');
   await js("document.querySelector('[aria-label=\"添加画布图片\"]').click()");
   await waitFor(win,"document.querySelectorAll('.stitch-layer').length===1 && document.querySelector('.save-status').textContent==='已自动保存'");
   const save=store.save.bind(store);store.save=async value=>{await pause(200);return save(value);};
+  await js("document.querySelector('[aria-label=解锁画布宽高比例]').click()");
   console.log('Editing then closing');
   await js("(()=>{const input=document.querySelector('#stitch-width');Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(input,'2400');input.dispatchEvent(new Event('input',{bubbles:true}));})()");
   await js("(()=>{const input=document.querySelector('#stitch-height');Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(input,'2000');input.dispatchEvent(new Event('input',{bubbles:true}));})()");

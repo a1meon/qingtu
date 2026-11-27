@@ -1,0 +1,32 @@
+const {test} = require('node:test');
+const assert = require('node:assert/strict');
+const {execFileSync,spawnSync} = require('node:child_process');
+const fs = require('node:fs');
+const path = require('node:path');
+const os = require('node:os');
+
+test('single-origin checkout pushes an identical commit to two repositories, then retries a partial failure',t=>{
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(),'qingtu-sync-'));
+  t.after(()=>fs.rmSync(dir,{recursive:true,force:true}));
+  const env = {...process.env,GIT_ALLOW_PROTOCOL:'file',GIT_CONFIG_NOSYSTEM:'1',GIT_CONFIG_GLOBAL:path.join(dir,'config'),GIT_TERMINAL_PROMPT:'0'};
+  const git = (...args) => execFileSync('git',args,{cwd:dir,env,encoding:'utf8',stdio:['ignore','pipe','pipe']}).trim();
+  const source = path.join(dir,'work');
+  const peers = ['gitee.git','github.git'].map(name=>path.join(dir,name));
+  const [gitee, github] = ['https://gitee.com/a1meon_admin/qingtu.git','https://github.com/a1meon/qingtu.git'];
+  git('init','-b','topic',source);
+  git('init','--bare',peers[0]);
+  for (const [i,url] of [gitee,github].entries()) git('config','--global','url.' + peers[i] + '.insteadOf',url);
+  git('-C',source,'remote','add','origin',gitee);
+  for(const [name,value] of [['user.email','test@example.invalid'],['user.name','Sync test']])git('-C',source,'config',name,value);
+  fs.writeFileSync(path.join(source,'README'),'example');git('-C',source,'add','README');
+  const run = args => spawnSync(process.execPath,[require.resolve('../scripts/sync-git.cjs'),...args],{cwd:source,env,encoding:'utf8'});
+  assert.equal(run(['--commit','-m','first']).status,1);
+  const head = git('-C',source,'rev-parse','HEAD');
+  assert.equal(git('--git-dir',peers[0],'rev-parse','refs/heads/topic'),head);
+  git('init','--bare',peers[1]);
+  assert.equal(run([]).status,0);
+  for(const peer of peers)assert.equal(git('--git-dir',peer,'rev-parse','refs/heads/topic'),head);
+  git('-C',source,'tag','-a','v1.0.0','-m','release');
+  assert.equal(run(['--tag','v1.0.0']).status,0);
+  for(const peer of peers)assert.equal(git('--git-dir',peer,'rev-parse','v1.0.0^{commit}'),head);
+});

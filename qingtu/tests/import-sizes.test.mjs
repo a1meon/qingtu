@@ -44,7 +44,7 @@ test('legacy fallback uses current height without recording an edited size; spli
  let p=importCanvasImages(project(),[image('a',3000,4000)]);delete p.importSizes;p={...p,layout:'free',canvasSizing:'manual',canvas:{width:600,height:400},positions:{a:{x:40,y:50,width:600,height:800}}};
  const r=resetProject(p);assert.deepEqual(r.positions.a,{x:190,y:250,width:300,height:400});assert.equal(r.importSizes,undefined);
  const split=splitProjectImage(p,'a','y',1000,['top','bottom']),reset=resetProject(split);
- assert.equal(reset.positions.top.height,100);assert.equal(reset.positions.bottom.height,300);assert.equal(reset.positions.top.width,300);assert.equal(reset.positions.bottom.width,300);
+ assert.deepEqual(reset.images,r.images);assert.deepEqual(reset.positions,r.positions);
 });
 
 test('all visited layouts reset without reviving stale zoom, and free remembers its current centre',()=>{
@@ -53,4 +53,33 @@ test('all visited layouts reset without reviving stale zoom, and free remembers 
  p=switchCanvasLayout(p,'grid');p.positions.a={...p.positions.a,width:1000,height:800};p=switchCanvasLayout(p,'vertical');p.positions.a={...p.positions.a,width:800,height:1000};
  p=switchCanvasLayout(p,'horizontal');p.positions.a={x:0,y:0,width:720,height:960};p=resetProject(rememberCanvasLayout(p));
  for(const mode of ['free','grid','vertical','horizontal']){p=switchCanvasLayout(p,mode);assert.deepEqual(p.edits,{});assert.ok(p.positions.a.width<800&&p.positions.a.height<800);if(mode==='free'){assert.equal(p.positions.a.width,180);assert.equal(p.positions.a.height,240);assert.equal(p.positions.a.x+90,centre.x);assert.equal(p.positions.a.y+120,centre.y);}else if(mode==='horizontal')assert.equal(p.positions.b.x,p.positions.a.width);else if(mode==='vertical')assert.equal(p.positions.b.y,p.positions.a.y+p.positions.a.height);else assert.equal(p.positions.b.x,p.positions.a.x+p.positions.a.width);}
+});
+
+test('reset rejoins nested splits after reload and distinguishes identical imports',()=>{
+ const a={...image('a',300,400),name:'portrait.png'},b={...a,id:'b'};
+ const original=importCanvasImages(project(),[a,b]);
+ let split=splitProjectImage(original,'a','y',151,['top','bottom']);
+ split=splitProjectImage(split,'top','x',119,['left','right']);
+ split=splitProjectImage(split,'b','x',120,['x','y']);
+ const reset=resetProject(JSON.parse(JSON.stringify(split)));
+ assert.deepEqual(reset.images,original.images);
+ assert.deepEqual(reset.initialOrder,['a','b']);
+ assert.deepEqual(reset.positions,resetProject(original).positions);
+ assert.deepEqual(reset.importSizes,original.importSizes);
+ const partial=resetProject(removeProjectImage(split,'right'));
+ assert.deepEqual(partial.images,original.images);
+});
+
+test('legacy split branches rejoin after reload and grid reset accommodates the restored count',()=>{
+ const a={...image('a',300,400),name:'portrait.png'},p=importCanvasImages(project(),[a]);
+ let split=splitProjectImage(p,'a','y',151,['top','bottom']);
+ split=splitProjectImage(split,'bottom','x',119,['left','right']);
+ const older={...split,images:split.images.map(({splitOrigin,...piece})=>piece)};
+ assert.equal(resetProject(removeProjectImage(older,'left')).images.length,1);
+ const restored=resetProject({...older,layout:'grid',grid:{rows:2,columns:2}});
+ assert.equal(restored.images.length,1);
+ assert.equal(restored.images[0].name,a.name);
+ assert.equal(restored.images[0].assetId,a.assetId);
+ assert.deepEqual([restored.images[0].width,restored.images[0].height],[300,400]);
+ assert.equal(restored.grid.rows,1);
 });

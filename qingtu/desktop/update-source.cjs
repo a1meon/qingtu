@@ -1,24 +1,70 @@
-function httpsUrl(value){
- let url;try{url=new URL(value);}catch{throw new Error('更新地址须为 HTTPS');}
- if(url.protocol!=='https:'||url.username||url.password||url.search||url.hash)throw new Error('更新地址须为无凭据的 HTTPS 地址');
- return url;
+function httpsUrl(value) {
+  let url;
+  try { url = new URL(value); } catch { throw new Error('更新地址须为 HTTPS'); }
+  if (url.protocol !== 'https:' || url.username || url.password || url.search || url.hash) {
+    throw new Error('更新地址须为无凭据的 HTTPS 地址');
+  }
+  return url;
 }
-async function resolveUpdateFeed(config,platform,arch,requestJson){
- if(!config)return null;
- if(!['darwin','win32'].includes(platform)||!['arm64','x64'].includes(arch))throw new Error('此平台暂不支持自动更新');
- if(config.provider==='generic'){
-  if(!config.url)return null;
-  const url=httpsUrl(config.url);if(!url.pathname.endsWith('/'))url.pathname+='/';
-  return {provider:'generic',url:new URL(`${platform==='darwin'?'mac':'win'}-${arch}/`,url).href,useMultipleRangeRequest:false};
- }
- if(config.provider==='gitee'){
-  if(!config.owner||!config.repo)return null;
-  if(![config.owner,config.repo].every(value=>/^[a-zA-Z0-9_-][a-zA-Z0-9_.-]*$/.test(value)&&value!=='.'&&value!=='..'))throw new Error('Gitee 仓库地址无效');
-  const release=await requestJson(`https://gitee.com/api/v5/repos/${config.owner}/${config.repo}/releases/latest`);
-  if(!release?.tag_name||release.prerelease||typeof release.tag_name!=='string')throw new Error('没有可用的正式发行版');
-  // Tags are one URL segment: escape slashes, spaces and query characters.
-  return {provider:'generic',url:`https://gitee.com/${config.owner}/${config.repo}/releases/download/${encodeURIComponent(release.tag_name)}/`,channel:platform==='darwin'?`latest-${arch}`:'latest',useMultipleRangeRequest:false};
- }
- throw new Error('更新源类型无效');
+
+function releaseHosts(config) {
+  return [config, ...(config.mirrors || [])].map(({provider, owner, repo}) => {
+    if (!['gitee', 'github', 'cnb'].includes(provider) ||
+        ![...(provider === 'cnb' && typeof owner === 'string' ? owner.split('/') : [owner]), repo].every(value => typeof value === 'string' && /^[a-zA-Z0-9_-][a-zA-Z0-9_.-]*$/.test(value))) {
+      throw new Error('发行仓库地址无效');
+    }
+    const project = owner + '/' + repo;
+    if (provider === 'cnb') {
+      const downloads = 'https://cnb.cool/' + project + '/-/releases/download/';
+      return {api:'https://cnb.cool/' + project + '/-/git/raw/qingtu-updates/stable.json', downloads};
+    }
+    return {
+      api: (provider === 'gitee' ? 'https://gitee.com/api/v5' : 'https://api.github.com') + '/repos/' + project + '/releases/latest',
+      downloads: 'https://' + provider + '.com/' + project + '/releases/download/'
+    };
+  });
 }
-module.exports={resolveUpdateFeed,httpsUrl};
+
+// The successful host goes first for the remaining files of the same release.
+async function fromMirrors(sources, read, signal) {
+  let failure;
+  for (const source of sources) {
+    signal?.throwIfAborted();
+    try { return await read(source); }
+    catch (error) {
+      signal?.throwIfAborted();
+      if (['ENOSPC', 'EACCES', 'EROFS', 'EPERM', 'EMFILE'].includes(error.code)) throw error;
+      failure ??= error;
+    }
+  }
+  throw failure || new Error('更新源尚未配置');
+}
+
+function preferredUrls(feed, first = feed.url) {
+  return [...new Set([first, feed.url, ...(feed.mirrorUrls || [])])];
+}
+
+async function resolveUpdateFeed(config, platform, arch, requestJson) {
+  if (!config) return null;
+  if (!['darwin','win32'].includes(platform) || !['arm64','x64'].includes(arch)) throw new Error('此平台暂不支持自动更新');
+  if (config.provider === 'generic') {
+    if (!config.url) return null;
+    const url = httpsUrl(config.url);
+    if (!url.pathname.endsWith('/')) url.pathname += '/';
+    return {provider:'generic', url:new URL((platform === 'darwin' ? 'mac' : 'win') + '-' + arch + '/', url).href, useMultipleRangeRequest:false};
+  }
+  if (!['gitee','cnb'].includes(config.provider)) throw new Error('更新源类型无效');
+  if (!config.owner || !config.repo) return null;
+  const hosts = releaseHosts(config);
+  return fromMirrors(hosts, async host => {
+    const release = await requestJson(host.api);
+    if (release?.prerelease || release?.draft || !/^v\d{1,8}\.\d{1,8}\.\d{1,8}$/.test(release?.tag_name)) throw new Error('没有可用的正式发行版');
+    const path = release.tag_name + '/';
+    return {
+      provider:'generic', url:host.downloads + path,
+      mirrorUrls:hosts.filter(other => other !== host).map(other => other.downloads + path),
+      releaseVersion:release.tag_name.slice(1), signedWindows:config.provider === 'cnb', channel:platform === 'darwin' ? 'latest-' + arch : 'latest', useMultipleRangeRequest:false
+    };
+  });
+}
+module.exports = {resolveUpdateFeed, httpsUrl, releaseHosts, fromMirrors, preferredUrls};

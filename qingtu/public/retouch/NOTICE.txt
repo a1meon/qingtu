@@ -1,0 +1,18 @@
+On-device face and pose landmarks by MediaPipe, Google LLC.
+MediaPipe Tasks Vision is distributed under the Apache License, Version 2.0.
+https://www.apache.org/licenses/LICENSE-2.0
+
+Face Landmarker (float16, version 1):
+https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task
+
+Pose Landmarker Lite (float16, version 1):
+https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task
+
+Pose Landmarker Full (float16, version 1):
+https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_full/float16/1/pose_landmarker_full.task
+
+YuNet (2023mar), Shenzhen Institute of Artificial Intelligence and Robotics for Society:
+https://github.com/opencv/opencv_zoo/tree/main/models/face_detection_yunet
+
+ONNX Runtime Web 1.20.1, Microsoft Corporation:
+https://github.com/microsoft/onnxruntime

@@ -1,6 +1,5 @@
 import sharp from 'sharp';
 import {encodePngWithinBudget} from './png-budget.mjs';
-import {encodeFaithfulPng} from './png-quality.mjs';
 import {encodeJpeg} from './jpeg-quality.mjs';
 
 sharp.cache({memory:64,files:0,items:20});
@@ -8,23 +7,8 @@ sharp.concurrency(2);
 export const INPUT_OPTIONS = { limitInputPixels: 100_000_000, failOn: 'warning' };
 export const SUPPORTED = ['jpeg','png','webp','avif','heif','tiff'];
 
-export function dimensions(meta, resize = {type:'scale',percent:100}) {
-  let width, height;
-  if (resize.type === 'scale') {
-    const percent = Number(resize.percent);
-    if (!Number.isFinite(percent) || percent <= 0 || percent > 400) throw new Error('缩放比例须为 0.1–400%');
-    width = Math.max(1, Math.round(meta.width * percent / 100));
-    height = Math.max(1, Math.round(meta.height * percent / 100));
-  } else {
-    width = Number(resize.width); height = Number(resize.height);
-    if (resize.locked) {
-      if (resize.anchor === 'height') width = Math.round(height * meta.width / meta.height);
-      else height = Math.round(width * meta.height / meta.width);
-    }
-  }
-  if (![width,height].every(v => Number.isInteger(v) && v > 0 && v <= 16384) || width * height > 100_000_000) throw new Error('尺寸须为 1–16384 像素，且总像素不超过 1 亿');
-  return {width,height};
-}
+import {dimensions} from './image-dimensions.mjs';
+export {dimensions};
 
 function stripJpegMetadata(buffer) {
   const chunks = [buffer.subarray(0,2)];
@@ -92,7 +76,7 @@ async function smartSize(source,meta,settings,target,options){
   const resized=size.width!==oriented.width||size.height!==oriented.height;
   const finish=result=>{
     const imageBytes=result.buffer.length;
-    if(imageBytes>limit)throw new Error('输出体积超过设置大小，请缩小分辨率');
+    if(imageBytes>limit)throw new Error('当前尺寸的文件超过大小上限，请提高大小上限');
     return {...result,imageBytes,paddedBytes:0,limitBytes:limit};
   };
   if(!resized && ['jpeg','png'].includes(meta.format) && (requested==='auto'||requested===meta.format)){
@@ -113,7 +97,7 @@ async function smartSize(source,meta,settings,target,options){
     try{
       // Legacy Auto clients may choose JPEG at the requested resolution. Both
       // current menus use explicit formats; explicit PNG always stays PNG.
-      const result=requested==='auto'&&!meta.hasAlpha?{...await encodeFaithfulPng(data,info,limit,options),...size}:await encodePngWithinBudget(data,info,limit,options);
+      const result=await encodePngWithinBudget(data,info,limit,{...options,faithfulOnly:requested==='auto'&&!meta.hasAlpha});
       return finish({...result,format,unchanged:false});
     }
     catch(error){if(error.message==='预览参数已更新'||requested!=='auto'||meta.hasAlpha)throw error;format='jpeg';}

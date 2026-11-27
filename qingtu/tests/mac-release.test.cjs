@@ -6,7 +6,7 @@ test('Mac publisher signs both immutable archive and bounded manifest, reuses pr
  assert.equal((await fs.readdir(output)).some(n=>n.includes('.dmg.part')),false);
  const envelope=JSON.parse(await fs.readFile(path.join(output,'mac-arm64.json'),'utf8'));const manifest=decodeEnvelope(envelope,key.publicKey,'arm64','https://gitee.com/a1meon_admin/halframe-releases/releases/download/v0.4.4/');
  const publicKey=createPublicKey({key:Buffer.concat([Buffer.from('302a300506032b6570032100','hex'),Buffer.from(key.publicKey,'base64')]),format:'der',type:'spki'});assert.ok(verify(null,zip,publicKey,Buffer.from(manifest.file.edSignature,'base64')));assert.equal(manifest.file.qingtuParts.length,5);
- const bootstrap=await fs.readFile(path.join(output,'Install-Qingtu-0.4.4-Mac-arm64.command'),'utf8');assert.match(bootstrap,/shasum -a 512/);assert.doesNotMatch(bootstrap,/xattr|spctl|sudo/);assert.match(bootstrap,/ditto/);
+ const bootstrap=await fs.readFile(path.join(output,'Install-Qingtu-0.4.4-Mac-arm64.command'),'utf8');assert.match(bootstrap,/github.com\/a1meon\/qingtu/);assert.match(bootstrap,/cnb.cool\/a1meon/);assert.match(bootstrap,/shasum -a 512/);assert.doesNotMatch(bootstrap,/xattr|spctl|sudo/);assert.match(bootstrap,/ditto/);assert.ok(bootstrap.includes('/update-parts/'+Buffer.from(manifest.file.sha512,'base64').toString('hex')));assert.ok(bootstrap.includes('/bin/ln '));
 });
 
 test('a missing private key cannot silently replace an already published trust root',async t=>{

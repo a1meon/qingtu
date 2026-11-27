@@ -1,0 +1,54 @@
+import {applyPortraitRetouch,portraitForCrop} from '../../engine/portrait-retouch.mjs';
+import {calculateLayout} from '../../engine/stitch-layout.mjs';
+import {sourceWindow,imageRotation,imageAngle,imageMirrored} from '../../engine/image-source.mjs';
+import {rotatedImageBounds} from '../../engine/image-rotation.mjs';
+import {readAsset} from '../stitch/database.js';
+import {inputFormat,oriented} from './codec.js';
+import {applyImageColor,hasImageColor} from '../../engine/image-color.mjs';
+import {clipRectangle} from '../../engine/canvas-clip.mjs';
+import {colorEffectFrame} from '../../engine/color-effects.mjs';
+
+export async function compose(project,layout=calculateLayout(project)){
+  const canvas=new OffscreenCanvas(layout.width,layout.height);
+  const ctx=canvas.getContext('2d');ctx.imageSmoothingQuality='high';
+  const sourceFormats=new Set();
+  for(const rect of layout.rects){
+    const layer=project.images.find(item=>item.id===rect.id),angle=imageAngle(layer),bounds=rotatedImageBounds(rect,angle);
+    if(bounds.x+bounds.width<=0||bounds.y+bounds.height<=0||bounds.x>=layout.width||bounds.y>=layout.height)continue;
+    const file=await readAsset(rect.assetId);if(!file)throw new Error('原图副本缺失，项目无法恢复');
+    const bytes=new Uint8Array(await file.arrayBuffer());
+    sourceFormats.add(layer.format||inputFormat(bytes));
+    const pixels=oriented(bytes,image=>{
+      if(imageMirrored(layer))image.flop();
+      const turn=imageRotation(layer);if(turn)image.rotate(turn);
+      const source=sourceWindow(layer);
+      if(image.width!==source.fullWidth||image.height!==source.fullHeight||file.size!==layer.bytes)throw new Error('原图副本与项目尺寸不一致');
+      return image.getPixels(p=>new ImageData(new Uint8ClampedArray(p.toByteArray(0,0,image.width,image.height,'RGBA')),image.width,image.height));
+    });
+    applyPortraitRetouch(pixels.data,portraitForCrop(layer.color?.retouch,rect.crop),pixels);
+    const bitmap=await createImageBitmap(pixels),{left=0,right=0,top=0,bottom=0}=rect.crop||{};
+    const x=Math.round(rect.x),y=Math.round(rect.y),w=Math.max(1,Math.round(rect.x+rect.width)-x),h=Math.max(1,Math.round(rect.y+rect.height)-y);
+    const sourceX=left*bitmap.width,sourceY=top*bitmap.height;
+    const sourceWidth=(1-left-right)*bitmap.width,sourceHeight=(1-top-bottom)*bitmap.height;
+    try{
+      ctx.save();ctx.translate(angle?rect.x+rect.width/2:x+w/2,angle?rect.y+rect.height/2:y+h/2);ctx.rotate(angle*Math.PI/180);
+      if(!hasImageColor(layer.color)){
+        ctx.drawImage(bitmap,sourceX,sourceY,sourceWidth,sourceHeight,-w/2,-h/2,w,h);
+        continue;
+      }
+      const clipped=angle?{sourceLeft:0,sourceTop:0,width:w,height:h}:clipRectangle({x,y,width:w,height:h},layout);
+      if(!clipped)continue;
+      const {sourceLeft,sourceTop,width,height}=clipped;
+      if(width*height>100000000)throw new Error('旋转图像过大，请缩小图片');
+      const raster=new OffscreenCanvas(width,height),layerContext=raster.getContext('2d',{willReadFrequently:true});
+      layerContext.imageSmoothingQuality='high';
+      layerContext.drawImage(bitmap,sourceX+sourceLeft/w*sourceWidth,sourceY+sourceTop/h*sourceHeight,
+        sourceWidth*width/w,sourceHeight*height/h,0,0,width,height);
+      const layerPixels=layerContext.getImageData(0,0,width,height);
+      applyImageColor(layerPixels.data,layer.color,{...colorEffectFrame({...rect,width:w,height:h},clipped),retouchApplied:true});
+      layerContext.putImageData(layerPixels,0,0);
+      ctx.drawImage(raster,sourceLeft-w/2,sourceTop-h/2);
+    }finally{ctx.restore();bitmap.close();}
+  }
+  return {blob:await canvas.convertToBlob({type:'image/png'}),layout,sourceFormats:[...sourceFormats]};
+}

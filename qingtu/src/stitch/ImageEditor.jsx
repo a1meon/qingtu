@@ -1,5 +1,5 @@
 import {forwardRef,useEffect,useLayoutEffect,useImperativeHandle,useRef,useState} from 'react';
-import {Crop,Scissors,Trash,LinkSimple,LinkSimpleBreak,ArrowCounterClockwise,ArrowClockwise} from '@phosphor-icons/react';
+import {Crop,Scissors,Trash,FlipHorizontal,LinkSimple,LinkSimpleBreak,ArrowCounterClockwise,ArrowClockwise} from '@phosphor-icons/react';
 import {createPortal} from 'react-dom';
 import {cropEdges,changeCropEdge} from '../../engine/stitch-edits.mjs';
 import {addFlushHandler} from '../lifecycle.js';
@@ -7,12 +7,13 @@ import {ImageSplitControls} from './ImageSplitControls.jsx';
 import {ImageRotationControls} from './ImageRotationControls.jsx';
 import {CanvasRotationOverlay} from './CanvasRotationOverlay.jsx';
 import {CanvasCropOverlay} from './CanvasCropOverlay.jsx';
+import {placeImagePanel} from './canvas-viewport.js';
 import {CROP_HANDLES} from '../../engine/crop-transform.mjs';
 
 const empty={left:0,right:0,top:0,bottom:0};
 const names={left:'左',right:'右',top:'上',bottom:'下'};
 const pairs=[{axis:'horizontal',sides:['left','right'],name:'左右'},{axis:'vertical',sides:['top','bottom'],name:'上下'}];
-export const ImageEditor=forwardRef(function ImageEditor({image,value,open,mode='crop',placement,hidden,onActivate,onPreview,onCommit,onSplit,splitDraft,onSplitDraft,onClose,onRemove,onRotate,onAnglePreview,onAngleCommit,disabled},ref){
+export const ImageEditor=forwardRef(function ImageEditor({image,value,open,mode='crop',placement,hidden,onActivate,onPreview,onCommit,onSplit,splitDraft,onSplitDraft,onClose,onRemove,onRotate,onMirror,onAnglePreview,onAngleCommit,disabled},ref){
  const original=()=>({edges:cropEdges(image,value),links:{horizontal:value?.links?.horizontal??true,vertical:value?.links?.vertical??false}});
  const initial=()=>value==null?{edges:{...empty,left:Math.min(50,Math.floor((image.width-1)/2)),right:Math.min(50,Math.floor((image.width-1)/2))},links:{horizontal:true,vertical:false}}:original();
  const [panelOffset,setPanelOffset]=useState({x:0,y:0}),panelDrag=useRef(),panelMove=useRef(),panelRoot=useRef(),toolsRoot=useRef(),rotatingCorner=useRef(false),rotationEditor=useRef(),rotationGesture=useRef();
@@ -20,9 +21,19 @@ export const ImageEditor=forwardRef(function ImageEditor({image,value,open,mode=
  const root=useRef(),latest=useRef(draft),touched=useRef(false),prefill=useRef(value==null),pointer=useRef(false),dragBefore=useRef(),cropClick=useRef(),timer=useRef(),frame=useRef(),callbacks=useRef(),flushRef=useRef(),closing=useRef(false),placementRef=useRef(placement);
  if(!pointer.current||rotatingCorner.current)placementRef.current=placement;
  useLayoutEffect(()=>{placement.registerElements?.({tools:toolsRoot.current,panel:panelRoot.current});return()=>placement.registerElements?.(null);},[placement.registerElements,open,mode,hidden]);
- useEffect(()=>{setPanelOffset({x:0,y:0});},[image.id,mode,open]);
- const panelBase=placementRef.current.panel;
- const panelStyle={...panelBase,left:panelBase.left+panelOffset.x,top:panelBase.top+panelOffset.y};
+ const [panelHeight,setPanelHeight]=useState(0);
+ useLayoutEffect(()=>{
+  const panel=panelRoot.current;if(!panel||hidden)return;
+  const measure=()=>setPanelHeight(panel.getBoundingClientRect().height);
+  measure();const observer=new ResizeObserver(measure);observer.observe(panel);
+  return()=>observer.disconnect();
+ },[open,mode,hidden]);
+ useLayoutEffect(()=>{setPanelOffset({x:0,y:0});},[image.id,mode,open]);
+ const panelBase=placeImagePanel(placement.bounds,placementRef.current.panel,panelHeight);
+ const panelStyle={...panelBase,
+  left:Math.max(4,Math.min(panelBase.left+panelOffset.x,window.innerWidth-panelBase.width-4)),
+  top:Math.max(4,Math.min(panelBase.top+panelOffset.y,window.innerHeight-panelHeight-4)),
+ };
  function startPanelDrag(event){
   if(event.button!==0)return;event.preventDefault();event.stopPropagation();event.currentTarget.setPointerCapture(event.pointerId);
   panelDrag.current={id:event.pointerId,x:event.clientX,y:event.clientY,left:panelStyle.left,top:panelStyle.top,before:panelOffset};
@@ -80,7 +91,7 @@ export const ImageEditor=forwardRef(function ImageEditor({image,value,open,mode=
   dragBefore.current={draft:latest.current,touched:touched.current,prefill:prefill.current,side};pointer.current=true;setSide(CROP_HANDLES[edge].find(candidate=>['left','right'].includes(candidate)===(axis==='horizontal'))||CROP_HANDLES[edge][0]);
   callbacks.current.onPreview(prefill.current?original():latest.current,{gesture:true});
  }
- function previewCrop(edit,position,guides=[]){touched.current=true;prefill.current=false;latest.current=edit;setDraft(edit);callbacks.current.onPreview(edit,{gesture:true,guides});}
+ function previewCrop(edit){touched.current=true;prefill.current=false;latest.current=edit;setDraft(edit);callbacks.current.onPreview(edit,{gesture:true});}
  function endCrop(cancelled,pointerId){
   pointer.current=false;cropClick.current=pointerId;
   if(cancelled){const before=dragBefore.current;latest.current=before.draft;touched.current=before.touched;prefill.current=before.prefill;setDraft(before.draft);setSide(before.side);callbacks.current.onPreview(before.touched?before.draft:null);if(before.touched)timer.current=setTimeout(()=>commit().catch(e=>setError(e.message)),450);return Promise.resolve();}
@@ -95,12 +106,13 @@ export const ImageEditor=forwardRef(function ImageEditor({image,value,open,mode=
   return <button aria-label={`裁剪${names[edge]}边`} aria-pressed={active} className={active?'active':''} disabled={disabled} onClick={()=>chooseSide(edge)}>{names[edge]}</button>;
  }
  return <div ref={root} className="inline-image-controls" hidden={hidden} onKeyDown={event=>{if(event.key==='Escape'){event.stopPropagation();close();}}}>
-  {open&&mode==='crop'&&<CanvasCropOverlay image={image} project={placement.project} targets={placement.targets} rect={placement.rect} scale={placement.scale} value={prefill.current?original():draft} disabled={disabled} onStart={startCrop} onPreview={previewCrop} onEnd={endCrop}/>}
+  {open&&mode==='crop'&&<CanvasCropOverlay image={image} rect={placement.rect} scale={placement.scale} value={prefill.current?original():draft} disabled={disabled} onStart={startCrop} onPreview={previewCrop} onEnd={endCrop}/>}
   {open&&mode==='rotate'&&<CanvasRotationOverlay ref={rotationGesture} hidden={hidden} origin={placement.origin} image={image} rect={placement.rect} scale={placement.scale} disabled={disabled} onStart={()=>{rotatingCorner.current=true;return rotationEditor.current.startRotation();}} onPreview={angle=>rotationEditor.current.previewRotation(angle)} onEnd={(cancelled,id)=>{rotatingCorner.current=false;return rotationEditor.current.endRotation(cancelled,id);}}/>}
   {createPortal(<div hidden={hidden} ref={toolsRoot} className="inline-image-tools editor-mode image-tools-portal" role="group" aria-label="图片操作" style={placement.tools}>
    <button aria-label="裁剪" title="裁剪" className={open&&mode==='crop'?'active':''} aria-pressed={open&&mode==='crop'} disabled={disabled} onClick={()=>activate('crop')}><Crop size={17} aria-hidden/></button>
    <button aria-label="分割" title="分割" className={open&&mode==='split'?'active':''} aria-pressed={open&&mode==='split'} disabled={disabled||image.width<2&&image.height<2} onClick={()=>activate('split')}><Scissors size={17} aria-hidden/></button>
    <button aria-label="旋转" title="旋转" className={open&&mode==='rotate'?'active':''} aria-pressed={open&&mode==='rotate'} disabled={disabled} onClick={()=>activate('rotate')}><ArrowClockwise size={17} aria-hidden/></button>
+   <button aria-label="水平镜像" title="水平镜像" className={image.mirrored?'active':''} aria-pressed={!!image.mirrored} disabled={disabled} onClick={onMirror}><FlipHorizontal size={17} aria-hidden/></button>
    <button className="image-delete" aria-label="删除图片" title="删除图片" disabled={disabled} onClick={onRemove}><Trash size={17} aria-hidden/></button>
   </div>,document.body)}
   {open&&createPortal(<section hidden={hidden} ref={panelRoot} className="image-editor inline-image-editor image-editor-portal" aria-label={mode==='rotate'?'旋转设置':mode==='split'?'分割设置':'裁剪设置'} style={panelStyle}>

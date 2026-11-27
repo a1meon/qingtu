@@ -8,6 +8,7 @@ import {ProjectStore} from '../engine/project-store.mjs';
 import {ImageService} from '../engine/service.mjs';
 import {StitchService} from '../engine/stitch-service.mjs';
 import {moveImage,initializeFree,calculateLayout} from '../engine/stitch-layout.mjs';
+import {setImageEdit} from '../engine/stitch-edits.mjs';
 import {optimizeHorizontal} from '../engine/stitch-optimize.mjs';
 import {appendFixedImages,arrangeImages} from '../engine/canvas-fixed.mjs';
 async function setup(t){const root=await fs.mkdtemp(path.join(os.tmpdir(),'qingtu-stitch-'));t.after(()=>fs.rm(root,{recursive:true,force:true}));const store=new ProjectStore(path.join(root,'store')),images=new ImageService();return {root,store,images,service:new StitchService(store,images)};}
@@ -24,6 +25,21 @@ test('real 4K example exports rectangular transparent PNG with zero padding and 
  assert.deepEqual(pixel(0,0),[255,0,0,255]);assert.deepEqual(pixel(1799,2399),[255,0,0,255]);assert.deepEqual(pixel(1800,0),[0,255,0,255]);assert.deepEqual(pixel(3600,0),[0,0,255,255]);
  assert.equal(pixel(5998,2399)[3],128,'last corner preserves transparency rather than a rounded mask');
  assert.deepEqual(files.map(f=>[f.width,f.height]),[[3072,4096],[3072,4096],[2160,3840],[2160,3840]]);
+});
+test('manual top and bottom crop preserves surviving rows pixel-for-pixel on export',async t=>{
+ const {store,images,service}=await setup(t),width=32,height=40;
+ const raw=Buffer.alloc(width*height*4);
+ for(let y=0;y<height;y++)for(let x=0;x<width;x++)raw.set([x*7,y*6,x+y,255],4*(y*width+x));
+ const image=await store.import(await sharp(raw,{raw:{width,height,channels:4}}).png().toBuffer(),'ramp.png');
+ const project={id:'crop-rows',layout:'horizontal',canvasMode:'fixed',heightLocked:true,canvasSizing:'manual',
+  canvas:{width,height},images:[image],positions:{[image.id]:{x:0,y:0,width,height}},export:{...settings,longEdge:height}};
+ const top=3,bottom=7,edited=setImageEdit(project,image.id,{edges:{left:0,right:0,top,bottom}});
+ const result=await service.render(edited);
+ const {data,info}=await sharp(images.result(result.token).output.buffer).ensureAlpha().raw().toBuffer({resolveWithObject:true});
+ assert.deepEqual([info.width,info.height],[width,height]);
+ const first=top*width*4,last=(height-bottom)*width*4;
+ assert.deepEqual(data.subarray(first,last),raw.subarray(first,last));
+ for(const rows of [data.subarray(0,first),data.subarray(last)])assert.ok(rows.every((v,i)=>i%4!==3||v===0));
 });
 test('separate and batch exports use their own formats, resolutions and actual byte ceilings',async t=>{
  const {root,store,images,service}=await setup(t),red=await solid(store,'red',80,80,'#ff000080'),blue=await solid(store,'blue',80,80,'#0000ff');
@@ -77,7 +93,7 @@ test('manual crop coordinates follow EXIF-oriented display pixels rather than en
  const expected=await sharp(source).rotate().extract({left:5,top:0,width:50,height:90}).ensureAlpha().raw().toBuffer();assert.deepEqual([r.width,r.height],[50,90]);assert.ok(actual.equals(expected));
 });
 
-test('one-click 4K crop removes both sides of every ratio and saves an exact transparent 5995 x 2398 PNG',async t=>{
+test('one-click 4K crop removes both sides of every ratio and saves an exact transparent 5988 x 2495 PNG',async t=>{
  const {root,store,images,service}=await setup(t),files=[],buffers=[],colors=['#ff0000','#00ff00','#0000ff','#ffff0080'];
  for(const [n,[width,height]] of [[3072,4096],[3072,4096],[2160,3840],[2160,3840]].entries()){
   const strip=await sharp({create:{width:30,height,channels:4,background:'#ff00ff'}}).png().toBuffer();
@@ -88,9 +104,9 @@ test('one-click 4K crop removes both sides of every ratio and saves an exact tra
  }
  const p={id:'one-click-4k',name:'一键优化',images:files,layout:'horizontal',edits:{[files[0].id]:{axis:'vertical',amount:30}},export:{...settings,longEdge:5999}},optimized=optimizeHorizontal(p);
  await store.save(optimized);const reopened=new ProjectStore(store.root),restored=await reopened.load(p.id);
- assert.deepEqual(restored.edits,optimized.edits);assert.equal(restored.export.longEdge,5995);
+ assert.deepEqual(restored.edits,optimized.edits);assert.equal(restored.export.longEdge,5988);
  const r=await service.render(restored),saved=await images.save(r.token,root),meta=await sharp(saved.path).metadata();
- assert.deepEqual([meta.width,meta.height],[5995,2398]);assert.equal(meta.width*2,meta.height*5);assert.equal(meta.format,'png');assert.equal((await fs.stat(saved.path)).size,saved.bytes);assert.ok(saved.bytes<=settings.targetBytes);
+ assert.deepEqual([meta.width,meta.height],[5988,2495]);assert.equal(meta.width*5,meta.height*12);assert.equal(meta.format,'png');assert.equal((await fs.stat(saved.path)).size,saved.bytes);assert.ok(saved.bytes<=settings.targetBytes);
  const {data,info}=await sharp(saved.path).ensureAlpha().raw().toBuffer({resolveWithObject:true});
  for(const [n,rect] of r.layout.rects.entries()){
   const expected=n===0?[255,0,0,255]:n===1?[0,255,0,255]:n===2?[0,0,255,255]:[255,255,0,128];
@@ -104,17 +120,17 @@ test('percentage crop samples original centres symmetrically at different export
  const {store,images,service}=await setup(t),data=Buffer.alloc(140*100*4);
  for(let y=0;y<100;y++)for(let x=0;x<140;x++){const offset=(y*140+x)*4;data[offset]=x;data[offset+1]=y;data[offset+2]=180;data[offset+3]=y<50?255:128;}
  const source=await sharp(data,{raw:{width:140,height:100,channels:4}}).png().toBuffer(),a=await store.import(source,'a.png'),b=await store.import(source,'b.png');delete a.preview;delete b.preview;
- for(const longEdge of [250,500]){
+ for(const longEdge of [240,480]){
   const p=optimizeHorizontal({id:'centred-'+longEdge,images:[a,b],layout:'horizontal',export:{...settings,longEdge}}),r=await service.render(p);
-  assert.equal(r.width*2,r.height*5);
+  assert.equal(r.width*5,r.height*12);
   const raw=await sharp(images.result(r.token).output.buffer).ensureAlpha().raw().toBuffer();
-  for(const rect of r.layout.rects){const pixel=x=>raw.subarray((Math.floor(r.height*.25)*r.width+x)*4,(Math.floor(r.height*.25)*r.width+x)*4+4);const left=pixel(rect.x),right=pixel(rect.x+rect.width-1);assert.ok(left[0]>=6&&left[0]<=9);assert.ok(right[0]>=130&&right[0]<=132);assert.ok(Math.abs(left[0]-(139-right[0]))<=1);assert.equal(left[3],255);}
+  for(const rect of r.layout.rects){const pixel=x=>raw.subarray((Math.floor(r.height*.25)*r.width+x)*4,(Math.floor(r.height*.25)*r.width+x)*4+4);const left=pixel(rect.x),right=pixel(rect.x+rect.width-1);assert.ok(left[0]>=9&&left[0]<=11);assert.ok(right[0]>=128&&right[0]<=130);assert.ok(Math.abs(left[0]-(139-right[0]))<=1);assert.equal(left[3],255);}
   for(const layout of ['vertical','grid','free']){
    const single={...p,images:[a],grid:{rows:1,columns:1},layout:'horizontal'};
    const next=layout==='free'?initializeFree(single,calculateLayout(single),'centres'):{...single,layout};
-   const result=await service.render(next);assert.deepEqual([result.width,result.height],[longEdge,Math.round(longEdge/1.25)]);
+   const result=await service.render(next);assert.deepEqual([result.width,result.height],[longEdge,Math.round(longEdge/1.2)]);
    const actual=await sharp(images.result(result.token).output.buffer).ensureAlpha().raw().toBuffer();
-   assert.ok(actual[0]>=6&&actual[0]<=9);assert.equal(actual[3],255);assert.equal(actual[actual.length-1],128);assert.equal(result.layout.rects[0].crop.top,0);
+   assert.ok(actual[0]>=9&&actual[0]<=11);assert.equal(actual[3],255);assert.equal(actual[actual.length-1],128);assert.equal(result.layout.rects[0].crop.top,0);
   }
  }
 });
@@ -194,15 +210,15 @@ test('renamed canvas exports use its complete current name for web and desktop e
  assert.ok((await fs.readFile(path.join(root,'画布 12.png'))).equals(before),'a duplicate name never overwrites an existing export');
 });
 
-test('narrow-image optimization saves and exports centred top-bottom crops with no stretching or padding',async t=>{
+test('narrow-image optimization exports the entire source and centres it in a manual frame',async t=>{
  const {store,images,service}=await setup(t),raw=Buffer.alloc(100*100*4);
  for(let y=0;y<100;y++)for(let x=0;x<100;x++){const o=(y*100+x)*4;raw[o]=x;raw[o+1]=y;raw[o+2]=180;raw[o+3]=255;}
  const source=await sharp(raw,{raw:{width:100,height:100,channels:4}}).png().toBuffer(),item=await store.import(source,'square.png');delete item.preview;
  for(const fixed of [true,false]){
   const p=optimizeHorizontal({id:'vertical-opt-'+fixed,images:[item],layout:'horizontal',optimization:{specialCrops:{}},...(fixed?{canvasMode:'fixed',canvas:{width:250,height:100},positions:{[item.id]:{x:0,y:0,width:250,height:100}}}:{}),export:{...settings,longEdge:250}});
   await store.save(p);const restored=await store.load(p.id),r=await service.render(restored),actual=await sharp(images.result(r.token).output.buffer).ensureAlpha().raw().toBuffer();
-  const expected=await sharp(source).resize(250,250,{fit:'fill'}).extract({left:0,top:75,width:250,height:100}).ensureAlpha().raw().toBuffer();
-  assert.deepEqual([r.width,r.height],[250,100]);assert.ok(actual.equals(expected),'centred crop uses the original uniform pixel scale');assert.ok((await store.readAsset(item.assetId)).equals(source));assert.deepEqual(restored.edits,p.edits);
+  const expected=await (fixed?sharp(source).extend({left:70,right:70,top:0,bottom:0,background:'#00000000'}):sharp(source).resize(250,250)).ensureAlpha().raw().toBuffer();
+  assert.deepEqual([r.width,r.height],fixed?[240,100]:[250,250]);assert.ok(actual.equals(expected),'all source pixels remain visible');assert.ok((await store.readAsset(item.assetId)).equals(source));assert.deepEqual(restored.edits,p.edits);
  }
 });
 
@@ -210,4 +226,54 @@ test('the ready composite retains Retina preview detail instead of replacing cle
  const {store,images,service}=await setup(t),item=await solid(store,'fine-preview',1500,1000,'#4477aa');delete item.preview;
  const p={id:'retina-ready',images:[item],layout:'horizontal',export:{...settings,longEdge:1500}},r=await service.render(p),preview=await sharp(Buffer.from(r.preview.split(',')[1],'base64')).metadata();
  assert.deepEqual([preview.width,preview.height],[1500,1000]);assert.deepEqual([r.width,r.height],[1500,1000]);assert.ok(images.result(r.token).output.buffer.length<=settings.targetBytes);
+});
+
+test('a fitting oriented original survives switching canvases, and ignores a legacy size floor until actual edits change the result',async t=>{
+ const {store,images,service}=await setup(t);
+ const file=await sharp({create:{width:48,height:24,channels:3,background:'#8670aa'}}).jpeg().withMetadata({orientation:6}).toBuffer();
+ const image=await store.import(file,'sideways.jpg');
+ const pose={x:0,y:0,width:24,height:48};
+ const project={id:'original-one',images:[image],canvasMode:'fixed',layout:'free',canvas:{width:24,height:48},positions:{[image.id]:pose},export:{format:'jpeg',targetBytes:30000000}};
+ const first=await service.render(project,{latest:true});
+ assert.equal(first.unchanged,true);assert.deepEqual(images.result(first.token).output.buffer,file);
+ const thumb=await sharp(Buffer.from(first.preview.split(',')[1],'base64')).metadata();
+ assert.deepEqual([thumb.width,thumb.height],[24,48]);
+ await service.render({...project,id:'original-two'},{latest:true});
+ assert.equal((await service.render({...structuredClone(project),name:'new name'},{latest:true})).token,first.token);
+ const legacy=await service.render({...project,export:{...project.export,minimumBytes:1000000}});
+ assert.deepEqual(images.result(legacy.token).output.buffer,file);
+ const moved=await service.render({...project,positions:{[image.id]:{...pose,x:8}}});
+ assert.ok(!moved.unchanged);assert.notDeepEqual(images.result(moved.token).output.buffer,file);
+});
+
+test('saved image color invalidates the original export fast path and render cache', async t => {
+ const {store,images,service}=await setup(t);
+ const item=await solid(store,'color.png',120,120,'#806448');
+ const project={id:'color-export',images:[item],layout:'horizontal',export:settings};
+ const original=await store.readAsset(item.assetId);
+ assert.equal((await service.render(project,{latest:true})).unchanged,true);
+ project.images=[{...item,color:{adjustments:{saturation:-100}}}];
+ await store.save(project);
+ const restored=await store.load(project.id),result=await service.render(restored);
+ const raw=await sharp(images.result(result.token).output.buffer).ensureAlpha().raw().toBuffer();
+ assert.deepEqual([...raw.subarray(0,4)],[104,104,104,255]);
+ assert.equal(Boolean(result.unchanged),false);
+ assert.deepEqual(restored.images[0].color,project.images[0].color);
+ assert.deepEqual(await store.readAsset(item.assetId),original);
+});
+
+test('advanced grading and corner effects survive project reload and render from the original',async t=>{
+ const {store,images,service}=await setup(t),item=await solid(store,'advanced.png',120,120,'#bf5442');
+ const original=await store.readAsset(item.assetId);
+ const color={adjustments:{vignette:80},hsl:{red:{hue:40}},curves:{rgb:[[0,0],[128,150],[255,255]]},wheels:{midtones:{x:20,y:25}}};
+ const project={id:'color-advanced',images:[{...item,color}],layout:'horizontal',export:settings};
+ await store.save(project);
+ const restored=await store.load(project.id);
+ assert.deepEqual(restored.images[0].color,color);
+ const result=await service.render(restored);
+ const raw=await sharp(images.result(result.token).output.buffer).ensureAlpha().raw().toBuffer({resolveWithObject:true});
+ const center=(Math.floor(raw.info.height/2)*raw.info.width+Math.floor(raw.info.width/2))*4;
+ assert.ok(raw.data[center+1]>100&&raw.data[center]>raw.data[0]);
+ assert.equal(raw.data[3],255);
+ assert.deepEqual(await store.readAsset(item.assetId),original);
 });

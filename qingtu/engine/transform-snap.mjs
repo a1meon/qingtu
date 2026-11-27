@@ -1,6 +1,4 @@
 import {resizeImageRect} from './canvas-transform.mjs';
-import {CROP_HANDLES,cropFromDrag} from './crop-transform.mjs';
-import {cropEdges,changeCropEdge,imageGeometry,setImageEdit} from './stitch-edits.mjs';
 
 const anchors=rect=>['x','y'].flatMap(axis=>[0,.5,1].map(part=>({axis,part,value:rect[axis]+rect[axis==='x'?'width':'height']*part})));
 const targetsFor=targets=>targets.flatMap(rect=>anchors(rect).filter(anchor=>!rect.edgesOnly||anchor.part!==.5));
@@ -46,29 +44,4 @@ export function snapResizeRect(rect,handle,dx,dy,targets,tolerance=8,shift=false
   result=at(value);guides.push(...guideFor(place(result),hit));
  }
  return {...result,guides};
-}
-
-// Evaluate alignment against the actual fitted layout, including the fixed
-// display height and horizontal reflow used by the final committed edit.
-export function snapCropFromDrag(project,id,edit,rect,handle,dx,dy,targets,tolerance=8){
- const image=project.images.find(image=>image.id===id),raw=cropFromDrag(image,edit,rect,handle,dx,dy),base=imageGeometry(image,edit),targetAnchors=targetsFor(targets);
- let next=raw.edit;const hits=[],boundary=[];
- for(const side of CROP_HANDLES[handle]){
-  const horizontal=['left','right'].includes(side),axis=horizontal?'horizontal':'vertical',size=horizontal?image.width:image.height,opposite={left:'right',right:'left',top:'bottom',bottom:'top'}[side];
-  const edges=cropEdges(image,next),linked=next.links[axis],maximum=linked?Math.floor((size-1)/2):size-1-edges[opposite];
-  const sourceScale=horizontal?rect.width/base.width:rect.height/base.height;
-  if(edges[side]*sourceScale<=tolerance){next={...next,edges:changeCropEdge(image,edges,side,0,linked)};boundary.push(side);continue;}
-  const editAt=value=>({...next,edges:changeCropEdge(image,edges,side,value,linked)}),at=value=>setImageEdit(project,id,editAt(value)).positions[id];
-  const hit=nearest(at(edges[side]),at(0),at(maximum),targetAnchors,tolerance);
-  if(!hit)continue;
-  let low=0,high=maximum;const increasing=hit.b>hit.a;
-  // Source pixels are integers; bounded binary search also handles reciprocal
-  // width changes caused by cropping top/bottom at fixed display height.
-  while(high-low>1){const middle=Math.floor((low+high)/2),value=coordinate(at(middle),hit);if((value<hit.target)===increasing)low=middle;else high=middle;}
-  const amount=[low,high].reduce((best,value)=>Math.abs(coordinate(at(value),hit)-hit.target)<Math.abs(coordinate(at(best),hit)-hit.target)?value:best,low);
-  next=editAt(amount);hits.push(hit);
- }
- const position=setImageEdit(project,id,next).positions[id],guides=hits.flatMap(hit=>guideFor(position,hit));
- for(const side of boundary){const axis=['left','right'].includes(side)?'x':'y',value=position[axis]+(['right','bottom'].includes(side)?position[axis==='x'?'width':'height']:0);guides.push({axis,value});}
- return {edit:next,position,guides:guides.filter((guide,index,all)=>all.findIndex(other=>guide.axis===other.axis&&Math.abs(guide.value-other.value)<1e-6)===index)};
 }

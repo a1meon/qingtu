@@ -1,4 +1,4 @@
-import {imageRotation,sourceWindow} from './image-source.mjs';
+import {imageAngle,imageMirrored,imageRotation,sourceWindow} from './image-source.mjs';
 
 const turnPose=p=>({...p,x:p.x+(p.width-p.height)/2,y:p.y+(p.height-p.width)/2,width:p.height,height:p.width});
 function turnEdit(edit){
@@ -18,11 +18,28 @@ export function rotateProjectImage(project,id,degrees){
   const image=next.images[index],window=sourceWindow(image),rotation=(imageRotation(image)+90)%360;
   const source=image.source?{left:window.fullHeight-window.top-window.height,top:window.left,width:window.height,height:window.width,fullWidth:window.fullHeight,fullHeight:window.fullWidth}:undefined;
   const turned={...image,width:image.height,height:image.width,rotation,...(source?{source}:{})};
+  if(image.color?.retouch)turned.color={...image.color,retouch:{...image.color.retouch,turn:((image.color.retouch.turn||0)+90)%360}};
   const layoutStates=next.layoutStates&&Object.fromEntries(Object.entries(next.layoutStates).map(([mode,state])=>[mode,state[id]?{...state,[id]:turnPose(state[id])}:state]));
   const size=next.importSizes?.[id];
   next={...next,images:next.images.map((value,i)=>i===index?turned:value),positions:{...next.positions,[id]:turnPose(next.positions[id])},edits:{...next.edits,...(next.edits?.[id]?{[id]:turnEdit(next.edits[id])}:{})},...(layoutStates?{layoutStates}:{}),...(size?{importSizes:{...next.importSizes,[id]:{width:size.height,height:size.width}}}:{})};
  }
  return next;
+}
+
+export function mirrorProjectImage(project,id){
+ const image=project.images.find(value=>value.id===id);
+ if(!image)throw new Error('图片已移除');
+ const window=sourceWindow(image),edit=project.edits?.[id];
+ const next={...image,rotation:(360-imageRotation(image))%360,angle:normalizeImageAngle(-imageAngle(image)),mirrored:!imageMirrored(image)};
+ // Reverse the visible source window and crop while keeping the canvas pose.
+ if(image.source)next.source={...window,left:window.fullWidth-window.left-window.width};
+ let mirroredEdit=edit;
+ if(edit?.edges)mirroredEdit={...edit,edges:{...edit.edges,left:edit.edges.right,right:edit.edges.left}};
+ else if(edit?.axis==='left'||edit?.axis==='right')mirroredEdit={...edit,axis:edit.axis==='left'?'right':'left'};
+ const retouch=image.color?.retouch;
+ if(retouch)next.color={...image.color,retouch:{...retouch,turn:(360-(retouch.turn||0))%360,mirrored:!retouch.mirrored}};
+ return {...project,images:project.images.map(value=>value.id===id?next:value),
+  ...(mirroredEdit&&{edits:{...project.edits,[id]:mirroredEdit}})};
 }
 
 export function normalizeImageAngle(angle){
@@ -49,7 +66,9 @@ export function rotatePoseAround(pose,pivot,angle){
  return {...pose,x:pivot.x+pivot.width/2+centre.x-pose.width/2,y:pivot.y+pivot.height/2+centre.y-pose.height/2};
 }
 
+export const snapRotationAngle=angle=>Math.round(angle/15)*15;
+
 export function angleFromCornerDrag(startAngle,startRay,currentRay,shift=false){
  const angle=startAngle+normalizeImageAngle(currentRay-startRay);
- return normalizeImageAngle(shift?Math.round(angle/45)*45:angle);
+ return normalizeImageAngle(shift?snapRotationAngle(angle):angle);
 }

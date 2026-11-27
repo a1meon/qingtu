@@ -8,14 +8,14 @@ import {setImageEdit} from '../engine/stitch-edits.mjs';
 import {resetProject,appendProjectImages} from '../engine/stitch-reset.mjs';
 import {optimizeHorizontal,optimizationAvailability} from '../engine/stitch-optimize.mjs';
 const image=(id,width,height)=>({id,assetId:id,width,height});
-const project=(images=[])=>({id:'fixed',canvasMode:'fixed',canvas:{...DEFAULT_CANVAS},images,initialOrder:images.map(i=>i.id),layout:'horizontal',grid:{rows:2,columns:2},positions:{},edits:{},export:{longEdge:5995,format:'png',targetBytes:1000000}});
+const project=(images=[])=>({id:'fixed',canvasMode:'fixed',canvas:{...DEFAULT_CANVAS},images,initialOrder:images.map(i=>i.id),layout:'horizontal',grid:{rows:2,columns:2},positions:{},edits:{},export:{longEdge:5988,format:'png',targetBytes:1000000}});
 
-test('default fixed canvas is exact 5:2 even before images are imported',()=>{
- const p=project(),layout=calculateLayout(p);assert.deepEqual([layout.width,layout.height],[5995,2398]);assert.equal(layout.width*2,layout.height*5);assert.deepEqual(layout.rects,[]);
+test('default fixed canvas is exact 12:5 even before images are imported',()=>{
+ const p=project(),layout=calculateLayout(p);assert.deepEqual([layout.width,layout.height],[5988,2495]);assert.equal(layout.width*5,layout.height*12);assert.deepEqual(layout.rects,[]);
 });
 test('fixed imports append on the right at the existing height without resizing previous images or canvas',()=>{
  const a=image('a',3000,4000),b=image('b',900,1600),c=image('c',1600,900),p=appendProjectImages(project(),[a,b]);
- assert.deepEqual(p.positions.a,{x:0,y:0,width:1798.5,height:2398});assert.equal(p.positions.b.x,1798.5);assert.equal(p.positions.b.height,2398);
+ assert.deepEqual(p.positions.a,{x:0,y:0,width:1871.25,height:2495});assert.equal(p.positions.b.x,1871.25);assert.equal(p.positions.b.height,2495);
  const moved={...p,positions:{...p.positions,a:{x:-30,y:20,width:200,height:400},b:{x:200,y:60,width:100,height:300}}},next=appendFixedImages(moved,[c]);
  assert.deepEqual(next.positions.a,moved.positions.a);assert.deepEqual(next.positions.b,moved.positions.b);assert.deepEqual(next.positions.c,{x:300,y:20,width:400*1600/900,height:400});assert.deepEqual(next.canvas,DEFAULT_CANVAS);
 });
@@ -36,7 +36,7 @@ test('tight grid has no empty cells within each row and rejects impossible row/c
 test('moving, stretching, reordering and editing canvas dimensions never derive new bounds from images',()=>{
  const p=appendFixedImages(project(),[image('a',100,100),image('b',200,100)]);
  p.positions.a={x:-5000,y:10000,width:8000,height:1000};
- const layout=calculateLayout(p);assert.deepEqual([layout.width,layout.height],[5995,2398]);assert.deepEqual([layout.rects[0].x,layout.rects[0].y,layout.rects[0].width,layout.rects[0].height],[-5000,10000,8000,1000]);
+ const layout=calculateLayout(p);assert.deepEqual([layout.width,layout.height],[5988,2495]);assert.deepEqual([layout.rects[0].x,layout.rects[0].y,layout.rects[0].width,layout.rects[0].height],[-5000,10000,8000,1000]);
  const resized={...p,images:moveImage(p.images,'a','b'),canvas:{width:2000,height:1000}},r=calculateLayout(resized);assert.deepEqual([r.width,r.height],[2000,1000]);assert.deepEqual(resized.positions,p.positions);assert.deepEqual(r.rects.map(i=>i.id),['b','a']);
 });
 test('canvas edge and ratio limits block actual rendering while invalid settings remain recoverable',()=>{
@@ -48,13 +48,13 @@ test('canvas edge and ratio limits block actual rendering while invalid settings
 test('manual crop preserves nonuniform scale; legacy free reset restores aspect at canvas height and retains centre',()=>{
  const a=image('a',200,100),b=image('b',100,100),p=appendProjectImages(project(),[a,b]);p.positions.a={x:-10,y:30,width:400,height:300};
  const cropped=setImageEdit(p,'a',{axis:'horizontal',amount:20});assert.deepEqual(cropped.positions.a,{x:30,y:30,width:320,height:300});
- const reset=resetProject({...cropped,images:[b,a],layout:'free'});assert.deepEqual(reset.positions.a,{x:190-2398,y:180-1199,width:4796,height:2398});assert.deepEqual(reset.canvas,p.canvas);assert.deepEqual(reset.images,[a,b]);assert.deepEqual(reset.edits,{});
+ const reset=resetProject({...cropped,images:[b,a],layout:'free'});assert.deepEqual(reset.positions.a,{x:190-2495,y:180-1247.5,width:4990,height:2495});assert.deepEqual(reset.canvas,p.canvas);assert.deepEqual(reset.images,[a,b]);assert.deepEqual(reset.edits,{});
 });
-test('one-click follows the current canvas ratio without changing its dimensions',()=>{
+test('optimization respects a manually sized frame and uses the role-view threshold',()=>{
  const p=appendFixedImages({...project(),canvas:{width:2000,height:1000},export:{longEdge:2000}},[image('a',3072,4096),image('b',3072,4096),image('c',2160,3840),image('d',2160,3840)]),next=optimizeHorizontal(p);
- assert.deepEqual(next.canvas,p.canvas);assert.deepEqual(next.export,p.export);assert.deepEqual(next.edits.c.edges,{left:100,right:100,top:576,bottom:0});assert.ok(['a','b','d'].every(id=>Math.abs(next.edits[id].fraction-541/3366)<1e-12));
- const layout=calculateLayout(next);assert.ok(Math.abs(layout.rects[0].y)<1e-9);assert.equal(optimizeHorizontal(next),next);
- const defaultOptimized=optimizeHorizontal({...p,canvas:{...DEFAULT_CANVAS}}),r=calculateLayout(defaultOptimized);assert.deepEqual([r.width,r.height],[5995,2398]);assert.ok(Math.abs(r.rects[0].y)<1e-9);
+ assert.deepEqual(next.canvas,p.canvas);assert.deepEqual(next.export,p.export);assert.deepEqual(next.edits.c.edges,{left:100,right:100,top:576,bottom:0});assert.ok(['a','b','d'].every(id=>Math.abs(next.edits[id].fraction-(1-(2.4-1960/3264)/(2.0625))/2)<1e-12));
+ const layout=calculateLayout(next);assert.ok(layout.rects[0].y>0);assert.equal(optimizeHorizontal(next),next);
+ const defaultOptimized=optimizeHorizontal({...p,canvas:{...DEFAULT_CANVAS}}),r=calculateLayout(defaultOptimized);assert.deepEqual([r.width,r.height],[5988,2495]);assert.ok(Math.abs(r.rects[0].y)<1e-9);
 });
 test('migration preserves legacy visible layout, dimensions, explicit crops and import order once',()=>{
  const images=[image('a',3072,4096),image('b',3072,4096),image('c',2160,3840),image('d',2160,3840)],legacy={...project(images),canvasMode:undefined,export:{longEdge:5999}},before=calculateLayout(legacy),migrated=migrateFixedCanvas(legacy),after=calculateLayout(migrated);

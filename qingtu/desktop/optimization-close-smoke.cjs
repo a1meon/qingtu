@@ -13,7 +13,7 @@ const pause=ms=>new Promise(resolve=>setTimeout(resolve,ms));
  async function waitFor(expression){for(let n=0;n<200;n++){if(await js(expression))return;await pause(100);}throw new Error('Timed out: '+expression);}
  await waitFor("!!document.querySelector('[aria-label=\"图像编辑\"]')");await js("document.querySelector('[aria-label=\"图像编辑\"]').click()");
  if(mode!=='optimize'){
-  await waitFor("document.querySelectorAll('.stitch-layer').length===2 && document.querySelector('.stitch-info').textContent.includes(' MB') && !document.querySelector('.project-name').disabled");
+  await waitFor("document.querySelectorAll('.stitch-layer').length===2 && !!document.querySelector('.stitch-info .size-comparison strong') && !document.querySelector('.project-name').disabled");
   let started=false,finished=false,calls=0;
   if(mode==='export'){
    const render=stitching.render.bind(stitching);stitching.render=async(...args)=>{if(args[1]?.latest)return render(...args);started=true;calls++;await pause(1000);const result=await render(...args);finished=true;return result;};
@@ -27,7 +27,7 @@ const pause=ms=>new Promise(resolve=>setTimeout(resolve,ms));
   win.once('closed',()=>{if(!finished||calls!==1){console.error('Busy retry lost the original '+mode+' operation');app.exit(1);}});
   await js("window.qingtu.windowAction('close')");return;
  }
- await waitFor("!!document.querySelector('[aria-label=\"新建画布\"]')&&!document.querySelector('[aria-label=\"新建画布\"]').disabled");await js("document.querySelector('[aria-label=\"新建画布\"]').click()");
+ await waitFor("!!document.querySelector('[aria-label=\"新建图像\"]')&&!document.querySelector('[aria-label=\"新建图像\"]').disabled");await js("document.querySelector('.blank-canvas-button').click()");
  await waitFor("!document.querySelector('[aria-label=\"添加画布图片\"]').disabled");
  await js("(()=>{const el=document.querySelector('#stitch-width');Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(el,'1200');el.dispatchEvent(new Event('input',{bubbles:true}));})()");
  await js("(()=>{const el=document.querySelector('#stitch-height');Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(el,'480');el.dispatchEvent(new Event('input',{bubbles:true}));})()");
@@ -36,7 +36,7 @@ const pause=ms=>new Promise(resolve=>setTimeout(resolve,ms));
  await js("(()=>{for(const [id,value] of [['stitch-width',1200],['stitch-height',480]]){const el=document.getElementById(id);Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(el,String(value));el.dispatchEvent(new Event('input',{bubbles:true}));}})()");
  let started=false,finished=false;
  const render=stitching.render.bind(stitching);stitching.render=async(...args)=>{started=true;await pause(1000);const result=await render(...args);finished=true;await fs.writeFile(path.join(root,'result.json'),JSON.stringify({width:result.width,height:result.height,bytes:result.bytes,closeWaitedForActualPreview:true}));return result;};
- await js("document.querySelector('[aria-label=\"一键优化\"]').click()");await waitFor("!document.querySelector('.stitch-dialog') && !document.querySelector('.project-name').disabled");assert.equal(started,false,'foreground automatically closes before full encoding');for(let n=0;n<100&&!started;n++)await pause(10);
+ await js("document.querySelector('[aria-label=\"四视优化\"]').click()");await waitFor("!document.querySelector('.stitch-dialog') && !document.querySelector('.project-name').disabled");assert.equal(started,false,'foreground automatically closes before full encoding');for(let n=0;n<100&&!started;n++)await pause(10);
  assert.ok(started);assert.equal(finished,false);const project=await store.load((await store.list())[0].id);assert.ok(project.images.every(image=>project.edits[image.id].fraction>0));
  win.once('closed',()=>{if(!finished){console.error('Window closed before optimization finished');app.exit(1);}});
  await js("window.qingtu.windowAction('close')");

@@ -18,3 +18,11 @@ test('tight JPEG budget compares decoded candidates and uses the highest fitting
  const next=await sharp(data,{raw:info}).jpeg({quality:r.quality+1,chromaSubsampling:r.chromaSubsampling,mozjpeg:r.mozjpeg,optimiseCoding:true}).toBuffer();assert.ok(next.length>400000);
  await assert.rejects(encodeJpeg(data,info,64),/增加大小上限/);
 });
+
+test('mozjpeg can satisfy a byte ceiling below both fast encoders at minimum quality',async()=>{
+ const info={width:384,height:384,channels:3},data=Buffer.alloc(info.width*info.height*3);
+ let state=29;for(let i=0;i<data.length;i++){state=(Math.imul(1664525,state)+1013904223)>>>0;data[i]=state>>>24;}
+ const sizes=async mozjpeg=>Promise.all(['4:4:4','4:2:0'].map(async chromaSubsampling=>(await sharp(data,{raw:info}).jpeg({quality:1,mozjpeg,chromaSubsampling,optimiseCoding:true}).toBuffer()).length));
+ const target=Math.min(...await sizes(true));assert.ok(target<Math.min(...await sizes(false)));
+ const output=await encodeJpeg(data,info,target);assert.equal(output.mozjpeg,true);assert.ok(output.buffer.length<=target);
+});

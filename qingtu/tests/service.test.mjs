@@ -100,9 +100,14 @@ test('compression rename updates cached previews and pinned exports without chan
  assert.equal(path.basename((await s.save(pinned.token,root)).path),'产品.定稿-qingtu.png');
  s.rename(file.id,'产品.v2');assert.equal(s.download(preview.token).name,'产品.v2-qingtu.png','literal dots remain when the user enters no image extension');
  const changed=await s.process(file.id,{...settings,resize:{type:'scale',percent:25}});assert.equal(s.download(changed.token).name,'产品.v2-qingtu.png','fresh encodes retain the renamed stem');
+ for(const blank of ['', '　 ']){
+  s.rename(file.id,'临时名称');
+  assert.equal(s.rename(file.id,blank).name,'old.png');
+  assert.equal(s.download(changed.token).name,'old-qingtu.png');
+ }
 });
 test('invalid compression names fail without changing the queue or cached output names',async()=>{
  const s=new ImageService(),buffer=await sharp({create:{width:20,height:20,channels:3,background:'#446688'}}).png().toBuffer(),file=await s.add(buffer,'valid.png');
- for(const name of ['', '   ','../x','a\\b','a:b','bad\u0000name','x'.repeat(201)])assert.throws(()=>s.rename(file.id,name),/名称/);
+ for(const name of [null,'../x','a\\b','a:b','bad\u0000name','x'.repeat(201)])assert.throws(()=>s.rename(file.id,name),/名称/);
  assert.equal(s.original(file.id).item.name,'valid.png');assert.throws(()=>s.rename('missing','name'),/已移除/);
 });

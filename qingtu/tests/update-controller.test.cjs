@@ -53,3 +53,24 @@ test('asynchronous native startup enters installation state and failures are han
  const {controller,adapter}=make();await controller.check(true);await controller.download();let reject;adapter.quitAndInstall=()=>new Promise((_,r)=>reject=r);
  const installing=controller.install();assert.equal(controller.status().phase,'installing');assert.throws(()=>controller.install(),/下载/);reject(new Error('native failed'));await assert.rejects(installing,/native failed/);assert.equal(controller.status().phase,'error');assert.match(controller.status().message,/安装/);
 });
+
+test('development preview identifies itself on manual check without calling the release service',async()=>{
+ const {controller,adapter}=make({development:true,resolveFeed:()=>assert.fail('preview fetched remote release')});
+ assert.equal((await controller.check(false)).visible,false);
+ const result=await controller.check(true);
+ assert.equal(result.phase,'development');assert.equal(result.visible,true);assert.equal(adapter.checks,0);
+});
+
+test('progress reports remote patch bytes and switches totals on full fallback',async()=>{
+ const {adapter,controller}=make();await controller.check(true);
+ adapter.downloadUpdate=async()=>{
+  adapter.emit('download-progress',{percent:70,mode:'delta',total:400});
+  adapter.emit('download-progress',{percent:10,total:10000});
+  assert.equal(controller.status().transferMode,'delta');assert.equal(controller.status().percent,70);
+  assert.equal(controller.status().transferBytes,400);
+  adapter.emit('download-progress',{percent:0,mode:'full',total:10000});
+  assert.equal(controller.status().percent,0);assert.equal(controller.status().transferBytes,10000);
+  adapter.emit('update-downloaded',{version:'0.5.0'});
+ };
+ assert.equal((await controller.download()).phase,'ready');
+});

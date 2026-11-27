@@ -1,5 +1,6 @@
 import {imageGeometry} from './stitch-edits.mjs';
 import {rotatePoseAround} from './image-rotation.mjs';
+import {identifyLegacySplits,splitOrigin} from './split-origin.mjs';
 import {sourceWindow} from './image-source.mjs';
 import {knownImportOrder} from './stitch-reset.mjs';
 import {splitLayoutStates} from './canvas-layout-state.mjs';
@@ -17,6 +18,7 @@ export function fullSourcePosition(project,id){
 // high-resolution pixels. The immutable original remains recoverable once.
 export function splitProjectImage(project,id,axis,at,ids){
  if(project.canvasMode!=='fixed')throw new Error('请在固定画布中拆分');
+ project=identifyLegacySplits(project);
  const index=project.images.findIndex(image=>image.id===id),image=project.images[index];
  if(!image)throw new Error('图片已移除');
  if(project.images.length>=100)throw new Error('每个项目最多 100 张图片');
@@ -26,7 +28,8 @@ export function splitProjectImage(project,id,axis,at,ids){
  const first={left:window.left,top:window.top,width:axis==='x'?at:image.width,height:axis==='y'?at:image.height,fullWidth:window.fullWidth,fullHeight:window.fullHeight};
  const second={...window,left:window.left+(axis==='x'?at:0),top:window.top+(axis==='y'?at:0),width:axis==='x'?image.width-at:image.width,height:axis==='y'?image.height-at:image.height};
  const labels=axis==='x'?['左','右']:['上','下'];
- const pieces=[first,second].map((source,n)=>({...image,id:ids[n],name:(image.name||'图片').slice(0,190)+' · '+labels[n],width:source.width,height:source.height,source}));
+ const origin=image.splitOrigin||splitOrigin(project,image);
+ const pieces=[first,second].map((source,n)=>({...image,splitOrigin:origin,id:ids[n],name:(image.name||'图片').slice(0,190)+' · '+labels[n],width:source.width,height:source.height,source}));
  const fraction=at/(axis==='x'?image.width:image.height),positions={...project.positions},edits={...project.edits};delete positions[id];delete edits[id];
  positions[ids[0]]={x,y,width:axis==='x'?width*fraction:width,height:axis==='y'?height*fraction:height};
  positions[ids[1]]={x:x+(axis==='x'?positions[ids[0]].width:0),y:y+(axis==='y'?positions[ids[0]].height:0),width:axis==='x'?width-positions[ids[0]].width:width,height:axis==='y'?height-positions[ids[0]].height:height};

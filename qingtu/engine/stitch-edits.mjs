@@ -1,4 +1,5 @@
 import {sourceWindow} from './image-source.mjs';
+import {rotateVector} from './image-rotation.mjs';
 import {fitHeightCanvas} from './canvas-height.mjs';
 const horizontalAxes=['horizontal','left','right'],singleAxes=['left','right','top','bottom'];
 export const cropLimit=(image,axis)=>Math.floor(((horizontalAxes.includes(axis)?image.width:image.height)-1)/(singleAxes.includes(axis)?1:2));
@@ -33,17 +34,17 @@ export function setImageEdit(project,id,edit){
  const image=project.images.find(image=>image.id===id);if(!image)throw new Error('图片已移除');
  const before=imageGeometry(image,project.edits?.[id]),after=imageGeometry(image,edit);
  const next={...project,edits:{...project.edits,[id]:edit.edges?{edges:{...edit.edges},links:{horizontal:edit.links?.horizontal??true,vertical:edit.links?.vertical??false}}:{axis:edit.axis,amount:edit.amount}}};
- if(before.width===after.width&&before.height===after.height)return next;
+ if(before.left===after.left&&before.top===after.top&&before.width===after.width&&before.height===after.height)return next;
  if(project.canvasMode==='fixed'||project.layout==='free'){
-  if(project.heightLocked&&project.layout==='horizontal'){
-   const p=project.positions[id],width=p.width*after.width/before.width*before.height/after.height;
-   next.positions={...project.positions,[id]:{...p,width}};
-   return fitHeightCanvas(next);
-  }
-  const p=project.positions[id],scale=p.width/before.width,width=after.width*scale;
-  const height=project.canvasMode==='fixed'?p.height*after.height/before.height:after.height*scale;
-  const oldHeight=project.canvasMode==='fixed'?p.height:before.height*scale;
-  next.positions={...project.positions,[id]:{x:p.x+(p.width-width)/2,y:p.y+(oldHeight-height)/2,width,...(project.canvasMode==='fixed'?{height}:{})}};
+  const pose=project.positions[id],fixed=project.canvasMode==='fixed';
+  const scaleX=pose.width/before.width,scaleY=fixed?pose.height/before.height:scaleX;
+  const width=after.width*scaleX,height=after.height*scaleY;
+  // Keep each surviving pixel at the same scale and on the same rotated image plane.
+  const centreShift=rotateVector((after.left-before.left+(after.width-before.width)/2)*scaleX,
+   (after.top-before.top+(after.height-before.height)/2)*scaleY,image.angle||0);
+  next.positions={...project.positions,[id]:{...pose,x:pose.x+(pose.width-width)/2+centreShift.x,
+   y:pose.y+(before.height*scaleY-height)/2+centreShift.y,width,...(fixed?{height}:{})}};
+  if(project.heightLocked&&project.layout==='horizontal')return fitHeightCanvas(next,{reflow:before.width!==after.width});
  }
  return next;
 }

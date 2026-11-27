@@ -12,13 +12,13 @@ test('multiple image-specific cuts remain exact while all other images share a c
  const project={layout:'horizontal',images,edits:{},export:{longEdge:5995},optimization:{specialCrops}},before=structuredClone(project),next=optimizeHorizontal(project);
  assert.deepEqual(next.edits.a.edges,{left:50,right:50,top:410,bottom:0});assert.deepEqual(next.edits.d.edges,{left:150,right:150,top:768,bottom:0});
  assert.equal(next.edits.b.fraction,next.edits.c.fraction);assert.ok(next.edits.b.fraction>0);
- const total=images.reduce((sum,image)=>{const rect=imageGeometry(image,next.edits[image.id]);return sum+rect.width/rect.height;},0);assert.ok(Math.abs(total-2.5)<1e-12);
+ const total=images.reduce((sum,image)=>{const rect=imageGeometry(image,next.edits[image.id]);return sum+rect.width/rect.height;},0);assert.ok(Math.abs(total-2.4)<1e-12);
  assert.equal(optimizeHorizontal(next),next);assert.equal(optimizationAvailability(next).enabled,false);assert.deepEqual(project,before);
  const reordered=optimizationEdits([images[3],images[1],images[2],images[0]],2.5,{specialCrops});assert.deepEqual(reordered.a,next.edits.a);assert.deepEqual(reordered.d,next.edits.d);
 });
 test('explicit no selection or disabled records never restore the legacy third-image crop',()=>{
  for(const crops of [{},{a:{enabled:false,topPercent:90,sidePixels:9999}},{missing:{enabled:true,topPercent:99,sidePixels:9999}}]){
-  const edits=optimizationEdits(images,2.5,{specialCrops:crops});for(const image of images){assert.equal(edits[image.id].edges,undefined);assert.ok(Math.abs(edits[image.id].fraction-1/42)<1e-12);}
+  const edits=optimizationEdits(images,2.5,{specialCrops:crops});for(const image of images){assert.equal(edits[image.id].edges,undefined);assert.ok(Math.abs(edits[image.id].fraction-3/70)<1e-12);}
  }
 });
 test('valid image IDs that match object property names retain their own crop or uniform fallback',()=>{
@@ -38,19 +38,39 @@ test('each stored crop is independently validated, including disabled records',(
  assert.deepEqual(normalized.specialCrops,{a:{enabled:true,topPercent:12.5,sidePixels:0},b:{enabled:false,topPercent:0,sidePixels:7}});
  for(const crops of [null,[],{a:null},{a:{enabled:'yes'}},{a:{topPercent:100}},{a:{sidePixels:1.5}},{'../bad':{enabled:true}},Object.fromEntries(Array.from({length:101},(_,i)=>['id'+i,{}]))])assert.throws(()=>optimizationSettings({specialCrops:crops}),/裁剪|设置|图片/);
 });
-test('all selected images must match the canvas exactly, and impossible individual crops never modify sources',()=>{
- const pair=[{id:'a',width:1600,height:1000},{id:'b',width:1100,height:1000}],options={specialCrops:{a:{enabled:true,topPercent:0,sidePixels:50},b:{enabled:true,topPercent:0,sidePixels:50}}};
+test('all selected images fit up to the ratio ceiling, and impossible individual crops never modify sources',()=>{
+ const pair=[{id:'a',width:1500,height:1000},{id:'b',width:1100,height:1000}],options={specialCrops:{a:{enabled:true,topPercent:0,sidePixels:50},b:{enabled:true,topPercent:0,sidePixels:50}}};
  assert.deepEqual(optimizationEdits(pair,2.5,options),{a:{edges:{left:50,right:50,top:0,bottom:0},links:{horizontal:true,vertical:false}},b:{edges:{left:50,right:50,top:0,bottom:0},links:{horizontal:true,vertical:false}}});
- assert.throws(()=>optimizationEdits(pair,2.4,options),/无法匹配画布/);
+ assert.throws(()=>optimizationEdits(pair,2.3,options),/占满比例上限/);
  for(const cuts of [{...specialCrops,a:{enabled:true,topPercent:100,sidePixels:0}},{...specialCrops,a:{enabled:true,topPercent:0,sidePixels:1536}},{a:{enabled:true,topPercent:90,sidePixels:0},d:specialCrops.d}]){
   const before=structuredClone(images);assert.throws(()=>optimizationEdits(images,2.5,{specialCrops:cuts}));assert.deepEqual(images,before);
  }
 });
 
-test('narrow ordinary images crop vertically while the selected special crop remains exact',()=>{
+test('narrow ordinary images retain every pixel while the selected special crop remains exact',()=>{
  const sources=[{id:'a',width:60,height:100},{id:'b',width:60,height:100},{id:'c',width:100,height:100}],options={specialCrops:{c:{enabled:true,topPercent:20,sidePixels:10}}};
  const before=structuredClone(sources),edits=optimizationEdits(sources,2.5,options);
  assert.deepEqual(edits.c,{edges:{left:10,right:10,top:20,bottom:0},links:{horizontal:true,vertical:false}});
- for(const id of ['a','b']){const geometry=imageGeometry(sources.find(i=>i.id===id),edits[id]);assert.ok(Math.abs(geometry.top-10)<1e-9);assert.ok(Math.abs(geometry.height-80)<1e-9);assert.equal(geometry.width,60);}
+ for(const id of ['a','b']){const geometry=imageGeometry(sources.find(i=>i.id===id),edits[id]);assert.equal(geometry.top,0);assert.equal(geometry.height,100);assert.equal(geometry.width,60);}
  assert.deepEqual(sources,before);
+});
+
+test('three/four-view defaults adapt to import count until the user explicitly chooses images',()=>{
+ const three=images.slice(0,3);
+ for(const saved of [undefined,{topPercent:15,sidePixels:100,imageNumber:3}]){
+  assert.deepEqual(Object.keys(optimizationImageCrops(saved,three)),['b']);
+  assert.deepEqual(Object.keys(optimizationImageCrops(saved,images)),['c']);
+ }
+ assert.deepEqual(Object.keys(optimizationImageCrops({specialCrops:{c:{enabled:true,topPercent:15,sidePixels:100}}},three)),['c']);
+});
+test('under and at the 2.4 ceiling only the selected view is cut; above it ordinary views share the excess',()=>{
+ const options={specialCrops:{b:{topPercent:20,sidePixels:100}}};
+ for(const width of [600,700,750]){
+  const row=[{id:'a',width,height:1000},{id:'b',width:1000,height:1000},{id:'c',width,height:1000}];
+  const edits=optimizationEdits(row,2.4,options),a=imageGeometry(row[0],edits.a);
+  assert.deepEqual(imageGeometry(row[1],edits.b),{left:100,top:200,width:800,height:800});
+  assert.equal(a.height,1000);assert.equal(a.top,0);
+  assert.ok(Math.abs(a.width-Math.min(width,700))<1e-9);
+  assert.deepEqual(edits.a,edits.c);
+ }
 });

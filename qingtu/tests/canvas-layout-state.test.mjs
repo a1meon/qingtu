@@ -40,7 +40,7 @@ test('malformed stored layout state is rejected before it can replace a committe
  assert.doesNotThrow(()=>validateLayoutStates(p));
 });
 test('canvas presets use exact approved ratios at maximum legal integer resolution',()=>{
- assert.deepEqual(CANVAS_PRESETS.map(p=>[p.label,p.width,p.height]),[['2.5:1',5995,2398],['21:9',5999,2571],['16:9',5984,3366],['4:3',5996,4497],['1:1',5999,5999]]);
+ assert.deepEqual(CANVAS_PRESETS.map(p=>[p.label,p.width,p.height]),[['2.4:1',5988,2495],['21:9',5999,2571],['16:9',5984,3366],['4:3',5996,4497],['1:1',5999,5999]]);
  for(const preset of CANVAS_PRESETS){validateCanvas(preset.width,preset.height);assert.equal(canvasPresetValue(presetCanvas(preset.value)),preset.value);}
- assert.equal(canvasPresetValue({width:600,height:240}),'5:2');assert.equal(canvasPresetValue({width:600,height:400}),'custom');assert.throws(()=>presetCanvas('invalid'),/预设/);
+ assert.equal(canvasPresetValue({width:576,height:240}),'12:5');assert.equal(canvasPresetValue({width:600,height:400}),'custom');assert.throws(()=>presetCanvas('invalid'),/预设/);
 });

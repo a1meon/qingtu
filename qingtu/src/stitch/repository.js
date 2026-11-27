@@ -1,58 +1,77 @@
-import {api,desktop,readFile} from '../api.js';
+import {api,desktop,readFile,staticBrowser} from '../api.js';
+import {defaultCanvasName,nameOrDefault} from '../../engine/output-name.mjs';
 import {canvasThumbnail} from './thumbnail.js';
 import {rotatePreview} from './rotate-preview.js';
-import {DEFAULT_CANVAS} from '../../engine/canvas-limits.mjs';
+import {PreviewCache} from '../../engine/preview-cache.mjs';
+import {restoreSingleImportFrame} from '../../engine/canvas-import.mjs';
+import {DEFAULT_CANVAS,canvasRatioLimit} from '../../engine/canvas-limits.mjs';
 import {migrateFixedCanvas} from '../../engine/canvas-migrate.mjs';
 import {enableHeightCanvas} from '../../engine/canvas-height.mjs';
 import {optimizationSettings} from '../../engine/optimization-settings.mjs';
 import {validateImportSizes} from '../../engine/import-sizes.mjs';
+import {normalizeImageColor,validateColorReference} from '../../engine/image-color.mjs';
+import {profileColorReference} from './color-preview.js';
+import {imageMirrored} from '../../engine/image-source.mjs';
 
-let database;
-const request=req=>new Promise((resolve,reject)=>{req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error);});
-const finished=tx=>new Promise((resolve,reject)=>{tx.oncomplete=resolve;tx.onabort=tx.onerror=()=>reject(tx.error||new Error('本地存储失败'));});
-async function db(){
- if(!database)database=new Promise((resolve,reject)=>{
-  const open=indexedDB.open('qingtu-stitch',1);
-  open.onupgradeneeded=()=>{open.result.createObjectStore('projects',{keyPath:'id'});open.result.createObjectStore('assets',{keyPath:'id'});};
-  open.onsuccess=()=>resolve(open.result);open.onerror=()=>reject(open.error);
- });return database;
-}
+import {db,request,readAssetRecords,commitProject,deleteProjects} from './database.js';
+
+// Keep the active editor's originals available if a different tab deletes its manifest.
+let originals=new Map();
+const sourcePreviews=new PreviewCache();
 const storageError=error=>new Error(error?.name==='QuotaExceededError'?'本地空间不足，项目尚未保存。请释放空间后重试':`项目保存失败：${error?.message||'本地存储不可用'}`);
-function clean(project){validateImportSizes(project);return {...project,optimization:optimizationSettings(project.optimization),images:project.images.map(({preview,...image})=>image),updatedAt:Date.now()};}
+function clean(project){validateImportSizes(project);validateColorReference(project.colorReference);for(const image of project.images)normalizeImageColor(image.color);return {...project,optimization:optimizationSettings(project.optimization),images:project.images.map(({preview,previewBlob,...image})=>image),updatedAt:Date.now()};}
 export const repository={
+ rememberImports(items){for(const image of items)if(image.preview)sourcePreviews.set(image.assetId,image.preview,2*image.preview.length);},
+ setOriginals(files=new Map()){originals=files;},
  async list(){
   if(desktop)return api.stitchList();
   const tx=(await db()).transaction('projects'),all=await request(tx.objectStore('projects').getAll());
-  return all.map(p=>({id:p.id,name:p.name,updatedAt:p.updatedAt,count:p.images.length,thumbnail:p.thumbnail})).sort((a,b)=>b.updatedAt-a.updatedAt);
+  return all.map(p=>({id:p.id,name:nameOrDefault(p.name,defaultCanvasName(p)),revision:p.revision??0,updatedAt:p.updatedAt,count:p.images.length,thumbnail:p.thumbnail})).sort((a,b)=>b.updatedAt-a.updatedAt);
  },
  async load(id){
   if(desktop)return api.stitchLoad(id);
   const tx=(await db()).transaction('projects'),project=await request(tx.objectStore('projects').get(id));
   if(!project)throw new Error('项目不存在');return project;
  },
- async save(project){
+ async save(project,expectedRevision=null){
   const value=clean(project);
   try{
    value.thumbnail=await canvasThumbnail(project);
    if(desktop)return await api.stitchSave(value);
-   const tx=(await db()).transaction(['projects','assets'],'readwrite',{durability:'strict'}),done=finished(tx);
-   tx.objectStore('projects').put(value);
-   await done;return {saved:true,updatedAt:value.updatedAt,thumbnail:value.thumbnail};
-  }catch(error){throw storageError(error);}
+   const previews=new Map(project.images.filter(image=>image.previewBlob).map(image=>[image.assetId,image.previewBlob]));
+   try{return await commitProject(value,expectedRevision,originals,previews);}
+   catch(error){if(error.name!=='QuotaExceededError'||!previews.size)throw error;return await commitProject(value,expectedRevision,originals);}
+  }catch(error){if(error.code==='PROJECT_CONFLICT')throw error;throw storageError(error);}
  },
- async import(file){
+ async import(file,retained=originals){
   if(file.size>100*1024*1024)throw new Error('单张图片须小于 100 MB');
   const image=await api.stitchImport(await readFile(file));
   if(!desktop){
-   try{const tx=(await db()).transaction('assets','readwrite',{durability:'strict'}),done=finished(tx);tx.objectStore('assets').put({id:image.assetId,blob:file});await done;}
-   catch(error){throw storageError(error);}
+   retained.set(image.assetId,file);
    navigator.storage?.persist?.().catch(()=>{});
   }return image;
  },
- async prepare(project,{previews=true}={}){
-  project=enableHeightCanvas(migrateFixedCanvas(project));
-  if(!desktop){
-   const missing=await api.stitchMissing(project.images.map(i=>i.assetId));
+ async importReference(file){
+  if(file.size>100*1024*1024)throw new Error('单张图片须小于 100 MB');
+  return profileColorReference(await api.stitchReference(await readFile(file)));
+ },
+ async prepare(project,{previews=true,retain}={}){
+  canvasRatioLimit(project.sourceCanvas);
+  validateColorReference(project.colorReference);
+  for(const image of project.images)normalizeImageColor(image.color);
+  const defaultName=defaultCanvasName(project);
+  project=enableHeightCanvas(migrateFixedCanvas({...project,defaultName,name:nameOrDefault(project.name,defaultName)}));
+  project=restoreSingleImportFrame(project);
+  const ids=[...new Set(project.images.map(i=>i.assetId))];
+  if(!ids.length)return project;
+  const records=!desktop&&(retain||staticBrowser&&previews)?await readAssetRecords(ids):null;
+  if(retain&&!desktop)for(const id of ids){
+   const file=originals.get(id)||records.get(id)?.blob;
+   if(!file)throw new Error('原图副本缺失，项目无法恢复');
+   retain.set(id,file);
+  }
+  if(!desktop&&!staticBrowser){
+   const missing=await api.stitchMissing(ids);
    for(const id of missing){
     const tx=(await db()).transaction('assets'),asset=await request(tx.objectStore('assets').get(id));
     if(!asset?.blob)throw new Error('原图副本缺失，项目无法恢复');
@@ -60,17 +79,40 @@ export const repository={
    }
   }
   if(!previews)return project;
-  const ids=[...new Set(project.images.map(i=>i.assetId))],urls=await api.stitchPreviews(ids),byId=new Map(ids.map((id,n)=>[id,urls[n]]));
-  const rotatedPreviews=new Map();
-  return {...project,images:await Promise.all(project.images.map(async image=>{const key=`${image.assetId}:${image.rotation||0}`;if(!rotatedPreviews.has(key))rotatedPreviews.set(key,rotatePreview(byId.get(image.assetId),image.rotation||0));return {...image,preview:await rotatedPreviews.get(key)};}))};
+  const byId=new Map(),missing=[],disk=[];
+  for(const id of ids){
+   const url=sourcePreviews.get(id);
+   if(url)byId.set(id,url);
+   else if(staticBrowser&&records.get(id)?.sourcePreview)disk.push(id);
+   else missing.push(id);
+  }
+  if(disk.length){
+   const {dataUrl}=await import('../browser-engine.js');
+   await Promise.all(disk.map(async id=>{
+    const url=await dataUrl(records.get(id).sourcePreview);
+    byId.set(id,url);sourcePreviews.set(id,url,2*url.length);
+   }));
+  }
+  if(desktop&&byId.size&&(await api.stitchMissing([...byId.keys()])).length)throw new Error('原图副本缺失，项目无法恢复');
+  if(missing.length){
+   const urls=await api.stitchPreviews(missing);
+   missing.forEach((id,n)=>{byId.set(id,urls[n]);sourcePreviews.set(id,urls[n],2*urls[n].length);});
+  }
+  const rotating=new Map();
+  return {...project,images:await Promise.all(project.images.map(async image=>{
+   const original=byId.get(image.assetId),turn=image.rotation||0,mirrored=imageMirrored(image);
+   if(!turn&&!mirrored)return {...image,preview:original};
+   const key=`${image.assetId}:${turn}:${mirrored}`,cached=sourcePreviews.get(key);
+   if(cached)return {...image,preview:cached};
+   if(!rotating.has(key))rotating.set(key,rotatePreview(original,turn,mirrored).then(url=>{
+    sourcePreviews.set(key,url,2*url.length);return url;
+   }));
+   return {...image,preview:await rotating.get(key)};
+  }))};
  },
- async remove(id){
-  if(desktop)return api.stitchDelete(id);
-  const tx=(await db()).transaction(['projects','assets'],'readwrite',{durability:'strict'}),done=finished(tx);
-  tx.objectStore('projects').delete(id);
-  const all=await request(tx.objectStore('projects').getAll()),used=new Set(all.flatMap(p=>p.images.map(i=>i.assetId)));
-  const assets=await request(tx.objectStore('assets').getAllKeys());for(const asset of assets)if(!used.has(asset))tx.objectStore('assets').delete(asset);
-  await done;return true;
+ async remove(selection,retained=[]){
+  if(desktop){for(const {id} of selection)await api.stitchDelete(id,retained);}
+  else await deleteProjects(selection);
  }
 };
 

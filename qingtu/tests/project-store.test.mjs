@@ -65,7 +65,7 @@ test('atomic project backups restore the complete percentage-crop generation aft
  const p={...project(image),images:[image,{...image,id:'second-image'},{...image,id:'third-image'}]};
  const optimized=optimizeHorizontal(p);await store.save(optimized);await store.save({...optimized,name:'新名称'});
  await fs.writeFile(store.file(p.id),'interrupted');await fs.writeFile(store.file(p.id,'.partial.tmp'),'{');
- const restored=await new ProjectStore(root).load(p.id);assert.equal(restored.recovered,true);assert.deepEqual(restored.edits,optimized.edits);assert.deepEqual(restored.edits['third-image'].edges,{left:100,right:100,top:90,bottom:0});assert.deepEqual(restored.export,optimized.export);assert.deepEqual(restored.images,p.images);assert.ok((await store.readAsset(image.assetId)).equals(source));
+ const restored=await new ProjectStore(root).load(p.id);assert.equal(restored.recovered,true);assert.deepEqual(restored.edits,optimized.edits);assert.deepEqual(restored.edits['second-image'].edges,{left:100,right:100,top:90,bottom:0});assert.deepEqual(restored.export,optimized.export);assert.deepEqual(restored.images,p.images);assert.ok((await store.readAsset(image.assetId)).equals(source));
 });
 
 test('optimization parameters remain independent per project and survive interrupted saves',async t=>{
@@ -125,4 +125,51 @@ test('stitch editor previews stay bounded, orient sources correctly and never up
   const source=await sharp({create:{width,height,channels:3,background:'#7799aa'}}).jpeg().withMetadata({orientation}).toBuffer(),image=await store.import(source,'oriented.jpg'),meta=await sharp(Buffer.from(image.preview.split(',')[1],'base64')).metadata();
   assert.deepEqual([meta.width,meta.height],want);assert.ok((await store.readAsset(image.assetId)).equals(source));
  }
+});
+
+test('a valid backup remains discoverable when the primary is invalid, mismatched or absent',async t=>{
+ const {store}=await setup(t),image=await store.import(await fixture(),'source.png');
+ const value=project(image);await store.save(value);await store.save({...value,name:'later'});
+ for(const invalid of [{...value,images:null},{...value,id:'other-project'},null]){
+  if(invalid)await fs.writeFile(store.file(value.id),JSON.stringify(invalid));else await fs.unlink(store.file(value.id));
+  const recovered=await store.load(value.id);
+  assert.equal(recovered.id,value.id);assert.equal(recovered.recovered,true);assert.equal(recovered.name,value.name);
+  const list=await store.list();assert.equal(list.length,1);assert.equal(list[0].id,value.id);
+ }
+});
+
+test('an external color reference can be profiled without writing a canvas asset', async t => {
+ const {root,store}=await setup(t);
+ const source=await sharp({create:{width:1920,height:1440,channels:4,background:'#7799aa80'}}).png().toBuffer();
+ const reference=await store.import(source,'reference.png',{reference:true});
+ assert.deepEqual([reference.name,reference.width,reference.height],['reference.png',1920,1440]);
+ const previewSize=async value=>{
+  assert.ok(value.startsWith('data:image/png;base64,'));
+  const {width,height}=await sharp(Buffer.from(value.split(',')[1],'base64')).metadata();
+  return [width,height];
+ };
+ assert.deepEqual(await previewSize(reference.preview),[384,288]);
+ assert.equal(reference.assetId,undefined);
+ await assert.rejects(fs.readdir(path.join(root,'assets')), {code:'ENOENT'});
+ const image=await store.import(source,'canvas.png');
+ assert.deepEqual(await previewSize(image.preview),[1600,1200]);delete image.preview;
+ const colorReference={name:reference.name,thumbnail:reference.preview,statistics:{mean:[.5,.03,-.1],deviation:[.02,.03,.01]}};
+ const p={...project(image),colorReference};
+ await store.save(p);
+ assert.deepEqual((await new ProjectStore(root).load(p.id)).colorReference,colorReference);
+ assert.throws(()=>store.save({...p,colorReference:{...colorReference,statistics:{mean:[],deviation:[]}}}),/参考图数据/);
+});
+
+test('source preview cache survives a fresh store, regenerates and does not stand in for a missing original',async t=>{
+ const {root,store}=await setup(t);
+ const image=await store.import(await fixture(),'cached.png'),path=store.previewFile(image.assetId);
+ const cached=await fs.readFile(path),before=(await fs.stat(path)).mtimeMs;
+ const reopened=new ProjectStore(root);
+ assert.deepEqual(await reopened.previews([image.assetId,image.assetId]),[image.preview,image.preview]);
+ assert.equal((await fs.stat(path)).mtimeMs,before);
+ await fs.writeFile(path,cached.subarray(0,28));
+ assert.equal(await reopened.preview(image.assetId),image.preview);
+ assert.deepEqual(await fs.readFile(path),cached);
+ await fs.rename(store.assetFile(image.assetId),store.assetFile(image.assetId)+'.temporarily-moved');
+ await assert.rejects(reopened.preview(image.assetId),{code:'ENOENT'});
 });

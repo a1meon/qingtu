@@ -1,4 +1,4 @@
-export const DEFAULT_OPTIMIZATION_SETTINGS=Object.freeze({topPercent:15,sidePixels:100,imageNumber:3});
+export const DEFAULT_OPTIMIZATION_SETTINGS=Object.freeze({topPercent:15,sidePixels:100,imageNumber:'auto'});
 
 function cropParameters(value){
  const topPercent=value?.topPercent??DEFAULT_OPTIMIZATION_SETTINGS.topPercent,sidePixels=value?.sidePixels??DEFAULT_OPTIMIZATION_SETTINGS.sidePixels;
@@ -10,8 +10,10 @@ function cropParameters(value){
 export function optimizationSettings(value){
  if(value!=null&&(typeof value!=='object'||Array.isArray(value)))throw new Error('优化裁剪设置无效');
  const {topPercent,sidePixels}=cropParameters(value);
- const imageNumber=value?.imageNumber===undefined?DEFAULT_OPTIMIZATION_SETTINGS.imageNumber:value.imageNumber;
- if(imageNumber!==null&&(!Number.isSafeInteger(imageNumber)||imageNumber<1||imageNumber>100))throw new Error('图片序号须为 1–100，或不选择');
+ // Older releases serialized the built-in third-image choice on every save.
+ const oldDefault=value?.imageNumber===3&&topPercent===15&&sidePixels===100&&!Object.hasOwn(value,'specialCrops');
+ const imageNumber=oldDefault||value?.imageNumber===undefined?'auto':value.imageNumber;
+ if(imageNumber!==null&&imageNumber!=='auto'&&(!Number.isSafeInteger(imageNumber)||imageNumber<1||imageNumber>100))throw new Error('图片序号须为 1–100，或不选择');
  const settings={topPercent,sidePixels,imageNumber};
  if(Object.hasOwn(value||{},'specialCrops')){
   const crops=value.specialCrops;
@@ -29,6 +31,7 @@ export function optimizationSettings(value){
 export function optimizationImageCrops(value,images=[]){
  const settings=optimizationSettings(value);
  if(settings.specialCrops!==undefined)return Object.fromEntries(images.filter(image=>Object.hasOwn(settings.specialCrops,image.id)).map(image=>[image.id,settings.specialCrops[image.id]]));
- const image=settings.imageNumber===null?undefined:images[settings.imageNumber-1];
+ const number=settings.imageNumber==='auto'?(images.length===3?2:3):settings.imageNumber;
+ const image=number===null?undefined:images[number-1];
  return image?{[image.id]:{enabled:true,topPercent:settings.topPercent,sidePixels:settings.sidePixels}}:{};
 }

@@ -1,5 +1,12 @@
 {
-  "provider": "gitee",
-  "owner": "a1meon_admin",
-  "repo": "halframe-releases"
+  "provider": "cnb",
+  "owner": "a1meon",
+  "repo": "qingtu",
+  "mirrors": [
+    {
+      "provider": "github",
+      "owner": "a1meon",
+      "repo": "qingtu"
+    }
+  ]
 }

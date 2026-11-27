@@ -30,6 +30,6 @@ export const CanvasRotationOverlay=forwardRef(function CanvasRotationOverlay({im
   return()=>{cancelAnimationFrame(frame.current);document.removeEventListener('pointermove',move);document.removeEventListener('pointerup',end);document.removeEventListener('pointercancel',end);document.removeEventListener('keydown',key,true);document.removeEventListener('keyup',key,true);};
  },[]);
  return createPortal(<div hidden={hidden} ref={stage} className="canvas-rotation-target" style={{left:origin.left+rect.x*scale,top:origin.top+rect.y*scale,width:rect.width*scale,height:rect.height*scale,transform:`rotate(${rect.angle||0}deg)`}}>
-  {Object.entries(corners).map(([corner,label])=><button key={corner} data-rotation-corner={corner} className="rotation-corner-handle" aria-label={`拖动旋转${label}`} title="拖动旋转 · 按住 Shift 吸附 45°" disabled={disabled} style={{left:corner.includes('w')?0:'100%',top:corner.includes('n')?0:'100%',cursor:rotationCursor(cornerAngles[corner]+(rect.angle||0))}} onPointerDown={start}/>)}
+  {Object.entries(corners).map(([corner,label])=><button key={corner} data-rotation-corner={corner} className="rotation-corner-handle" aria-label={`拖动旋转${label}`} title="拖动旋转 · 按住 Shift 每 15° 旋转" disabled={disabled} style={{left:corner.includes('w')?0:'100%',top:corner.includes('n')?0:'100%',cursor:rotationCursor(cornerAngles[corner]+(rect.angle||0))}} onPointerDown={start}/>)}
  </div>,document.body);
 });
