@@ -89,12 +89,25 @@ async function waitFor(win,expr){for(let n=0;n<100;n++){if(await win.webContents
   assert.equal(await win.webContents.executeJavaScript(`document.querySelector('.compare-image').src !== ${JSON.stringify(original)}`),true);
   await win.webContents.executeJavaScript("document.querySelector('[aria-label=\"对比原图与结果\"]').click()");
   assert.equal(await win.webContents.executeJavaScript("!!document.querySelector('.compare-slider')"),true);
-  const drag=await win.webContents.executeJavaScript(`new Promise(resolve=>{
-   const preview=document.querySelector('.comparator'),rect=preview.getBoundingClientRect(),overlay=document.querySelector('.drag-comparison');
-   for(let n=0;n<48;n++)overlay.dispatchEvent(new PointerEvent('pointermove',{bubbles:true,buttons:1,clientX:rect.left+rect.width*.75}));
-   requestAnimationFrame(()=>requestAnimationFrame(()=>resolve((document.querySelector('.split-line').getBoundingClientRect().left-rect.left)/rect.width)));
+  const dividerBounds=await js("document.querySelector('.comparator').getBoundingClientRect().toJSON()");
+  const dividerY=dividerBounds.top+dividerBounds.height/2;
+  const dividerStart=dividerBounds.left+dividerBounds.width/2;
+  const dividerEnd=dividerBounds.left+dividerBounds.width*.75;
+  win.webContents.debugger.attach('1.3');
+  try{
+   await win.webContents.debugger.sendCommand('Emulation.setFocusEmulationEnabled',{enabled:true});
+   await win.webContents.debugger.sendCommand('Input.dispatchMouseEvent',{type:'mouseMoved',x:dividerStart,y:dividerY,buttons:0});
+   await win.webContents.debugger.sendCommand('Input.dispatchMouseEvent',{type:'mousePressed',x:dividerStart,y:dividerY,button:'left',buttons:1,clickCount:1});
+   await win.webContents.debugger.sendCommand('Input.dispatchMouseEvent',{type:'mouseMoved',x:dividerEnd,y:dividerY,buttons:1});
+   await win.webContents.debugger.sendCommand('Input.dispatchMouseEvent',{type:'mouseReleased',x:dividerEnd,y:dividerY,button:'left',buttons:0,clickCount:1});
+  }finally{win.webContents.debugger.detach();}
+  const drag=await js(`new Promise(resolve=>{
+   requestAnimationFrame(()=>requestAnimationFrame(()=>{
+    const rect=document.querySelector('.comparator').getBoundingClientRect();
+    resolve((document.querySelector('.split-line').getBoundingClientRect().left-rect.left)/rect.width);
+   }));
   })`);
-  assert.ok(Math.abs(drag-.75)<.002);
+  assert.ok(Math.abs(drag-.75)<.002,`Comparison divider stopped at ${drag}`);
   await win.webContents.executeJavaScript("document.querySelector('#format').click()");
   assert.deepEqual(await win.webContents.executeJavaScript("Array.from(document.querySelectorAll('[role=option]'),el=>el.textContent)"),['JPG','PNG']);
   await win.webContents.executeJavaScript("document.querySelectorAll('[role=option]')[0].click()");
