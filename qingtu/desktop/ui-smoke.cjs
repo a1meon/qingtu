@@ -1,12 +1,16 @@
 const {prepareSmokeWindow}=require('./smoke-window.cjs');
 const {app}=require('electron');
 const assert=require('node:assert/strict');
+const {mkdtempSync}=require('node:fs');
 const fs=require('node:fs/promises');
 const path=require('node:path');
 const os=require('node:os');
 const {start}=require(process.env.QINGTU_TEST_APP_ROOT?path.join(process.env.QINGTU_TEST_APP_ROOT,'desktop/main.cjs'):'./main.cjs');
 const pause=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 async function waitFor(win,expr){for(let n=0;n<160;n++){if(await win.webContents.executeJavaScript(expr)){await win.webContents.executeJavaScript('new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)))');if(await win.webContents.executeJavaScript(expr))return;}await pause(100);}throw new Error('Timed out: '+expr);}
+const profile=mkdtempSync(path.join(os.tmpdir(),'qingtu-ui-profile-'));
+app.setPath('userData',profile);
+app.setPath('sessionData',profile);
 (async()=>{
  const temp=await fs.mkdtemp(path.join(os.tmpdir(),'qingtu-ui-'));
  const projectRoot=await fs.mkdtemp(path.join(os.tmpdir(),'qingtu-ui-projects-'));
@@ -20,6 +24,8 @@ async function waitFor(win,expr){for(let n=0;n<160;n++){if(await win.webContents
   // A persistent CDP session also preserves focus emulation through reloads.
   function attachDebugger(){if(!win.webContents.debugger.isAttached())win.webContents.debugger.attach('1.3');}
   attachDebugger();await win.webContents.debugger.sendCommand('Emulation.setFocusEmulationEnabled',{enabled:true});
+  const lightScheme={name:'prefers-color-scheme',value:'light'};
+  await win.webContents.debugger.sendCommand('Emulation.setEmulatedMedia',{features:[lightScheme]});
   const js=async expr=>{try{return await win.webContents.executeJavaScript(expr);}catch(error){console.error('Renderer expression failed:',expr);throw error;}};
   async function capturePage(rect){
    for(let attempt=0;attempt<3;attempt++)try{return await win.webContents.capturePage(rect);}catch(error){
@@ -39,7 +45,12 @@ async function waitFor(win,expr){for(let n=0;n<160;n++){if(await win.webContents
   async function confirmDialog(){await waitFor(win,"!!document.querySelector('.stitch-dialog[open]')");await js("document.querySelector('.dialog-confirm').click()");await waitFor(win,"!document.querySelector('.stitch-dialog')");}
 
   await waitFor(win,"!!document.querySelector('#width')");
-  assert.deepEqual(await js("[...document.querySelectorAll('.tool-nav button')].map(e=>e.getAttribute('aria-label'))"),['图像编辑','压缩调整','摸鱼玩具']);
+  assert.deepEqual(await js("[...document.querySelectorAll('.tool-nav button')].map(e=>e.getAttribute('aria-label'))"),['图像编辑','压缩调整','摸鱼玩具','外观：跟随系统']);
+  for(const [label,theme] of [['浅色','light'],['深色','dark'],['跟随系统',undefined]]){
+   await js("document.querySelector('.tool-nav .theme-button').click()");
+   await waitFor(win,`document.querySelector('.tool-nav .theme-button').getAttribute('aria-label')===${JSON.stringify(`外观：${label}`)}`);
+   assert.equal(await js('document.documentElement.dataset.theme'),theme);
+  }
   assert.equal(await js("document.querySelector('.tool-nav [aria-current=page]').getAttribute('aria-label')"),'图像编辑','launch opens the first menu');
   await js("document.querySelector('[aria-label=\"压缩调整\"]').click()");
   assert.equal(await js("document.querySelector('#width').value"),'3840','empty dimensions use 4K');
@@ -50,10 +61,12 @@ async function waitFor(win,expr){for(let n=0;n<160;n++){if(await win.webContents
   assert.deepEqual(await js("Array.from(document.querySelectorAll('[role=option]'),e=>e.textContent)"),['JPG','PNG']);
   await js("document.querySelector('[role=listbox]').dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true}))");
   assert.equal(await js("document.querySelectorAll('.module-content:not([hidden]) .film-select').length"),0);
-  const measure="(()=>{const root=document.querySelector('.module-content:not([hidden])');return Object.fromEntries(['preview-workspace','file-toolbar','canvas-area','queue-region','filmstrip','inspector-heading','target-control','format','folder-control','export-button'].map(name=>{const r=root.querySelector(name==='format'?'#format,#stitch-format':'.'+name).getBoundingClientRect();return [name,[r.x,r.y,r.width,r.height]];}));})()";
+  const measure="(()=>{const root=document.querySelector('.module-content:not([hidden])');return Object.fromEntries(['preview-workspace','file-toolbar','canvas-area','queue-region','filmstrip','inspector-heading','target-control','folder-control','export-button'].map(name=>{const r=root.querySelector('.'+name).getBoundingClientRect();return [name,[r.x,r.y,r.width,r.height]];}));})()";
+  const measureFormat=()=>js("(()=>{const root=document.querySelector('.module-content:not([hidden])');const {x,width,height}=root.querySelector('#format,#stitch-format').getBoundingClientRect();return [x,width,height];})()");
   await js("document.querySelector('.module-content:not([hidden]) .settings-scroll').scrollTop=0");
   await js("document.fonts.ready.then(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))))");
   const compressionBounds=await js(measure);
+  const compressionFormat=await measureFormat();
   const fieldSizes=`(()=>{
    const panel=document.querySelector('.module-content:not([hidden]) .inspector');
    const [amount,unit]=panel.querySelector('.target-control').children;
@@ -62,7 +75,7 @@ async function waitFor(win,expr){for(let n=0;n<160;n++){if(await win.webContents
     getComputedStyle(amount).fontSize===getComputedStyle(dimension).fontSize];
   })()`;
   const sizes=await js(fieldSizes);
-  assert.deepEqual(sizes,[compressionBounds.format[3],compressionBounds.format[3],compressionBounds.format[3],true,true]);
+  assert.deepEqual(sizes,[compressionFormat[2],compressionFormat[2],compressionFormat[2],true,true]);
   async function checkUnitMenu(){
    await js("document.querySelector('.module-content:not([hidden]) .unit-dropdown').click()");
    await waitFor(win,"!!document.querySelector('[role=listbox]')");
@@ -95,6 +108,7 @@ async function waitFor(win,expr){for(let n=0;n<160;n++){if(await win.webContents
   await js("document.querySelector('.stitch-create-empty .blank-canvas-button').click()");
   await waitFor(win,"document.querySelector('.stitch-stage').getBoundingClientRect().width>0 && !document.querySelector('[aria-label=\"添加画布图片\"]').disabled");
   assert.deepEqual(await js(measure),compressionBounds,'shared controls and stage regions retain identical positions across modules');
+  assert.deepEqual(await measureFormat(),compressionFormat,'format fields align horizontally across modules with different settings above them');
   assert.deepEqual(await js(fieldSizes),sizes,'the editor uses the same field sizes as compression');
   await checkUnitMenu();
   assert.equal(await js("document.querySelectorAll('#stitch-export-inspector .inspector-heading button').length"),1);
@@ -102,8 +116,7 @@ async function waitFor(win,expr){for(let n=0;n<160;n++){if(await win.webContents
   assert.equal(await js("document.querySelector('.file-toolbar .canvas-actions').getAttribute('aria-label')"),'画布工具');
   assert.equal(await js("getComputedStyle(document.querySelector('.canvas-actions')).backgroundColor"),'rgba(0, 0, 0, 0)');
   assert.deepEqual(await js("Array.from(document.querySelectorAll('.canvas-actions button'),e=>e.getAttribute('aria-label'))"),['重置画布','四视优化','设置优化裁剪'],'reset and one optimization group, with its configurable crop dropdown');
-  assert.equal(await js("getComputedStyle(document.querySelector('.canvas-reset')).backgroundColor"),'rgb(255, 255, 255)');
-  assert.ok((await js("getComputedStyle(document.querySelector('.canvas-optimize')).backgroundImage")).includes('linear-gradient'),'optimization has its own designed background');
+  assert.equal(await js("(()=>{const reset=getComputedStyle(document.querySelector('.canvas-reset')),optimize=getComputedStyle(document.querySelector('.canvas-optimize'));return reset.backgroundColor===optimize.backgroundColor&&reset.backgroundColor!=='rgba(0, 0, 0, 0)'&&optimize.backgroundImage==='none';})()"),true,'canvas tools use the same solid fill');
   await waitFor(win,"document.querySelectorAll('.canvas-card').length===1");assert.equal(await js("document.querySelectorAll('.canvas-card input[type=checkbox]').length"),0,'an empty canvas has no export checkbox');
   await js("document.querySelector('#stitch-format').click()");await waitFor(win,"document.querySelectorAll('[role=option]').length===2");
   assert.deepEqual(await js("Array.from(document.querySelectorAll('[role=option]'),e=>e.textContent)"),['JPG','PNG']);
@@ -116,7 +129,7 @@ async function waitFor(win,expr){for(let n=0;n<160;n++){if(await win.webContents
   const metricStyles=()=>js(`Array.from(document.querySelectorAll('.module-content:not([hidden]) .preview-info :is(.preview-dimensions,.size-comparison)'),node=>{
    const css=getComputedStyle(node);return [node.className,css.fontSize,css.color,css.lineHeight];
   })`);
-  const editorMetrics=await metricStyles();assert.deepEqual(editorMetrics.map(([name,size])=>[name,size]),[['preview-dimensions','10.5px'],['size-comparison','10.5px']]);
+  const editorMetrics=await metricStyles();assert.deepEqual(editorMetrics.map(([name,size])=>[name,size]),[['preview-dimensions','11.5px'],['size-comparison','11.5px']]);
   const savedProject=(await store.list())[0],restored=await store.load(savedProject.id);
   assert.equal(await js("document.querySelectorAll('.stitch-stage [aria-label=\"预览方式\"],.canvas-actions [aria-label=\"添加画布图片\"],.canvas-actions [aria-label=\"移除选中图片\"]').length"),0,'removed view switch and canvas add/delete controls');
   assert.equal(await js("document.querySelector('.canvas-cards-region .queue-toolbar').textContent.trim().startsWith('图像')"),true);
@@ -199,14 +212,16 @@ async function waitFor(win,expr){for(let n=0;n<160;n++){if(await win.webContents
   await js("document.querySelector('[data-layout=horizontal]').click()");await waitFor(win,"document.querySelector('[data-layout=horizontal]').getAttribute('aria-pressed')==='true'");await editCanvas(1200,480);await waitFor(win,"!!document.querySelector('.stitch-info .size-comparison strong') && document.querySelector('.save-status').textContent==='已自动保存'");await js("document.querySelector('[data-layout=free]').click()");await waitFor(win,"document.querySelector('.save-status').textContent==='已自动保存' && !!document.querySelector('.stitch-info .size-comparison strong')");
   await js("document.querySelector('.stitch-layer').blur();document.querySelector('.stitch-layer').focus();new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)))");
   await waitFor(win,"document.querySelector('.stitch-layer.selected')===document.querySelector('.stitch-layer')");
-  const selection=await js("(()=>{const image=document.querySelector('.stitch-layer.selected').getBoundingClientRect(),box=document.querySelector('.stitch-selection').getBoundingClientRect();return {image:[image.x,image.y,image.width,image.height],box:[box.x,box.y,box.width,box.height],right:box.right,middle:box.y+box.height/2,viewport:innerWidth};})()");
+  const selection=await js("(()=>{const image=document.querySelector('.stitch-layer.selected').getBoundingClientRect(),frame=document.querySelector('.stitch-selection'),box=frame.getBoundingClientRect();return {image:[image.x,image.y,image.width,image.height],box:[box.x,box.y,box.width,box.height],right:box.right,middle:box.y+box.height/2,viewport:innerWidth,color:getComputedStyle(frame).borderRightColor};})()");
   assert.deepEqual(selection.box,selection.image,'selection bounds must hug the actual image');
   const borderShot=(await capturePage()).toPNG(),borderSharp=(await import('sharp')).default,shotMeta=await borderSharp(borderShot).metadata(),shotScale=shotMeta.width/selection.viewport;
   await fs.writeFile(path.join(__dirname,'../artifacts/native-selection-edge.png'),borderShot);
   // Fractional Windows display scaling and colour profiles can shift capture
   // pixels; inspect the narrow edge band rather than demand one sRGB value.
   const borderPixels=await borderSharp(borderShot).extract({left:Math.floor(selection.right*shotScale)-2,top:Math.floor(selection.middle*shotScale),width:5,height:1}).removeAlpha().raw().toBuffer();
-  let blueEdge=false;for(let i=0;i<borderPixels.length;i+=3)if(borderPixels[i]<45&&borderPixels[i+1]>145&&borderPixels[i+2]>230)blueEdge=true;
+  const edgeColor=selection.color.match(/\d+/g).slice(0,3).map(Number);
+  assert.ok(edgeColor[2]>edgeColor[1]&&edgeColor[1]>edgeColor[0],'selection uses a blue accent');
+  let blueEdge=false;for(let i=0;i<borderPixels.length;i+=3)if(edgeColor.every((value,channel)=>Math.abs(borderPixels[i+channel]-value)<32))blueEdge=true;
   assert.ok(blueEdge,'right selection edge remains blue above the adjacent image');
   const dragPoints=await js("(()=>{const first=document.querySelectorAll('.stitch-layer')[0].getBoundingClientRect(),second=document.querySelectorAll('.stitch-layer')[1].getBoundingClientRect(),area=document.querySelector('.stitch-canvas-area').getBoundingClientRect();const start={x:(Math.max(area.left,second.left)+Math.min(area.right,second.right))/2,y:(Math.max(area.top,second.top)+Math.min(area.bottom,second.bottom))/2};return {start,end:{x:first.x+start.x-second.x+3,y:first.y+start.y-second.y+3}};})()");
   const beforeDrag=stitchCalls;
@@ -262,13 +277,19 @@ async function waitFor(win,expr){for(let n=0;n<160;n++){if(await win.webContents
   saveDelay=900;const beforeOptimize=stitchCalls,point=await js("(()=>{const r=document.querySelector('[aria-label=\"四视优化\"]').getBoundingClientRect();return {x:r.x+r.width/2,y:r.y+r.height/2};})()");
   attachDebugger();await win.webContents.debugger.sendCommand('Input.dispatchMouseEvent',{type:'mousePressed',...point,button:'left',clickCount:1});await win.webContents.debugger.sendCommand('Input.dispatchMouseEvent',{type:'mouseReleased',...point,button:'left',clickCount:1});
   await waitFor(win,"document.querySelector('.stitch-dialog h2')?.textContent==='保存画布'");assert.equal(await js("document.querySelector('[role=progressbar]').hasAttribute('aria-valuenow')"),false,'progress stays indeterminate until the real save and layout preview complete');assert.equal(await js("document.querySelector('.optimization-dismiss').disabled"),true,'in-flight close stays disabled');assert.equal(await js("document.querySelectorAll('.optimization-steps .complete').length"),1,'only crop calculation has completed');
-  assert.deepEqual(await js("[getComputedStyle(document.querySelector('.optimization-dismiss')).backgroundColor,getComputedStyle(document.querySelector('.optimization-dismiss')).color]"),['rgb(241, 245, 248)','rgb(160, 180, 195)'],'working close has an explicit neutral disabled palette');
+  const [dismissColors,neutralColors]=await js(`(()=>{
+   const style=getComputedStyle(document.querySelector('.optimization-dismiss'));
+   const probe=document.createElement('span');
+   probe.style.backgroundColor='var(--fill)';probe.style.color='var(--faint)';document.body.append(probe);
+   const neutral=getComputedStyle(probe),expected=[neutral.backgroundColor,neutral.color];probe.remove();
+   return [[style.backgroundColor,style.color],expected];
+  })()`);
+  assert.deepEqual(dismissColors,neutralColors,'working close uses the theme’s neutral disabled palette');
   await fs.writeFile(path.join(__dirname,'../artifacts/native-optimize-progress.png'),(await capturePage()).toPNG());
   const progressCard=await js("(()=>{const r=document.querySelector('.optimization-dialog').getBoundingClientRect();return {x:Math.floor(r.x)-8,y:Math.floor(r.y)-8,width:Math.ceil(r.width)+16,height:Math.ceil(r.height)+16};})()");await fs.writeFile(path.join(__dirname,'../artifacts/native-optimize-progress-card.png'),(await capturePage(progressCard)).toPNG());
   await waitFor(win,"!document.querySelector('.stitch-dialog') && !document.querySelector('.project-name').disabled");assert.equal(stitchCalls,beforeOptimize,'saved layout automatically dismisses before full encoding starts');saveDelay=0;
   await waitFor(win,"document.querySelector('.stitch-info').textContent.includes('1152 × 480') && !!document.querySelector('.stitch-info .size-comparison strong') && document.querySelector('.save-status').textContent==='已自动保存'");
   const optimized=await store.load(savedProject.id);assert.equal(optimized.canvas.width*5,optimized.canvas.height*12);assert.ok(optimized.images.every(image=>optimized.edits[image.id].fraction===optimized.edits[optimized.images[0].id].fraction));assert.equal(stitchCalls,beforeOptimize+1,'one click produces one full-resolution preview');
-  assert.ok((await js("getComputedStyle(document.querySelector('.canvas-optimize')).backgroundImage")).includes('linear-gradient'));
   const beforeAgain=stitchCalls;assert.equal(await js("document.querySelector('[aria-label=\"四视优化\"]').disabled"),true,'already optimized crop disables its button');await js("document.querySelector('[aria-label=\"四视优化\"]').click()");await pause(650);assert.equal(await js("!!document.querySelector('.stitch-dialog')"),false,'a disabled click never opens progress');assert.equal(stitchCalls,beforeAgain,'disabled repeated optimization never encodes');
   await editCanvas(1201,480);
   await waitFor(win,"document.querySelector('.stitch-stage').parentElement.querySelector('[role=alert]')?.textContent.includes('比例超过 2.5')");assert.equal(await js("document.querySelector('.stitch-stage').parentElement.querySelector('.export-button').disabled"),true,'canvas ratio validation replaces legacy multiple-of-5 resolution rules');
@@ -336,10 +357,10 @@ async function waitFor(win,expr){for(let n=0;n<160;n++){if(await win.webContents
   await pause(400);
   assert.equal(await js("document.querySelector('#format').textContent"),'PNG');
   attachDebugger();
-  await win.webContents.debugger.sendCommand('Emulation.setEmulatedMedia',{features:[{name:'prefers-reduced-motion',value:'reduce'}]});
+  await win.webContents.debugger.sendCommand('Emulation.setEmulatedMedia',{features:[lightScheme,{name:'prefers-reduced-motion',value:'reduce'}]});
   assert.equal(await js("getComputedStyle(document.querySelector('.workspace')).transitionDuration"),'0s','reduced motion removes sidebar animation');
   assert.equal(await js("getComputedStyle(document.querySelector('.film-item')).animationName"),'none');
-  await win.webContents.debugger.sendCommand('Emulation.setEmulatedMedia',{features:[]});
+  await win.webContents.debugger.sendCommand('Emulation.setEmulatedMedia',{features:[lightScheme]});
 
   await js("document.querySelector('.add-tile').click()");
   await waitFor(win,"!!document.querySelector('.module-content:not([hidden]) .size-comparison strong')");
@@ -399,7 +420,7 @@ async function waitFor(win,expr){for(let n=0;n<160;n++){if(await win.webContents
   assert.deepEqual((await store.load(opened[0].id)).images.map(image=>image.name),['alpine-lake.jpg','forest-cabin.jpg']);
   await fs.mkdir(path.join(__dirname,'../artifacts'),{recursive:true});
   await fs.writeFile(path.join(__dirname,'../artifacts/ui-smoke.json'),JSON.stringify({passed:true,twoIndependentToolButtons:true,optimizeRightmost:true,realOptimizationProgress:true,optimizationNeutralClose:true,optimizationErrorStagesChecked:true,optimizeUnneededDisabled:true,optimizeReadyDisabled:true,immediateCanvasReset:true,exportSelectionCheckboxes:true,defaultAllNonemptyExport:true,rightClickImageEditDelete:true,rightClickCanvasExportDelete:true,canvasDeleteConfirmation:true,clearAllConfirmationAndReload:true,internalThumbnailFileDropRejected:true,nativeCardDragKeepsProjectsSeparate:true,originalDimensionsAndAssetIdsRetained:true,toolbarToolsAtTopRight:true,formatMenusJpgPngOnly:true,gridSecond:true,decimalMbStatus:true,customCompressionIcon:true,untouched50pxPrefill:true,inlineToolsAboveImage:true,floatingControlsKeepImageBounds:true,fourEdgeCropAndAssociation:true,directDragReorder:true,editorOutsideCloses:true,changedCropFlushedBeforeOutsideClose:true,resetRestoresTrueImportOrder:true,resetPreservesSettings:true,alignedModules:true,whitePreviews:true,removedCanvasAddDelete:true,removedStitchViewSwitch:true,oneClickExactRatio:true,oneClickOneEncode:true,oneClickIdempotent:true,percentageEditorPreservesState:true,empty4K:true,defaultPngExport:true,hoverAndFocusLabels:true,hiddenControlsInert:true,sidebarRetainsOutput:true,sidebarDoesNotReencode:true,workingStitching:true,stitchOriginalCopy:true,stitchAutosave:true,canvasCards:true,canvasSwitchAndBatchExport:true,selectionFitsImage:true,rightSelectionEdgeVisible:true,doubleClickEditor:true,cropNumbersAndReset:true,noEncodingDuringCropEdgeDrag:true,explicitKeyboardReorderThreePresets:true,fourLayouts:true,fixedCanvasOverflowEditable:true,freeSnap:true,freeProportionalResize:true,noEncodingDuringDrag:true,noEncodingDuringResize:true,reducedMotion:true},null,2));
-  console.log('UI smoke passed: aligned modules, white previews, real four-view 2.4:1 crop, autosave, PNG export, native gestures');
+  console.log('UI smoke passed: appearance switching, aligned modules, white previews, real four-view 2.4:1 crop, autosave, PNG export, native gestures');
   win.webContents.debugger.detach();win.destroy();app.quit();
- }finally{await fs.rm(temp,{recursive:true,force:true});await fs.rm(projectRoot,{recursive:true,force:true});}
+ }finally{await fs.rm(temp,{recursive:true,force:true});await fs.rm(projectRoot,{recursive:true,force:true});await fs.rm(profile,{recursive:true,force:true}).catch(()=>{});}
 })().catch(error=>{console.error(error);app.exit(1);});
