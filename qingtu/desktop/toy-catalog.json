@@ -1,4 +1,5 @@
 [
-  {"id":"button","name":"弹跳按钮"},
-  {"id":"toggle","name":"灯泡开关"}
+  {"id":"squish","name":"压缩方块"},
+  {"id":"bubbles","name":"气泡纸"},
+  {"id":"shutter","name":"快门相机"}
 ]

@@ -8,10 +8,13 @@ const motionThreshold=7;
 
 export function useToyGesture(kind,native){
  const gesture=useRef(null),[dragging,setDragging]=useState(false);
- function finish(){
+ function finish(released=false){
   const current=gesture.current;
   if(!current)return;
   gesture.current=null;
+  // Any ending other than a clean release (blur, lost press) stops the toy's
+  // press too, so nothing stays squashed or keeps firing.
+  if(!released&&!current.moved)current.toy.cancelPress?.();
   try{if(current.target?.hasPointerCapture(current.id))current.target.releasePointerCapture(current.id);}catch{}
   if(current.moved){
    native.drag('end');
@@ -22,13 +25,14 @@ export function useToyGesture(kind,native){
   // Bubble phase: only mouse-ups the toy itself did not handle (released
   // outside it) end the press here.
   const release=event=>{if(gesture.current&&!(event.buttons&1))finish();};
-  const stop=native.onDragCancel?.(()=>finish());
-  window.addEventListener('blur',finish);
+  const abort=()=>finish();
+  const stop=native.onDragCancel?.(abort);
+  window.addEventListener('blur',abort);
   window.addEventListener('pointerup',release);
-  document.addEventListener('visibilitychange',finish);
+  document.addEventListener('visibilitychange',abort);
   return ()=>{
-   window.removeEventListener('blur',finish);window.removeEventListener('pointerup',release);
-   document.removeEventListener('visibilitychange',finish);stop?.();finish();
+   window.removeEventListener('blur',abort);window.removeEventListener('pointerup',release);
+   document.removeEventListener('visibilitychange',abort);stop?.();finish();
   };
  },[kind]);
 
@@ -42,11 +46,14 @@ export function useToyGesture(kind,native){
   event.stopPropagation();
   event.currentTarget.setPointerCapture(event.pointerId);
   gesture.current={toy,target:event.currentTarget,id:event.pointerId,x:event.screenX,y:event.screenY,moved:false};
+  // 轻图's own toys react on press (squash, pop, shutter) and on release.
+  toy.press?.(event.clientX,event.clientY);
  }
  function dragTo(current,event){
   if(!current.moved){
    if(Math.hypot(event.screenX-current.x,event.screenY-current.y)<motionThreshold)return;
    current.moved=true;
+   current.toy.cancelPress?.();
    setDragging(true);
    native.drag('start',current.x,current.y);
   }
@@ -70,12 +77,10 @@ export function useToyGesture(kind,native){
   if(current?.id!==event.pointerId)return;
   event.stopPropagation();
   if(current.moved)dragTo(current,event);
-  finish();
+  finish(true);
   if(current.moved)return;
-  const button=current.toy.shadowRoot?.querySelector('button');
-  button?.focus({preventScroll:true});
-  if(kind==='button')current.toy.impact?.(.2);
-  else if(kind==='toggle')button?.click();
+  current.toy.shadowRoot?.querySelector('button')?.focus({preventScroll:true});
+  current.toy.release?.(event.clientX,event.clientY);
  }
  function cancel(event){if(gesture.current?.id===event.pointerId)finish();}
  function lostCapture(event){if(!(event.buttons&1))cancel(event);}
