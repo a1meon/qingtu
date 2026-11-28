@@ -1,4 +1,4 @@
-import {lazy,Suspense,useEffect,useId,useState} from 'react';
+import {lazy,Suspense,useEffect,useId,useRef,useState} from 'react';
 import {createPortal} from 'react-dom';
 import {ArrowCounterClockwise, CaretRight, Plus, SpinnerGap} from '@phosphor-icons/react';
 import {colorControls} from '../../engine/image-color.mjs';
@@ -14,6 +14,8 @@ export function ColorInspector({images, selected, draft, onDraft, onCommit, onCa
   const [targetIds, setTargetIds] = useState(null);
   const [matchLuminance, setMatchLuminance] = useState(false);
   const [choosing, setChoosing] = useState(false);
+  const [cloneStrength, setCloneStrength] = useState(70);
+  const strengthDraft = useRef(null);
   const [referenceHover, setReferenceHover] = useState(null);
   const [tab,setTab]=useState('basic'),tabId=useId();
   useEffect(() => {
@@ -42,7 +44,32 @@ export function ColorInspector({images, selected, draft, onDraft, onCommit, onCa
   const match = color?.match;
   const activeMatch = matchTargets.includes(selected) ? match : undefined;
   const luminance = activeMatch?.luminance ?? matchLuminance;
+  // Targets that already carry a clone: strength and luminance edits apply to all of them.
+  const matched = images.filter(image => matchTargets.includes(image.id) && image.color?.match);
+  const strength = activeMatch?.strength ?? cloneStrength;
   const hasAdjustments = Object.values(color?.adjustments || {}).some(Boolean);
+
+  function updateMatched(change) {
+    if (!matched.length) return;
+    onChange(new Map(matched.map(image => {
+      const base = image.id === selected ? color : image.color;
+      return [image.id, {...base, match: {...base.match, ...change}}];
+    })));
+  }
+  function draftStrength(value) {
+    setCloneStrength(value);
+    if (!activeMatch) return;
+    strengthDraft.current = value;
+    onDraft(selected, {...color, match: {...match, strength: value}});
+  }
+  function commitStrength() {
+    const value = strengthDraft.current;
+    strengthDraft.current = null;
+    if (value === null) return;
+    if (matched.length > 1) updateMatched({strength: value});
+    else onCommit();
+  }
+  function cancelStrength() {strengthDraft.current = null;onCancel();}
 
   function syncColors() {
     onChange(new Map(images.filter(image => syncTargets.includes(image.id)).map(image =>
@@ -115,18 +142,17 @@ export function ColorInspector({images, selected, draft, onDraft, onCommit, onCa
           <input type="checkbox" role="switch" checked={luminance} disabled={disabled} onChange={event => {
             const checked = event.target.checked;
             setMatchLuminance(checked);
-            if (activeMatch) onChange(new Map([[selected, {...color, match: {...match, luminance: checked}}]]));
+            updateMatched({luminance: checked});
           }}/>
         </label>
+        <ColorSlider key={selected} label="克隆强度" min={0} max={100} value={strength} suffix="%" disabled={disabled}
+          onChange={draftStrength} onCommit={commitStrength} onCancel={cancelStrength}/>
         <button type="button" className="primary color-match-button" disabled={disabled || !matchTargets.length}
-          onClick={() => onMatch(matchTargets, {luminance, strength: activeMatch?.strength ?? 70})}>
+          onClick={() => onMatch(matchTargets, {luminance, strength})}>
           {matching&&<SpinnerGap className="spin" size={15} aria-hidden="true"/>}
-          {matching ? '正在克隆…' : '克隆色彩'}
+          {matching ? '正在克隆…' : matched.length ? '重新克隆' : '克隆色彩'}
         </button>
       </>}
-      {match&&<ColorSlider key={selected} label="克隆强度" min={0} max={100} value={match.strength} suffix="%" disabled={disabled}
-        onChange={strength => onDraft(selected, {...color, match: {...match, strength}})}
-        onCommit={onCommit} onCancel={onCancel}/>}
       {matchMessage&&<p className={'color-hint' + (matchMessage.error ? ' color-error' : '')} role={matchMessage.error ? 'alert' : 'status'}>{matchMessage.text}</p>}
     </section>
     <section className="control-section color-section" aria-label="基础调色">

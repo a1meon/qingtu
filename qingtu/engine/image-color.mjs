@@ -52,7 +52,9 @@ export function normalizeImageColor(color) {
       !boundedVector(match.gain, .4, 2.5) || !boundedVector(match.offset, -4, 4) ||
       !Number.isFinite(match.strength) || match.strength < 0 || match.strength > 100 ||
       (match.luminance !== undefined && typeof match.luminance !== 'boolean') ||
-      (match.whitePoint !== undefined && (!Number.isFinite(match.whitePoint) || match.whitePoint < .77 || match.whitePoint > 1)))) {
+      (match.whitePoint !== undefined && (!Number.isFinite(match.whitePoint) || match.whitePoint < .77 || match.whitePoint > 1)) ||
+      (match.bands !== undefined && !(Array.isArray(match.bands) && match.bands.length === 3 &&
+        match.bands.every(band => Array.isArray(band) && band.length === 2 && band.every(value => Number.isFinite(value) && Math.abs(value) <= .12)))))) {
     throw new Error('参考色匹配参数无效');
   }
   const active = Object.fromEntries(colorControls.filter(({key}) => adjustments[key]).map(({key}) => [key, adjustments[key]]));
@@ -62,6 +64,7 @@ export function normalizeImageColor(color) {
   if (match) normalized.match = {
     gain: [...match.gain], offset: [...match.offset], strength: match.strength, luminance: !!match.luminance,
     ...(match.whitePoint !== undefined ? {whitePoint: match.whitePoint} : {}),
+    ...(match.bands ? {bands: match.bands.map(band => [...band])} : {}),
   };
   return Object.keys(normalized).length ? normalized : undefined;
 }
@@ -117,6 +120,12 @@ function shiftLuminance(light, shift) {
   return shifted;
 }
 
+// Soft shadow / midtone / highlight weights that always sum to one.
+export function toneWeights(light) {
+  const shadow = 1 - smoothstep(.2, .5, light), highlight = smoothstep(.5, .8, light);
+  return [shadow, 1 - shadow - highlight, highlight];
+}
+
 function moments(sums, squares, weight) {
   const mean = sums.map(sum => sum / weight);
   const deviation = squares.map((sum, axis) => Math.sqrt(Math.max(0, sum / weight - mean[axis] ** 2)));
@@ -129,6 +138,7 @@ export function colorStatistics(pixels) {
   const sums = [0, 0, 0], squares = [0, 0, 0];
   const whiteSums = [0, 0, 0], whiteSquares = [0, 0, 0];
   let weight = 0, whites = 0;
+  const bandWeight = [0, 0, 0], bandSums = [[0, 0], [0, 0], [0, 0]];
   for (let index = 0; index < pixels.length; index += 4) {
     const alpha = pixels[index + 3] / 255;
     if (!alpha) continue;
@@ -145,9 +155,16 @@ export function colorStatistics(pixels) {
     }
     weight += alpha;
     whites += neutral;
+    const tones = toneWeights(y);
+    for (let band = 0; band < 3; band++) {
+      const w = alpha * tones[band];
+      bandWeight[band] += w; bandSums[band][0] += w * axes[1]; bandSums[band][1] += w * axes[2];
+    }
   }
   if (!weight) throw new Error('图片完全透明，无法克隆色彩');
-  const overall = moments(sums, squares, weight);
+  // Mean chroma per tone band, kept only where the band holds enough pixels.
+  const tones = bandWeight.map((w, band) => w / weight >= .03 ? [bandSums[band][0] / w, bandSums[band][1] / w] : null);
+  const overall = {...moments(sums, squares, weight), tones};
   if (whites / weight < .03) return overall;
   const white = {light: whiteSums[0] / whites};
   if ((weight - whites) / weight >= .03) {
@@ -157,7 +174,10 @@ export function colorStatistics(pixels) {
   return {...overall, white};
 }
 
+const targetTonesOf = stats => stats.tones || null, referenceTonesOf = stats => stats.tones || null;
+
 export function matchImageColor(target, reference) {
+  const overallTarget = target, overallReference = reference;
   const whitePoint = target.white && reference.white && Math.abs(target.white.light - reference.white.light) <= .045 ? target.white.light : undefined;
   if (whitePoint !== undefined && target.white.foreground && reference.white.foreground) {
     target = target.white.foreground;
@@ -166,7 +186,16 @@ export function matchImageColor(target, reference) {
   // Bound the spread adjustment to retain contrast and avoid amplifying noise.
   const gain = target.deviation.map((value, axis) => value < .008 ? 1 : cloneGain(reference.deviation[axis] / value, axis));
   const offset = target.mean.map((mean, axis) => reference.mean[axis] - gain[axis] * mean);
-  return {gain, offset, ...(whitePoint !== undefined ? {whitePoint} : {})};
+  // What the global transfer leaves per tone band (e.g. cool shadows and warm
+  // highlights in the reference) is added back as a small chroma offset.
+  const targetTones = targetTonesOf(overallTarget), referenceTones = referenceTonesOf(overallReference);
+  const bands = targetTones && referenceTones ? [0, 1, 2].map(band => {
+    const t = targetTones[band], r = referenceTones[band];
+    if (!t || !r) return [0, 0];
+    return [1, 2].map((axis, k) => limit(r[k] - (gain[axis] * t[k] + offset[axis]), -.08, .08));
+  }) : null;
+  const useful = bands?.some(band => band.some(value => Math.abs(value) > .004));
+  return {gain, offset, ...(whitePoint !== undefined ? {whitePoint} : {}), ...(useful ? {bands} : {})};
 }
 
 function validColorMoments(stats) {
@@ -183,6 +212,10 @@ export function validateColorReference(reference) {
   const white = statistics.white;
   if (white !== undefined && (!white || !Number.isFinite(white.light) || white.light < 0 || white.light > 1 ||
       (white.foreground !== undefined && !validColorMoments(white.foreground)))) throw new Error('色彩参考图数据无效');
+  const tones = statistics.tones;
+  if (tones !== undefined && !(Array.isArray(tones) && tones.length === 3 &&
+    tones.every(tone => tone === null || (Array.isArray(tone) && tone.length === 2 && tone.every(value => Number.isFinite(value) && Math.abs(value) <= 1)))))
+    throw new Error('色彩参考图数据无效');
 }
 
 function gamutScale(light, red, green, blue) {
@@ -199,7 +232,8 @@ export function colorMatchParameters(match) {
     if (axis === 0) return match?.luminance ? strength * (match.offset[0] + (match.gain[0] - cloneGain(match.gain[0], 0)) * .5) : 0;
     return strength * (match?.offset[axis] ?? 0);
   });
-  return {strength,protectedWhite,gain,offset};
+  const bands = [0, 1, 2].map(band => [0, 1].map(k => strength * (match?.bands?.[band]?.[k] ?? 0)));
+  return {strength,protectedWhite,gain,offset,bands};
 }
 
 function applyBaseColor(pixels, adjustments, match) {
@@ -208,7 +242,8 @@ function applyBaseColor(pixels, adjustments, match) {
     shadows = 0, highlights = 0, whites = 0, blacks = 0, brightness=0, glow=0, fade=0,
   } = adjustments || {};
   const adjusted = !!adjustments;
-  const {strength,protectedWhite,gain,offset}=colorMatchParameters(match);
+  const {strength,protectedWhite,gain,offset,bands}=colorMatchParameters(match);
+  const banded = bands.some(band => band[0] || band[1]);
   const blueBalance = -.0016 * temperature + .0009 * tint;
   const redBalance = .0012 * temperature + .0009 * tint;
   const exposureGain = 2 ** exposure;
@@ -244,9 +279,15 @@ function applyBaseColor(pixels, adjustments, match) {
         const chroma = Math.max(redDelta, greenDelta, blueDelta) - Math.min(redDelta, greenDelta, blueDelta);
         amount -= whiteWeight(light, chroma, protectedWhite);
       }
+      const toneLight = light;
       light = shiftLuminance(light, amount * ((gain[0] - 1) * light + offset[0]));
       blueDelta += amount * ((gain[1] - 1) * blueDelta + offset[1]);
       redDelta += amount * ((gain[2] - 1) * redDelta + offset[2]);
+      if (banded) {
+        const [s, m, h] = toneWeights(toneLight);
+        blueDelta += amount * (s * bands[0][0] + m * bands[1][0] + h * bands[2][0]);
+        redDelta += amount * (s * bands[0][1] + m * bands[1][1] + h * bands[2][1]);
+      }
     }
     const greenDelta = -(redWeight * redDelta + blueWeight * blueDelta) / greenWeight;
     // Reduce chroma at the gamut boundary while retaining hue and luminance.

@@ -1,6 +1,7 @@
 import sharp from 'sharp';
 import {encodePngWithinBudget} from './png-budget.mjs';
 import {encodeJpeg} from './jpeg-quality.mjs';
+import {fitToSpec,normalizeSpec,fixesSpec} from './spec.mjs';
 
 sharp.cache({memory:64,files:0,items:20});
 sharp.concurrency(2);
@@ -65,19 +66,47 @@ async function losslessWithDimensions(source,meta,settings){
   return {buffer,...size,format,quality:null,unchanged:false,resized};
 }
 
+const PAD={'pad-black':{r:0,g:0,b:0,alpha:1},'pad-white':{r:255,g:255,b:255,alpha:1}};
+// Changes the aspect ratio for a spec without stretching: centre crop, a solid
+// border, or the image over a blurred copy of itself. The blur runs on a small
+// cover copy before enlarging, so its cost does not grow with the canvas.
+async function reframed(source,size,fit){
+  return reframeWith(()=>sharp(source,INPUT_OPTIONS).rotate(),size,fit);
+}
+// Same reframing for an already decoded RGBA raster (the composed editor canvas).
+export async function reframeRaster(data,info,size,fit){
+  const out=await (await reframeWith(()=>sharp(data,{raw:info}),size,fit)).ensureAlpha().raw().toBuffer({resolveWithObject:true});
+  return {data:out.data,info:{width:out.info.width,height:out.info.height,channels:4}};
+}
+async function reframeWith(start,size,fit){
+  if(fit==='crop')return start().resize(size.width,size.height,{fit:'cover',position:'centre'}).toColourspace('srgb');
+  if(PAD[fit])return start().resize(size.width,size.height,{fit:'contain',background:PAD[fit]}).toColourspace('srgb');
+  const small={width:Math.max(8,Math.round(size.width/10)),height:Math.max(8,Math.round(size.height/10))};
+  const backdrop=await start().resize(small.width,small.height,{fit:'cover'}).blur(6).modulate({brightness:.82}).toColourspace('srgb').png().toBuffer();
+  const subject=await start().resize(size.width,size.height,{fit:'inside'}).toColourspace('srgb').png().toBuffer();
+  const {data,info}=await sharp(backdrop).resize(size.width,size.height,{fit:'fill',kernel:'cubic'}).composite([{input:subject,gravity:'centre'}]).raw().toBuffer({resolveWithObject:true});
+  return sharp(data,{raw:{width:info.width,height:info.height,channels:info.channels}});
+}
+
 // The entered size is a hard ceiling. Keep fitting originals; after a resize or
 // format conversion, use the available budget for the highest fitting quality.
 async function smartSize(source,meta,settings,target,options){
   const requested=settings.format||'auto';
   if(!['auto','jpeg','png'].includes(requested))throw new Error('输出格式支持 JPG 和 PNG');
-  const limit=target;
+  // Spec limits (Seedance reference rules) are optional. Their file limit is
+  // exclusive ("< 30 MB"); the user's ceiling stays inclusive.
+  const fit=settings.fit||'blur',spec=settings.spec&&fixesSpec(fit)?normalizeSpec(settings.spec):null;
+  const limit=spec?Math.min(target,spec.maxBytes-1):target;
   const oriented=[5,6,7,8].includes(meta.orientation)?{width:meta.height,height:meta.width}:meta;
-  const size=dimensions(oriented,settings.resize||{type:'scale',percent:100});
-  const resized=size.width!==oriented.width||size.height!==oriented.height;
+  const requestedSize=dimensions(oriented,settings.resize||{type:'scale',percent:100});
+  const plan=fitToSpec(spec,requestedSize.width,requestedSize.height,fit);
+  const size={width:plan.width,height:plan.height};
+  const resized=plan.reframe||size.width!==oriented.width||size.height!==oriented.height;
+  const specFlags={adjusted:plan.reframe||plan.scaled,reframed:plan.reframe};
   const finish=result=>{
     const imageBytes=result.buffer.length;
     if(imageBytes>limit)throw new Error('当前尺寸的文件超过大小上限，请提高大小上限');
-    return {...result,imageBytes,paddedBytes:0,limitBytes:limit};
+    return {...result,imageBytes,paddedBytes:0,limitBytes:limit,...specFlags};
   };
   if(!resized && ['jpeg','png'].includes(meta.format) && (requested==='auto'||requested===meta.format)){
     // No padding or unnecessary encoding for a fitting, unmodified source.
@@ -91,7 +120,7 @@ async function smartSize(source,meta,settings,target,options){
   }
   if(meta.depth!=='uchar')throw new Error('高位深图片暂不支持尺寸或格式转换');
   let format=requested==='auto'?(meta.hasAlpha||meta.format==='png'?'png':'jpeg'):requested;
-  const base=sharp(source,INPUT_OPTIONS).rotate().resize(size.width,size.height,{fit:'fill'}).toColourspace('srgb');
+  const base=plan.reframe?await reframed(source,size,fit):sharp(source,INPUT_OPTIONS).rotate().resize(size.width,size.height,{fit:'fill'}).toColourspace('srgb');
   if(format==='png'){
     const {data,info}=await base.clone().raw().toBuffer({resolveWithObject:true});
     try{

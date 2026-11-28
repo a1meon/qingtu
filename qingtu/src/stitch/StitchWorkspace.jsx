@@ -1,4 +1,5 @@
 import {usePortraitDetection} from './portrait-detector.js';
+import {EmptyArt} from '../EmptyArt.jsx';
 import {hslSampleKey,maxHslSamples} from '../../engine/advanced-color.mjs';
 import {maxLiquifyStrokes,portraitPoint} from '../../engine/portrait-retouch.mjs';
 import {AspectRatioButton} from '../AspectRatioButton.jsx';
@@ -47,12 +48,23 @@ import {hasImageColor,setImageColors} from '../../engine/image-color.mjs';
 import {ColorInspector} from './ColorInspector.jsx';
 import {PortraitPanel} from './PortraitPanel.jsx';
 import {colorsFromReference,resolveColorReference} from './color-preview.js';
+import {SpecPanel} from '../SpecPanel.jsx';
+import {CUSTOM_DEFAULT,resolveSpec} from '../../engine/spec.mjs';
+
+// The editor's reference-spec choice is remembered per user, separately from
+// the compression module, and applied to every exported canvas.
+const SPEC_STORE='qingtu.stitch.spec.v1';
+const storedSpec=(()=>{try{return JSON.parse(localStorage.getItem(SPEC_STORE))||{};}catch{return {};}})();
 
 
 
 export const StitchWorkspace=forwardRef(function StitchWorkspace({active,inspectorOpen,inspectorRevision,setInspectorOpen,onBusy,onCount},ref){
  const {projects,project,update,travel,open,leaveProject,create,remove,clear,loading,saving,saveError,flush,retry,conflict,getCurrent}=useProjects();
  const [editing,setEditing]=useState(null),[imageMode,setImageMode]=useState('crop'),[cropDraft,setCropDraft]=useState(null),[splitDraft,setSplitDraft]=useState(null),[transformCanvas,setTransformCanvas]=useState(null),[angleDraft,setAngleDraft]=useState(null),editor=useRef(),navigationSlot=useRef();
+ const [specId,setSpecId]=useState(storedSpec.specId??'off'),[customSpec,setCustomSpec]=useState({...CUSTOM_DEFAULT,...storedSpec.custom}),[fit,setFit]=useState(storedSpec.fit??'blur');
+ const spec=useMemo(()=>resolveSpec(specId,customSpec),[specId,customSpec]);
+ useEffect(()=>{try{localStorage.setItem(SPEC_STORE,JSON.stringify({specId,custom:customSpec,fit}));}catch{}},[specId,customSpec,fit]);
+ const withSpec=value=>value&&{...value,export:{...value.export,spec,fit}};
  const [selected,setSelected]=useState(null),[error,setError]=useState(''),[notice,setNotice]=useState(''),[importing,setImporting]=useState(false),[batch,setBatch]=useState(null),[output,setOutput]=useState(null),[processing,setProcessing]=useState(false);
  useSuccessTimeout(notice,setNotice);
  const folder=useOutputFolder('stitch',text=>setNotice({type:'error',text}));
@@ -147,7 +159,7 @@ export const StitchWorkspace=forwardRef(function StitchWorkspace({active,inspect
  useEffect(()=>{setSelected(project?.images[0]?.id||null);setEditing(null);setCropDraft(null);setSplitDraft(null);setAngleDraft(null);},[project?.id]);
  const input=useRef(),cancel=useRef(false),exportTask=useRef(Promise.resolve()),importTask=useRef(Promise.resolve()),actionTask=useRef(Promise.resolve()),optimizeTask=useRef(Promise.resolve()),splitTask=useRef(Promise.resolve()),importLock=useRef(false),exportLock=useRef(false),previewCache=useRef(null),renders=useRef(new Map()),optimizationFailure=useRef(null);
  if(!previewCache.current)previewCache.current=new PreviewCache();
- const renderKey=useMemo(()=>project&&stitchRenderKey(project),[project]);
+ const renderKey=useMemo(()=>project&&stitchRenderKey(withSpec(project)),[project,spec,fit]);
  const previewTasks=useRef(new Set()),previewTimer=useRef(),flushing=useRef(false);
  const splitLock=useRef(false),removeLock=useRef(false),rotationLock=useRef(false);
  const displayProject=useMemo(()=>{
@@ -172,6 +184,9 @@ export const StitchWorkspace=forwardRef(function StitchWorkspace({active,inspect
  const portrait={face:portraitFace,legs:portraitLegs,head:portraitHead,body:portraitBody,selected:!!portraitImage,
   size:brushSize,mode:brushMode,canRedo:!!redoStrokes.length,
   faceStatus:status('当前图片未识别到人脸'),bodyStatus:status('当前图片未识别到人体'),
+  detecting:!!portraitImage&&!detection?.done,
+  summary:!portraitImage?'':detection?.error?'本机识别暂不可用，可使用手动调整':!detection?.done?'正在识别人物…':
+   [portraitFace&&'人脸',portraitHead&&'头部',portraitBody&&'身体',portraitLegs&&'腿部'].filter(Boolean).join(' · ').replace(/^(.+)$/,'已识别：$1')||'未识别到人物，可使用手动调整',
   close:()=>setBrushMode(null),setSize:setBrushSize,setMode:mode=>{setBrushMode(mode);if(mode)showGradedPreview();},
   undo:()=>travelBrush('undo'),redo:()=>travelBrush('redo'),reset:()=>travelBrush('reset')};
  const portraitBrush=brushMode&&portraitMode&&portraitImage&&(portraitImage.color?.retouch?.strokes?.length||0)<maxLiquifyStrokes?{
@@ -227,7 +242,10 @@ export const StitchWorkspace=forwardRef(function StitchWorkspace({active,inspect
   if(value===workspaceMode)return;
   try{
    await settleEditor();
-   setSelected(null);setContext(null);
+   // The chosen image stays selected across 布局 / 调色 / 人像. With nothing
+   // chosen, a lone image is the only possible target in 调色 and 人像.
+   const images=getCurrent()?.images||[];
+   setSelected(current=>images.some(image=>image.id===current)?current:value!=='layout'&&images.length===1?images[0].id:null);setContext(null);
    setWorkspaceMode(value);setColorView('processed');setMatchMessage(null);
    if(value!=='layout')setInspectorOpen(true);
   }catch(error){setNotice(error.message);}
@@ -284,7 +302,7 @@ export const StitchWorkspace=forwardRef(function StitchWorkspace({active,inspect
    const pending=renders.current.get(project.id);
    let task=pending?.key===renderKey?pending.task:null;
    if(!task){
-    task=api.stitchRender(project,{latest:true}).then(result=>{
+    task=api.stitchRender(withSpec(project),{latest:true}).then(result=>{
      previewCache.current.set(renderKey,result,2*result.preview.length);
      return result;
     }).finally(()=>{if(renders.current.get(project.id)?.task===task)renders.current.delete(project.id);previewTasks.current.delete(task);});
@@ -300,10 +318,10 @@ export const StitchWorkspace=forwardRef(function StitchWorkspace({active,inspect
  function commitCrop(id,edit){setCropDraft(null);return update(p=>setImageEdit(p,id,edit));}
  async function runOptimize(){
   let phase='calculate';
-  try{await settleEditor();const current=getCurrent(),cached=previewCache.current.get(stitchRenderKey(current));optimizationFailure.current=null;
+  try{await settleEditor();const current=getCurrent(),cached=previewCache.current.get(stitchRenderKey(withSpec(current)));optimizationFailure.current=null;
    const value=await performOptimization({project:current,save:update,preparePreview:prepareLayoutPreview,reuse:cached,onPhase:next=>{phase=next;setOptimization({phase:next});}});
-   if(!value.layoutOnly)previewCache.current.set(stitchRenderKey(getCurrent()),value.result,2*value.result.preview.length);setOutput(value.layoutOnly?null:value.result);setError('');setProcessing(false);setOptimization(null);
-  }catch(e){if(phase==='render'){optimizationFailure.current={key:stitchRenderKey(getCurrent()),message:e.message};setError(e.message);}setOptimization({phase:'error',failedAt:phase,message:e.message});}
+   if(!value.layoutOnly)previewCache.current.set(stitchRenderKey(withSpec(getCurrent())),value.result,2*value.result.preview.length);setOutput(value.layoutOnly?null:value.result);setError('');setProcessing(false);setOptimization(null);
+  }catch(e){if(phase==='render'){optimizationFailure.current={key:stitchRenderKey(withSpec(getCurrent())),message:e.message};setError(e.message);}setOptimization({phase:'error',failedAt:phase,message:e.message});}
   finally{setOptimizing(false);}
  }
  function optimize(){if(busy)return;setOptimizing(true);setOptimization({phase:'prepare'});const task=runOptimize();optimizeTask.current=task;return task;}
@@ -413,7 +431,7 @@ export const StitchWorkspace=forwardRef(function StitchWorkspace({active,inspect
    await renameInput.current?.flush();await flushEditor();await flush();const current=getCurrent();setNotice('');
    for(let n=0;n<ids.length;n++){
     if(cancel.current)break;setBatch({current:n+1,total:ids.length});
-    try{let snapshot=ids[n]===current?.id?structuredClone(current):await repository.load(ids[n]);snapshot.export={...snapshot.export,format:explicitFormat(snapshot.export?.format)};snapshot=await repository.prepare(snapshot,{previews:false});const result=await api.stitchRender(snapshot);await folder.save(result.token,destination);success++;}
+    try{let snapshot=ids[n]===current?.id?structuredClone(current):await repository.load(ids[n]);snapshot.export={...snapshot.export,format:explicitFormat(snapshot.export?.format),spec,fit};snapshot=await repository.prepare(snapshot,{previews:false});const result=await api.stitchRender(snapshot);await folder.save(result.token,destination);success++;}
     catch(e){failures.push(`${canvasName(projects.find(p=>p.id===ids[n])?.name)}：${e.message}`);}
    }
    setNotice({type:failures.length?'error':'success',reveal:success>0&&desktop,text:`已导出 ${success} 张图像${failures.length?'；'+failures.join('；'):cancel.current?'，已取消':''}`});
@@ -472,6 +490,9 @@ export const StitchWorkspace=forwardRef(function StitchWorkspace({active,inspect
  const editingImage=project?.images.find(image=>image.id===selected);
  const editingValue=project?.edits?.[selected];
  const visibleCanvas=transformCanvas||displayProject?.canvas,original=originalCanvas(project);
+ // Seedance needs 0.4 < w/h < 2.5. Canvases at exactly 2.5 (or wider single
+ // panoramas) stay exportable; the inspector only warns.
+ const ratioWarning=!!visibleCanvas?.width&&!!visibleCanvas?.height&&Math.max(visibleCanvas.width,visibleCanvas.height)/Math.min(visibleCanvas.width,visibleCanvas.height)>=2.5;
  const presetOptions=[...(original?[{value:'original',label:'原图比例'}]:[]),...CANVAS_PRESETS,{value:'custom',label:'自定义'}];
  const imageControls=placement=>editingImage&&<ImageEditor key={editingImage.id} ref={editor} image={editingImage} value={editingValue} placement={placement} open={editing===selected} mode={imageMode} hidden={!active} disabled={busy} onActivate={mode=>{if(colorView==='compare')setColorView('processed');picker.close();portrait.close();setImageMode(mode);setEditing(selected);}} onPreview={(edit,options)=>setCropDraft(edit?{id:selected,edit,...options}:null)} onCommit={edit=>commitCrop(selected,edit)} splitDraft={splitDraft} onSplitDraft={value=>setSplitDraft(value?{...value,id:selected}:null)} onSplit={(axis,at)=>splitImage(selected,axis,at)} onRemove={()=>removeImage(selected)} onRotate={degrees=>orientImage(selected,degrees)} onMirror={()=>orientImage(selected,0,true)} onAnglePreview={(angle,revision)=>setAngleDraft(angle==null?null:{id:selected,angle,revision})} onAngleCommit={(angle,revision)=>commitAngle(selected,angle,revision)} onClose={()=>{setAngleDraft(null);setEditing(current=>current===selected?null:current);setCropDraft(current=>current?.id===selected?null:current);setSplitDraft(current=>current?.id===selected?null:current);}}/>;
  return <>
@@ -504,8 +525,8 @@ export const StitchWorkspace=forwardRef(function StitchWorkspace({active,inspect
 
       <span className="canvas-navigation-slot" ref={navigationSlot}/>
      </div></div></div>
-    </>:<div className="canvas-area"><div className="canvas-content"><div className="stitch-editing-surface">{project&&<StitchCanvas viewRevision={viewRevision} navigationTarget={navigationSlot} navigationDisabled={busy||!!angleDraft} viewportMode={`${inspectorRevision}:${inspectorOpen}`} project={project} layout={layout} disabled={busy}><div className="empty-state fixed-empty"><span className="empty-artwork" aria-hidden><img className="empty-illustration" src="./assets/blue-file-empty.png" alt=""/></span><button className="primary import-button" aria-label="添加画布图片" disabled={busy} onClick={add}><Plus size={28} weight="bold"/>{loading?'恢复中…':'添加图片'}</button></div></StitchCanvas>}{!project&&<div className="empty-state stitch-create-empty">
-       <img className="empty-illustration" src="./assets/blue-file-empty.png" alt=""/>
+    </>:<div className="canvas-area"><div className="canvas-content"><div className="stitch-editing-surface">{project&&<StitchCanvas viewRevision={viewRevision} navigationTarget={navigationSlot} navigationDisabled={busy||!!angleDraft} viewportMode={`${inspectorRevision}:${inspectorOpen}`} project={project} layout={layout} disabled={busy}><div className="empty-state fixed-empty"><span className="empty-artwork" aria-hidden><EmptyArt/></span><button className="primary import-button" aria-label="添加画布图片" disabled={busy} onClick={add}><Plus size={28} weight="bold"/>{loading?'恢复中…':'添加图片'}</button></div></StitchCanvas>}{!project&&<div className="empty-state stitch-create-empty">
+       <EmptyArt/>
        <div className="stitch-start-actions">
         <button type="button" className="primary import-button" disabled={busy} onClick={add}><FolderOpen size={24} weight="bold" aria-hidden/>{loading?'恢复中…':importing?'正在打开…':choosingImage?'添加图片':'打开图片'}</button>
         <button type="button" className="blank-canvas-button" disabled={busy} onClick={()=>startImage('blank')}>新建空白画布</button>
@@ -524,11 +545,14 @@ export const StitchWorkspace=forwardRef(function StitchWorkspace({active,inspect
     onDraft={retouch=>previewColor(selected,{...(colorGesture.current?.id===selected?colorGesture.current.color:portraitImage?.color),retouch})}
     onCommit={commitColorDraft} onCancel={clearColorDraft}
     onChange={retouch=>applyColorEdits(new Map([[selected,{...portraitImage?.color,retouch}]]))}/>:<div className="settings-scroll">
+    <SpecPanel specId={specId} onSpec={setSpecId} spec={spec} custom={customSpec} onCustom={setCustomSpec} fit={fit} onFit={setFit}
+     origin={project?.images.length&&visibleCanvas?.width?{width:visibleCanvas.width,height:visibleCanvas.height,bytes:output?.bytes??0,format:explicitFormat(project.export.format)}:null}
+     result={output&&!processing?{width:output.width,height:output.height,bytes:output.bytes,format:output.format}:null} processing={processing} disabled={busy||!project||!inspectorOpen}/>
     <div className="control-section"><label htmlFor="stitch-target">大小上限</label><div className="target-control"><input id="stitch-target" aria-describedby={pngRange.message?'stitch-png-range':undefined} type="number" min={unit==='KB'?pngRange.minimum:1} max={unit==='MB'?100:100000} step="1" disabled={busy||!project} value={project?(project.export.targetBytes/(unit==='MB'?1000000:1000)):30} onChange={e=>setExport({targetBytes:Number(e.target.value)*(unit==='MB'?1000000:1000)},inputGroup(e))}/><Dropdown label="画布大小单位" className="unit-dropdown" minMenuWidth={0} value={unit} onChange={setUnit} disabled={busy||!project||!inspectorOpen} options={[{value:'MB',label:'MB'},{value:'KB',label:'KB'}]}/></div>{pngRange.message&&<small id="stitch-png-range" className="png-budget-range" role="status">{pngRange.message}</small>}
     </div>
     <div className="control-section"><div className="canvas-settings-heading"><h2>画布</h2><Dropdown id="canvas-preset" label="画布预设" className="canvas-preset" value={currentCanvasPreset(project,visibleCanvas)} options={presetOptions} disabled={busy||!project||!inspectorOpen} onChange={setPreset}/></div><div className="dimension-inputs canvas-dimensions"><div className="number-with-unit"><input id="stitch-width" aria-label="画布宽度" type="number" min="1" max={MAX_EDGE} disabled={busy||!project} value={visibleCanvas?.width||''} onChange={e=>editDimension('width',e)}/><span>px</span></div>
      <AspectRatioButton subject="画布" locked={project?.canvasControls?.locked!==false} disabled={busy||!project} onClick={()=>update(toggleCanvasRatio)}/>
-     <div className="number-with-unit"><input id="stitch-height" aria-label="画布高度" type="number" min="1" max={MAX_EDGE} disabled={busy||!project} value={visibleCanvas?.height||''} onChange={e=>editDimension('height',e)}/><span>px</span></div></div></div>
+     <div className="number-with-unit"><input id="stitch-height" aria-label="画布高度" type="number" min="1" max={MAX_EDGE} disabled={busy||!project} value={visibleCanvas?.height||''} onChange={e=>editDimension('height',e)}/><span>px</span></div></div>{ratioWarning&&!spec&&<small className="spec-hint" role="status">比例 ≥ 2.5，不符合 Seedance 参考规格，仍可导出</small>}</div>
     <div className="control-section"><h2>布局</h2><div className="layout-options">{[['horizontal','横排'],['grid','宫格'],['vertical','竖排'],['free','自由']].map(([type,label])=><button key={type} data-layout={type} disabled={busy||!project} className={project?.layout===type?'active':''} aria-pressed={project?.layout===type} onClick={()=>setLayout(type)}>{label}</button>)}</div></div>
     <div className="control-section"><label htmlFor="stitch-format">格式</label><Dropdown id="stitch-format" label="画布输出格式" value={explicitFormat(project?.export.format)} onChange={format=>setExport({format})} disabled={busy||!project||!inspectorOpen} options={outputFormats}/></div>
     {project?.layout==='grid'&&<div className="control-section"><h2>行列</h2><div className="dimension-inputs stitch-pair"><div className="number-with-unit"><input aria-label="宫格行数" type="number" min="1" max="100" disabled={busy} value={project.grid.rows} onChange={e=>setGrid({rows:Number(e.target.value)},inputGroup(e))}/><span>行</span></div><div className="number-with-unit"><input aria-label="每行最多列数" type="number" min="1" max="100" disabled={busy} value={project.grid.columns} onChange={e=>setGrid({columns:Number(e.target.value)},inputGroup(e))}/><span>列</span></div></div></div>}

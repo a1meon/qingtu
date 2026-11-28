@@ -7,8 +7,9 @@ const appIcon = path.join(__dirname, '../build/icon.png');
 
 async function start(options={}) {
   await app.whenReady();
-  // Match the native macOS frame to the renderer's light interface.
-  if (process.platform === 'darwin') nativeTheme.themeSource = 'light';
+  // The renderer reports its theme choice (system/light/dark) through
+  // setTheme so the native frame and window background follow it.
+  nativeTheme.themeSource = 'system';
   // Tahoe can place the legacy bundle icon inside a grey Dock tile.
   if (process.platform === 'darwin' && process.getSystemVersion().split('.')[0] === '26') {
     app.dock.setIcon(appIcon);
@@ -52,7 +53,10 @@ async function start(options={}) {
     toy.close();
   });
   ipcMain.on('qingtu:toy-drag',(event,phase,x,y)=>{
-    if(toy.validSender(event))toy.drag(phase,x,y);
+    if(toy.validSender(event))toy.drag(phase);
+  });
+  ipcMain.on('qingtu:toy-interactive',(event,value)=>{
+    if(toy.validSender(event))toy.setInteractive(value===true);
   });
   let activeOperations=0,startupChecked=false,chunkTransport,closeApproved=false,closePending=false,quitRequested=false,rendererReady=false;
   app.on('before-quit',()=>{quitRequested=true;});
@@ -103,7 +107,7 @@ async function start(options={}) {
   };
   function createWindow(){
     rendererReady=false;
-    win=new BrowserWindow({width:1280,height:820,minWidth:980,minHeight:700,...(process.platform==='darwin'?{frame:true,titleBarStyle:'hidden',trafficLightPosition:{x:14,y:18}}:{frame:false}),backgroundColor:'#f0faff',show:!options.hidden,title:'轻图',icon:appIcon,webPreferences:{offscreen:options.offscreen===true,preload:path.join(__dirname,'preload.cjs'),contextIsolation:true,nodeIntegration:false,sandbox:true}});
+    win=new BrowserWindow({width:1280,height:820,minWidth:980,minHeight:700,...(process.platform==='darwin'?{frame:true,titleBarStyle:'hidden',trafficLightPosition:{x:14,y:18}}:{frame:false}),backgroundColor:nativeTheme.shouldUseDarkColors?'#16181c':'#ffffff',show:!options.hidden,title:'轻图',icon:appIcon,webPreferences:{offscreen:options.offscreen===true,preload:path.join(__dirname,'preload.cjs'),contextIsolation:true,nodeIntegration:false,sandbox:true}});
     win.webContents.setWindowOpenHandler(()=>({action:'deny'}));
     // The renderer's dirty-state effect can lag a committed save by one frame.
     // Only bypass beforeunload after the trusted flush protocol has completed.
@@ -199,6 +203,11 @@ async function start(options={}) {
       if(error)throw new Error('无法打开输出文件夹：'+error);
       return true;
     }
+    if(method==='setTheme'){
+      nativeTheme.themeSource=['light','dark'].includes(args[0])?args[0]:'system';
+      win.setBackgroundColor(nativeTheme.shouldUseDarkColors?'#16181c':'#ffffff');
+      return nativeTheme.shouldUseDarkColors;
+    }
     if(method==='windowAction'){
       if(args[0]==='minimize')win.minimize();
       else if(args[0]==='maximize'){if(win.isMaximized())win.unmaximize();else win.maximize();}
@@ -229,7 +238,10 @@ async function start(options={}) {
   return {win,service,updater,store,stitching,ensureMainWindow};
 }
 module.exports={start};
-if (require.main === module) {
+// Electron 44 reports its own loader as require.main, so the entry file is
+// recognised by having no parent module (smoke scripts that require this file
+// to call start() themselves still have one).
+if (require.main === module || !module.parent) {
   const startup = process.platform === 'win32'
     ? require('./windows-launch.cjs').launchWindows(app, start)
     : start();

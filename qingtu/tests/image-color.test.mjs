@@ -225,7 +225,10 @@ test('stretching the legs anchors the hips, extends the calves, and translates t
   assert.ok(red(211)<211);
   assert.equal(249-red(249),211-red(211),'a sole near the frame edge moves as far as the shoe opening');
   assert.equal(249-changed[(249*width+6)*4],249-red(249),'the full width of a shoe shares the same shift');
-  assert.equal(changed[249*width*4],249,'pixels well outside the legs stay anchored');
+  // 2026-11-29: the stretch spans the full width so the background lengthens
+  // evenly; horizontal lines beside the legs stay straight instead of bending.
+  assert.equal(249-changed[249*width*4],249-red(249),'the background beside the legs shifts with them');
+  assert.equal(145-changed[145*width*4],145-red(145),'every column of a row shares one stretch');
 });
 
 test('leg extension respects a cropped image with no space below the feet',()=>{
@@ -278,7 +281,8 @@ test('face slimming adjusts the upper and lower contours, and smoothing preserve
   }).flat());
   const smooth=applyImageColor(textured.slice(),{retouch:{face,skin:100}},frame);
   assert.ok(smooth[at(42,45)]>textured[at(42,45)]);
-  assert.equal(smooth[at(48,45)],220);
+  // The strong edge stays a sharp step: no halo bleeds across it.
+  assert.ok(smooth[at(48,45)]>=214&&smooth[at(47,45)]<=150,`edge ${smooth[at(47,45)]} → ${smooth[at(48,45)]}`);
 });
 
 test('whole-head controls move both the crown and jaw and leave distant pixels fixed',()=>{

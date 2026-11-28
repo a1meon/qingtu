@@ -1,7 +1,7 @@
 import {Fragment,useEffect,useId,useState} from 'react';
 import {ClockCounterClockwise,FolderOpen} from '@phosphor-icons/react';
 import {prepareBrowserFolder} from './browser-output-folder.js';
-import {api,desktop} from './api.js';
+import {api,nativeFolders} from './api.js';
 import {ExportHistory} from './ExportHistory.jsx';
 
 export function useOutputFolder(scope,onError){
@@ -20,7 +20,7 @@ export function useOutputFolder(scope,onError){
   try{await api.revealFolder(scope);}catch(error){onError(error.message);}
  }
  async function prepare(){
-  if(desktop)return true;
+  if(nativeFolders)return true;
   const destination=await prepareBrowserFolder(scope,selected||await api.outputFolder(scope));
   if(destination)setSelected(destination);
   return destination;

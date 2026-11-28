@@ -4,6 +4,9 @@ import {recordDownload,downloads,downloadThumbnail,lastBrowserFolder} from './br
 import appPackage from '../package.json';
 export const desktop=!!window.qingtu;
 export const staticBrowser=import.meta.env.PROD&&!desktop;
+// Desktop and the local development preview both write real folders; only
+// the static web build relies on the browser's directory/download APIs.
+export const nativeFolders=desktop||!staticBrowser;
 async function call(method,...args){
  try{
   if(desktop)return await window.qingtu[method](...args);
@@ -37,10 +40,10 @@ export const api={
   process:(id,settings,options)=>call('process',id,settings,options),
   rename:(id,name)=>call('rename',id,name),
   remove:id=>call('remove',id),
-  chooseFolder:(scope='compression',current)=>desktop?call('chooseFolder',scope):chooseBrowserFolder(scope,current),
+  chooseFolder:(scope='compression',current)=>nativeFolders?call('chooseFolder',scope):chooseBrowserFolder(scope,current),
   save:async(token,scope='compression',folder)=>{
     const result=await call('save',token,scope);
-    if(!desktop){
+    if(!desktop&&!nativeFolders){
       const blob=result.blob||new Blob([Uint8Array.from(atob(result.base64),c=>c.charCodeAt(0))],{type:result.mime});
       if(folder?.directory)result.name=await writeBrowserFile(folder.directory,result.name,blob);
       else {
@@ -49,14 +52,17 @@ export const api={
        setTimeout(()=>URL.revokeObjectURL(url),30000);
       }
       await recordDownload(scope,result.name,folder,blob).catch(error=>console.warn('未能保存下载记录',error.message));
+    }else if(!desktop){
+      const blob=new Blob([Uint8Array.from(atob(result.base64||''),c=>c.charCodeAt(0))],{type:result.mime});
+      await recordDownload(scope,result.name,{path:result.path.replace(/[/\\][^/\\]*$/,'')},blob).catch(error=>console.warn('未能保存下载记录',error.message));
     }
     return result;
   },
-  outputFolder:async scope=>desktop?call('outputFolder',scope):(await lastBrowserFolder(scope).catch(()=>null))||initialBrowserFolder(),
+  outputFolder:async scope=>nativeFolders?call('outputFolder',scope):(await lastBrowserFolder(scope).catch(()=>null))||initialBrowserFolder(),
   exportHistory:(scope,page)=>desktop?call('exportHistory',scope,page):downloads(scope,page),
   exportThumbnail:(scope,id)=>desktop?call('exportThumbnail',scope,id):downloadThumbnail(scope,id),
   revealExport:(scope,id)=>call('revealFolder',scope,id),
-  revealFolder:(scope='compression')=>desktop?call('revealFolder',scope):Promise.resolve(),
+  revealFolder:(scope='compression')=>nativeFolders?call('revealFolder',scope):Promise.resolve(),
   windowAction:action=>desktop?call('windowAction',action):Promise.resolve()
 };
 export const readFile=file=>staticBrowser?Promise.resolve(file):new Promise((resolve,reject)=>{

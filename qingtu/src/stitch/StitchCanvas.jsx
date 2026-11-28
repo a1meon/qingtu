@@ -240,7 +240,7 @@ export function StitchCanvas({project:sourceProject,layout:sourceLayout,onChange
      if(comparisonOriginal)return <div data-original-id={rect.id} className="stitch-layer" key={rect.id} style={geometry}><img src={image.preview} alt="" draggable={false} style={imageStyle}/>{badges}</div>;
      const interactive=colorDraft?.projectId===project.id&&colorDraft.id===image.id;
      const grade=interactive?colorDraft.color:image.color;
-     const color=grade?.retouch?.length?{...grade,retouch:portraitForCrop(grade.retouch,rect.crop)}:grade;
+     const color=grade?.retouch?{...grade,retouch:portraitForCrop(grade.retouch,rect.crop)}:grade;
      const graded=!(colorMode&&colorView==='original')&&hasImageColor(color);
      const brush=!ghost&&selected===rect.id?portraitBrush:null;
      const brushStyle=brush?{width:brush.size,height:brush.size}:undefined;

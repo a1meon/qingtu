@@ -1,6 +1,10 @@
 import React, {lazy,Suspense} from "react";
 import { createRoot } from "react-dom/client";
 import "./styles.css";
+import {applyTheme,storedTheme} from "./theme.js";
+
+// Apply the stored appearance before the first paint to avoid a flash.
+applyTheme(storedTheme());
 
 const toy=!!window.qingtuToy;
 if(toy){

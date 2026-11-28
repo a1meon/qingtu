@@ -4,7 +4,7 @@ const access={mode:'readwrite'};
 export function initialBrowserFolder(){
  return typeof window.showDirectoryPicker==='function'
   ? {path:'图片/'+defaultName,needsPermission:true}
-  : {name:'系统下载目录',download:true};
+  : {name:'浏览器下载文件夹',download:true};
 }
 
 async function pick(scope,startIn){

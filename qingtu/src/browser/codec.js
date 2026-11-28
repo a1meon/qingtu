@@ -1,8 +1,9 @@
-import {AlphaAction,ColorSpace,FilterType,ImageMagick,MagickColors,MagickFormat,MagickGeometry,MagickImageCollection,MagickReadSettings} from '@imagemagick/magick-wasm';
+import {AlphaAction,Channels,ColorSpace,CompositeOperator,EvaluateOperator,FilterType,Gravity,ImageMagick,MagickColors,MagickFormat,MagickGeometry,MagickImageCollection,MagickReadSettings} from '@imagemagick/magick-wasm';
 import {prepareBoundedPixels,pixelDifference} from '../../engine/pixel-difference.mjs';
 import {adaptivePng} from '../../engine/adaptive-png.mjs';
 import {deflatePixels,exactIndexedPng} from '../../engine/indexed-png.mjs';
 import {dimensions} from '../../engine/image-dimensions.mjs';
+import {fitToSpec,normalizeSpec,fixesSpec} from '../../engine/spec.mjs';
 
 const animationError='暂不支持动画或多页图片，以免丢失帧';
 const ascii=(bytes,offset,length)=>String.fromCharCode(...bytes.subarray(offset,offset+length));
@@ -53,6 +54,24 @@ function resize(image,{width,height}){
   const geometry=new MagickGeometry(width,height);geometry.ignoreAspectRatio=true;
   image.resize(geometry,FilterType.Lanczos);
 }
+// Spec ratio fixes, mirroring the Node engine: centre crop, solid border, or
+// the image over a blurred, slightly darkened copy of itself. Never stretches.
+function reframe(image,{width,height},fit){
+  const cover=(target,w,h)=>{const geometry=new MagickGeometry(w,h);geometry.fillArea=true;target.resize(geometry,FilterType.Lanczos);target.crop(w,h,Gravity.Center);target.resetPage();};
+  if(fit==='crop')return cover(image,width,height);
+  if(fit==='pad-black'||fit==='pad-white'){
+    image.resize(new MagickGeometry(width,height),FilterType.Lanczos);
+    image.extent(new MagickGeometry(width,height),Gravity.Center,fit==='pad-white'?MagickColors.White:MagickColors.Black);
+    return image.resetPage();
+  }
+  image.clone(subject=>{
+    subject.resize(new MagickGeometry(width,height),FilterType.Lanczos);
+    cover(image,Math.max(8,Math.round(width/10)),Math.max(8,Math.round(height/10)));
+    image.blur(0,6);image.evaluate(Channels.RGB,EvaluateOperator.Multiply,.82);
+    resize(image,{width,height});
+    image.compositeGravity(subject,Gravity.Center,CompositeOperator.Over);
+  });
+}
 function write(image,format){
   const coder=format==='jpeg'?MagickFormat.Jpeg:image.hasAlpha?MagickFormat.Png32:MagickFormat.Png24;
   return image.write(coder,bytes=>new Blob([bytes],{type:`image/${format}`}));
@@ -100,13 +119,16 @@ function fitJpeg(image,target){
   return {...best,width:image.width,height:image.height};
 }
 export async function encode(file,meta,settings){
-  const limitBytes=Number(settings.targetBytes),format=settings.format;
-  if(!Number.isInteger(limitBytes)||limitBytes<64||limitBytes>100000000)throw new Error('大小须为 64 字节–100 MB');
+  const requestedBytes=Number(settings.targetBytes),format=settings.format;
+  if(!Number.isInteger(requestedBytes)||requestedBytes<64||requestedBytes>100000000)throw new Error('大小须为 64 字节–100 MB');
   if(!['jpeg','png'].includes(format))throw new Error('输出格式支持 JPG 和 PNG');
-  const size=dimensions(meta,settings.resize),unchanged=format===meta.format&&file.size<=limitBytes&&size.width===meta.width&&size.height===meta.height;
+  const fit=settings.fit||'blur',spec=settings.spec&&fixesSpec(fit)?normalizeSpec(settings.spec):null;
+  const limitBytes=spec?Math.min(requestedBytes,spec.maxBytes-1):requestedBytes;
+  const requested=dimensions(meta,settings.resize),plan=fitToSpec(spec,requested.width,requested.height,fit),size={width:plan.width,height:plan.height};
+  const unchanged=!plan.reframe&&format===meta.format&&file.size<=limitBytes&&size.width===meta.width&&size.height===meta.height;
   if(!unchanged&&meta.depth>8)throw new Error('高位深图片暂不支持尺寸或格式转换');
   const bytes=new Uint8Array(await file.arrayBuffer());
-  let output=unchanged?{blob:file,...size}:oriented(bytes,image=>{resize(image,size);return format==='png'?fitPng(image,limitBytes):fitJpeg(image,limitBytes);});
+  let output=unchanged?{blob:file,...size}:oriented(bytes,image=>{if(plan.reframe)reframe(image,size,fit);else resize(image,size);return format==='png'?fitPng(image,limitBytes):fitJpeg(image,limitBytes);});
   if(output.raster){
     const {raster,channels,losslessBytes}=output;
     const info={...size,channels};
@@ -127,5 +149,5 @@ export async function encode(file,meta,settings){
     }
   }
   const encoded=unchanged?bytes:new Uint8Array(await output.blob.arrayBuffer());
-  return {...output,...preview(encoded),bytes:encoded.length,imageBytes:encoded.length,paddedBytes:0,format,limitBytes,unchanged,lossless:output.lossless??(unchanged||format==='png'),encoding:output.encoding||(format==='jpeg'?'JPG':output.lossless===false?'全彩高保真 PNG':'全彩无损 PNG'),requestedWidth:size.width,requestedHeight:size.height,autoResized:false,scalePercent:100};
+  return {...output,...preview(encoded),bytes:encoded.length,imageBytes:encoded.length,paddedBytes:0,format,limitBytes,unchanged,lossless:output.lossless??(unchanged||format==='png'),encoding:output.encoding||(format==='jpeg'?'JPG':output.lossless===false?'全彩高保真 PNG':'全彩无损 PNG'),requestedWidth:size.width,requestedHeight:size.height,autoResized:false,scalePercent:100,adjusted:plan.reframe||plan.scaled,reframed:plan.reframe};
 }

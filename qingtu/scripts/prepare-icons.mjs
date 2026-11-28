@@ -2,8 +2,9 @@ import fs from 'node:fs/promises';
 import sharp from 'sharp';
 import {fileURLToPath} from 'node:url';
 
-// Packaging only: keep the generated artwork and transparency unchanged.
-const source=fileURLToPath(new URL('../build/source/app-icon-blue.png',import.meta.url));
+// Packaging only: build/source/app-icon.png is rendered from app-icon.svg;
+// keep its artwork and transparency unchanged.
+const source=fileURLToPath(new URL('../build/source/app-icon.png',import.meta.url));
 const output=new URL('../build/',import.meta.url);
 const sizes=[16,32,48,64,128,256,512,1024];
 const pngs=new Map(await Promise.all(sizes.map(async size=>[size,await sharp(source).resize(size,size,{fit:'contain',background:'#00000000'}).png().toBuffer()])));

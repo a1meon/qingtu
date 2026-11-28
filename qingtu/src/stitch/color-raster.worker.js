@@ -1,7 +1,7 @@
 import {createInteractiveGrade} from './interactive-grade.js';
 import {hasAdvancedColor,hasSampledHsl} from '../../engine/advanced-color.mjs';
 import {paintColorPreview} from './color-preview.js';
-import {applyPortraitRetouch,hasPortraitRetouch} from '../../engine/portrait-retouch.mjs';
+import {applyPortraitRetouch,applyPortraitSkin,createLiquifyPreview,hasPortraitRetouch} from '../../engine/portrait-retouch.mjs';
 import {applyImageColor} from '../../engine/image-color.mjs';
 
 let source,compositor,accelerate;
@@ -18,17 +18,36 @@ self.onmessage = ({data: {image, color, maxEdge, crop,interactive}}) => {
     let base;
     if(interactive==='liquify'&&portrait?.strokes?.length){
       const strokes=portrait.strokes,prior={...portrait,strokes:strokes.slice(0,-1)};
-      const key=JSON.stringify(prior);
+      const key=JSON.stringify([prior,crop]);
       if(source.brushKey!==key){
-        source.brushKey=key;
+        source.brushKey=key;source.stroke=null;
         source.brushBase=hasPortraitRetouch(prior)?applyPortraitRetouch(original.slice(),prior,frame):original;
       }
-      base=applyPortraitRetouch(source.brushBase.slice(),{turn:portrait.turn,mirrored:portrait.mirrored,strokes:[strokes.at(-1)]},frame);
+      // The stroke being drawn only grows, so only its new dabs are warped.
+      const last=strokes.at(-1),path=last.path||[last];
+      if(!(last.soft&&last.kind==='push')){
+        base=applyPortraitRetouch(source.brushBase.slice(),{turn:portrait.turn,mirrored:portrait.mirrored,strokes:[last]},frame);
+      }else{
+        if(!source.stroke?.extend(path)){
+          source.stroke=createLiquifyPreview(source.brushBase,portrait,frame);
+          source.stroke.extend(path);
+        }
+        base=source.stroke.output;
+      }
     }else{
-      const retouch=JSON.stringify(portrait);
+      // Geometry and skin are cached separately: dragging the skin slider
+      // only repeats the smoothing, not the warp.
+      const geometry=portrait&&{...portrait,skin:0};
+      const geometryKey=JSON.stringify([geometry,crop]);
+      if(source.geometryKey!==geometryKey){
+        source.geometryKey=geometryKey;source.retouch=null;
+        source.geometry=hasPortraitRetouch(geometry)?applyPortraitRetouch(original.slice(),geometry,frame):original;
+      }
+      const retouch=JSON.stringify([portrait,crop]);
       if(source.retouch!==retouch){
         source.retouch=retouch;
-        source.warped=hasPortraitRetouch(portrait)?applyPortraitRetouch(original.slice(),portrait,frame):null;
+        source.warped=portrait?.skin&&portrait.face?applyPortraitSkin(source.geometry.slice(),portrait,frame):
+          source.geometry===original?null:source.geometry;
       }
       base=source.warped||original;
     }
@@ -39,7 +58,9 @@ self.onmessage = ({data: {image, color, maxEdge, crop,interactive}}) => {
         self.postMessage({bitmap},[bitmap]);return;
       }catch{accelerate=false;}
     }
-    const pixels=applyImageColor(base.slice(),color,frame);
+    // Retouch alone needs no colour pass while drawing.
+    const graded=color&&(Object.values(color.adjustments||{}).some(Boolean)||color.match?.strength||hasAdvancedColor(color)||hasSampledHsl(color));
+    const pixels=interactive&&!graded?base:applyImageColor(base.slice(),color,frame);
     if(interactive){
       if(compositor?.width!==width||compositor?.height!==height)compositor=new OffscreenCanvas(width,height);
       compositor.getContext('2d').putImageData(new ImageData(pixels,width,height),0,0);

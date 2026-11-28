@@ -1,6 +1,9 @@
 import { ImageService } from '../engine/service.mjs';
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import os from 'node:os';
+import {execFile} from 'node:child_process';
+import {promisify} from 'node:util';
 import {ProjectStore} from '../engine/project-store.mjs';
 import {StitchService} from '../engine/stitch-service.mjs';
 
@@ -15,6 +18,23 @@ export function devBridge() {
   const store=new ProjectStore(path.resolve('.cache/browser-stitch-engine'));
   const stitching=new StitchService(store,service);
   let samplesPromise;
+  // The preview writes real files: default ~/Pictures/轻图output, like the
+  // desktop app, with a native folder chooser on macOS.
+  const folders=new Map(),defaultFolder=path.join(os.homedir(),'Pictures','轻图output');
+  const scopeOf=value=>value==='stitch'?'stitch':'compression';
+  const describe=folder=>({name:path.basename(folder),path:folder});
+  async function chooseFolder(scope){
+    const current=folders.get(scope)||defaultFolder;
+    if(process.platform!=='darwin')return describe(current);
+    await fs.mkdir(current,{recursive:true}).catch(()=>{});
+    try{
+      const script=`POSIX path of (choose folder with prompt "选择导出目录" default location (POSIX file ${JSON.stringify(current)}))`;
+      const {stdout}=await promisify(execFile)('osascript',['-e',script]);
+      const chosen=stdout.trim().replace(/\/$/,'');
+      if(chosen)folders.set(scope,chosen);
+      return describe(folders.get(scope)||current);
+    }catch{return null;}
+  }
   return {name:'qingtu-local-engine',configureServer(server){
     server.middlewares.use('/__qingtu',async(req,res)=>{
       res.setHeader('Content-Type','application/json');
@@ -43,11 +63,20 @@ export function devBridge() {
         } else if(method==='process') result=await service.process(...args);
         else if(method==='rename')result=service.rename(...args);
         else if(method==='remove') {service.remove(args[0]);result=true;}
-        else if(method==='outputFolder'||method==='chooseFolder') result={name:'预览导出目录',path:path.join(server.config.root,'artifacts/browser-exports')};
+        else if(method==='outputFolder') result=describe(folders.get(scopeOf(args[0]))||defaultFolder);
+        else if(method==='chooseFolder') result=await chooseFolder(scopeOf(args[0]));
         else if(method==='save') {
-          const folder=path.join(server.config.root,'artifacts/browser-exports');
+          const folder=folders.get(scopeOf(args[1]))||defaultFolder;
           await fs.mkdir(folder,{recursive:true});
-          result={...service.download(args[0]),...await service.save(args[0],folder)};
+          const {mime,base64}=service.download(args[0]);
+          const saved=await service.save(args[0],folder);
+          result={name:path.basename(saved.path),mime,base64,...saved};
+        }
+        else if(method==='revealFolder') {
+          const folder=folders.get(scopeOf(args[0]))||defaultFolder;
+          await fs.mkdir(folder,{recursive:true});
+          if(process.platform==='darwin')execFile('open',[folder]);
+          result=true;
         }
         else throw new Error('不支持的操作');
         res.end(JSON.stringify({result}));

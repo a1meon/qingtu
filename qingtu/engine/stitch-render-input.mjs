@@ -9,8 +9,8 @@ export function stitchRenderKey(project){
   const {left,right,top,bottom}=edit.edges;
   return [id,{left,right,top,bottom}];
  });
- const {format,targetBytes,longEdge}=project.export||{};
- return JSON.stringify({id,canvasMode,canvas,sourceCanvas,layout,grid,positions,images,edits,format,targetBytes,longEdge});
+ const {format,targetBytes,longEdge,spec=null,fit=null}=project.export||{};
+ return JSON.stringify({id,canvasMode,canvas,sourceCanvas,layout,grid,positions,images,edits,format,targetBytes,longEdge,spec,fit});
 }
 
 export function fullCanvasImage(project,layout){

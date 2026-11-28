@@ -2,6 +2,7 @@ import {useEffect,useRef,useState} from 'react';
 import {SignOut} from '@phosphor-icons/react';
 import {ToyArtwork} from './ToyArtwork.jsx';
 import {useToyGesture} from './useToyGesture.js';
+import {toyHit} from './toy-hit.js';
 import './toys.css';
 
 const native=window.qingtuToy;
@@ -17,6 +18,27 @@ export default function DesktopToy(){
    ()=>{if(active)setError('无法打开玩具');});
   return ()=>{active=false;stop();};
  },[]);
+ // Accept mouse input only over the toy itself (or its menu). Forwarded
+ // mouse-moves still arrive while the window ignores clicks, so hovering
+ // the artwork switches input back on; leaving it passes clicks through.
+ const dragging=gesture.dragging;
+ useEffect(()=>{
+  if(!native.interactive)return;
+  let current=null;
+  const set=value=>{if(value!==current){current=value;native.interactive(value);}};
+  const hit=(x,y)=>{
+   if(dragging)return true;
+   const target=document.elementFromPoint(x,y);
+   if(target?.closest('.toy-context-menu'))return true;
+   return toyHit(target?.closest('.toy-artwork'),x,y);
+  };
+  const move=event=>set(hit(event.clientX,event.clientY));
+  const leave=()=>{if(!dragging)set(false);};
+  window.addEventListener('mousemove',move);
+  document.addEventListener('mouseleave',leave);
+  set(!!menu||dragging);
+  return ()=>{window.removeEventListener('mousemove',move);document.removeEventListener('mouseleave',leave);};
+ },[dragging,!!menu]);
  useEffect(()=>{
   if(!menu)return;
   menuRef.current?.querySelector('button').focus({preventScroll:true});

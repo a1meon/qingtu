@@ -3,6 +3,16 @@ import {SpinnerGap,WarningCircle} from '@phosphor-icons/react';
 import catalog from '../../desktop/toy-catalog.json';
 
 const scripts=new Map();
+// The component skips the fist entirely under prefers-reduced-motion. The toy
+// is an explicit opt-in game, so it always plays its full animation; the rest
+// of the app keeps honouring the system setting.
+function withFullMotion(load){
+ const original=window.matchMedia;
+ window.matchMedia=query=>/prefers-reduced-motion/.test(query)
+  ?{matches:false,media:query,addEventListener(){},removeEventListener(){},addListener(){},removeListener(){},onchange:null,dispatchEvent:()=>false}
+  :original.call(window,query);
+ return load().finally(()=>{window.matchMedia=original;});
+}
 
 function load(kind){
  const tag=`hose-${kind}`;
@@ -10,11 +20,11 @@ function load(kind){
  if(scripts.has(kind))return scripts.get(kind);
  const script=document.createElement('script');
  script.src=new URL(`./rubber-hose-ui/${kind}.js`,document.baseURI).href;
- const request=new Promise((resolve,reject)=>{
+ const request=withFullMotion(()=>new Promise((resolve,reject)=>{
   script.onload=()=>customElements.get(tag)?resolve(tag):reject(new Error('玩具组件未注册'));
   script.onerror=()=>reject(new Error('玩具加载失败'));
   document.head.append(script);
- }).catch(error=>{scripts.delete(kind);script.remove();throw error;});
+ })).catch(error=>{scripts.delete(kind);script.remove();throw error;});
  scripts.set(kind,request);
  return request;
 }

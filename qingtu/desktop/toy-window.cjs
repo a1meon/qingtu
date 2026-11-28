@@ -9,13 +9,13 @@ const isNativeCoordinate=value=>value>=-0x80000000&&value<=0x7fffffff;
 function createToyWindow({index,owner,notify,hidden=false,offscreen=false}){
  const url=pathToFileURL(index);
  url.searchParams.set('view','toy');
- let window=null,kind=catalog[0].id,lastBounds,dragOrigin;
+ let window=null,kind=catalog[0].id,lastBounds,dragOrigin,interactive=false;
  const state=()=>({enabled:!!window,kind});
  function close(){
   const current=window;
   if(!current)return;
   window=null;
-  dragOrigin=null;
+  dragOrigin=null;interactive=false;
   current.destroy();
   notify(state());
  }
@@ -44,9 +44,15 @@ function createToyWindow({index,owner,notify,hidden=false,offscreen=false}){
   const child=new BrowserWindow({
    ...position(),width,height,show:false,frame:false,transparent:true,backgroundColor:'#00000000',alwaysOnTop:true,
    resizable:false,minimizable:false,maximizable:false,fullscreenable:false,skipTaskbar:true,hasShadow:false,title:'摸鱼玩具',
+   // The toy opens inactive; the first click must play it, not just focus the window (macOS).
+   acceptFirstMouse:true,
    webPreferences:{preload:join(__dirname,'toy-preload.cjs'),sandbox:true,contextIsolation:true,nodeIntegration:false,offscreen}
   });
   window=child;
+  // Transparent areas must not catch clicks meant for windows underneath
+  // (other desktop pets, the desktop itself). The renderer turns input back
+  // on only while the pointer is over the toy artwork.
+  child.setIgnoreMouseEvents(true,{forward:true});
   if(hidden)child.setOpacity(0);
   else child.on('move',()=>{lastBounds=child.getBounds();});
   child.webContents.setWindowOpenHandler(()=>({action:'deny'}));
@@ -54,7 +60,7 @@ function createToyWindow({index,owner,notify,hidden=false,offscreen=false}){
   child.webContents.on('render-process-gone',()=>{if(window===child)close();});
   child.on('closed',()=>{
    if(window!==child)return;
-   window=null;dragOrigin=null;notify(state());
+   window=null;dragOrigin=null;interactive=false;notify(state());
   });
   try{
    await child.loadFile(index,{query:{view:'toy'}});
@@ -69,16 +75,36 @@ function createToyWindow({index,owner,notify,hidden=false,offscreen=false}){
    throw error;
   }
  }
- function drag(phase,x,y){
+ // Drags follow the real cursor (main-process DIPs, so mixed-DPI Windows
+ // displays agree) and are only honoured while the cursor is on the toy. A
+ // toy drag always keeps the cursor over the window, so a press that started
+ // elsewhere (another app's widget, a stale capture after a lost mouse-up)
+ // can never move it.
+ const DRAG_SLACK=96;
+ function cursorNear(slack){
+  const cursor=screen.getCursorScreenPoint(),b=window.getBounds();
+  return cursor.x>=b.x-slack&&cursor.x<=b.x+b.width+slack&&cursor.y>=b.y-slack&&cursor.y<=b.y+b.height+slack?cursor:null;
+ }
+ function cancelDrag(){
+  dragOrigin=null;
+  if(window&&!window.isDestroyed())window.webContents.send('qingtu:toy-drag-cancel');
+ }
+ function drag(phase){
   if(phase==='end'){dragOrigin=null;return;}
-  if(!window||window.isDestroyed()||!Number.isFinite(x)||!Number.isFinite(y))return;
+  if(!window||window.isDestroyed())return;
   if(phase==='start'){
+   // A drag can only begin while the window accepts input over the toy and
+   // the cursor is actually on it.
+   const cursor=interactive&&cursorNear(12);
+   if(!cursor){cancelDrag();return;}
    const [left,top]=window.getPosition();
-   dragOrigin={x,y,left,top,lastX:left,lastY:top};
+   dragOrigin={x:cursor.x,y:cursor.y,left,top,lastX:left,lastY:top};
   }else if(phase==='move'&&dragOrigin){
+   const cursor=cursorNear(DRAG_SLACK);
+   if(!cursor){cancelDrag();return;}
    // Electron's int32 converter rejects JavaScript's negative zero.
-   const nextX=Math.round(dragOrigin.left+(x-dragOrigin.x))+0;
-   const nextY=Math.round(dragOrigin.top+(y-dragOrigin.y))+0;
+   const nextX=Math.round(dragOrigin.left+(cursor.x-dragOrigin.x))+0;
+   const nextY=Math.round(dragOrigin.top+(cursor.y-dragOrigin.y))+0;
    if(!isNativeCoordinate(nextX)||!isNativeCoordinate(nextY))return;
    if(nextX===dragOrigin.lastX&&nextY===dragOrigin.lastY)return;
    try{window.setPosition(nextX,nextY);}
@@ -86,11 +112,19 @@ function createToyWindow({index,owner,notify,hidden=false,offscreen=false}){
    dragOrigin.lastX=nextX;dragOrigin.lastY=nextY;
   }
  }
+ function setInteractive(value){
+  if(!window||window.isDestroyed())return;
+  const next=!!value;
+  if(next===interactive)return;
+  interactive=next;
+  if(!next)dragOrigin=null;
+  window.setIgnoreMouseEvents(!next,{forward:true});
+ }
  function validSender(event){
   return window&&!window.isDestroyed()&&event.sender===window.webContents&&
    event.senderFrame===window.webContents.mainFrame&&event.senderFrame.url===url.href;
  }
- return {state,set,close,drag,validSender};
+ return {state,set,close,drag,setInteractive,validSender};
 }
 
 module.exports={createToyWindow};

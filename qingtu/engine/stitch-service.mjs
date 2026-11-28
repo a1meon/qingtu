@@ -5,7 +5,8 @@ import {randomUUID} from 'node:crypto';
 import {stitchRenderKey,originalCanvasImage} from './stitch-render-input.mjs';
 import {calculateLayout} from './stitch-layout.mjs';
 import {encodeStitchPng} from './stitch-png.mjs';
-import {INPUT_OPTIONS} from './image.mjs';
+import {INPUT_OPTIONS,reframeRaster} from './image.mjs';
+import {fitToSpec,normalizeSpec,fixesSpec} from './spec.mjs';
 import {imageGeometry} from './stitch-edits.mjs';
 import {encodeJpeg} from './jpeg-quality.mjs';
 import {clipRectangle} from './canvas-clip.mjs';
@@ -78,9 +79,27 @@ export async function composeProject(project,store,{isObsolete}={}){
  }
  return {data:canvas,info:{width:layout.width,height:layout.height,channels:4},layout,sourceFormats:[...sourceFormats]};
 }
+// Reference-spec plan for the composed canvas (null when nothing is fixed).
+export function stitchSpecPlan(settings,width,height){
+ const fit=settings?.fit||'blur';
+ if(!settings?.spec||!fixesSpec(fit))return null;
+ const spec=normalizeSpec(settings.spec);
+ return {spec,fit,...fitToSpec(spec,width,height,fit)};
+}
 async function encodeProject(data,info,settings,options){
- const target=Number(settings.targetBytes??10000000);
+ let target=Number(settings.targetBytes??10000000);
  if(!Number.isInteger(target)||target<64||target>100000000)throw new Error('大小须为 64 字节–100 MB');
+ // Spec fixes match the compression module: reframe or scale the composed
+ // canvas into the spec, and keep the file under the spec's exclusive limit.
+ const plan=stitchSpecPlan(settings,info.width,info.height);
+ if(plan){
+  target=Math.min(target,plan.spec.maxBytes-1);
+  if(plan.reframe)({data,info}=await reframeRaster(data,info,plan,plan.fit));
+  else if(plan.width!==info.width||plan.height!==info.height){
+   const out=await sharp(data,{raw:info}).resize(plan.width,plan.height,{fit:'fill'}).ensureAlpha().raw().toBuffer({resolveWithObject:true});
+   data=out.data;info={width:out.info.width,height:out.info.height,channels:4};
+  }
+ }
  const requested=settings.format||'png';if(!['png','jpeg','auto'].includes(requested))throw new Error('格式无效');
  const png=async()=>({...await encodeStitchPng(data,info,target,options),format:'png'});
  let result;
@@ -118,7 +137,9 @@ export class StitchService{
     const buffer=await this.store.readAsset(original.assetId),meta=await sharp(buffer,INPUT_OPTIONS).metadata();
     const rotated=[5,6,7,8].includes(meta.orientation);
     if(buffer.length!==original.bytes||(rotated?meta.height:meta.width)!==layout.width||(rotated?meta.width:meta.height)!==layout.height)throw new Error('原图副本与项目尺寸不一致');
-    if(meta.format===copy.export?.format)output={buffer,width:layout.width,height:layout.height,format:meta.format,unchanged:true,lossless:true,encoding:'原图',imageBytes:buffer.length,limitBytes:copy.export.targetBytes,paddedBytes:0};
+    const plan=stitchSpecPlan(copy.export,layout.width,layout.height);
+    const specChanges=plan&&(plan.width!==layout.width||plan.height!==layout.height||buffer.length>=plan.spec.maxBytes);
+    if(meta.format===copy.export?.format&&!specChanges)output={buffer,width:layout.width,height:layout.height,format:meta.format,unchanged:true,lossless:true,encoding:'原图',imageBytes:buffer.length,limitBytes:copy.export.targetBytes,paddedBytes:0};
    }
    if(!output){
     const {data,info,sourceFormats}=await composeProject(copy,this.store,options);

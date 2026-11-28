@@ -78,7 +78,8 @@ async function rasterForDetection(preview,window){
 
 function sourceLandmarks(result,{x,y,w,h}){
   const xAt=value=>x+value*w,yAt=value=>y+value*h;
-  const region=area=>area&&({...area,x:xAt(area.x),y:yAt(area.y),...(area.rx&&{rx:area.rx*w,ry:area.ry*h})});
+  const region=area=>area&&({...area,x:xAt(area.x),y:yAt(area.y),...(area.rx&&{rx:area.rx*w,ry:area.ry*h}),
+    ...(area.oval&&{oval:area.oval.map(point=>({x:xAt(point.x),y:yAt(point.y)}))})});
   const legs=result.legs;
   return {...result,face:region(result.face),head:region(result.head),body:region(result.body),
     legs:legs&&({...legs,x:xAt(legs.x),hip:yAt(legs.hip),ankle:yAt(legs.ankle),foot:yAt(legs.foot),lock:yAt(legs.lock),

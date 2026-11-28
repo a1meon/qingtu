@@ -19,6 +19,7 @@ const vec3 weights=vec3(.2126,.7152,.0722);
 const tone=common+`
 uniform vec4 lightControls,rangeControls,finishControls,balanceControls;
 uniform vec4 matchGain,matchOffset;
+uniform vec2 bandShadow,bandMid,bandHigh;
 
 float gamut(float light,vec3 delta) {
   float high=max(max(delta.r,delta.g),delta.b);
@@ -58,9 +59,14 @@ void main() {
       float chroma=max(max(delta.r,delta.g),delta.b)-min(min(delta.r,delta.g),delta.b);
       amount-=smoothstep(protection-.09,protection,light)*(1.-smoothstep(.045,.11,chroma));
     }
+    float toneLight=light;
     light=shiftLight(light,amount*((matchGain.x-1.)*light+matchOffset.x));
     delta.b+=amount*((matchGain.y-1.)*delta.b+matchOffset.y);
     delta.r+=amount*((matchGain.z-1.)*delta.r+matchOffset.z);
+    // Tone-band chroma residuals, same weights as engine/image-color.mjs.
+    float sw=1.-smoothstep(.2,.5,toneLight),hw=smoothstep(.5,.8,toneLight),mw=1.-sw-hw;
+    vec2 band=sw*bandShadow+mw*bandMid+hw*bandHigh;
+    delta.b+=amount*band.x;delta.r+=amount*band.y;
     delta.g=-(weights.r*delta.r+weights.b*delta.b)/weights.g;
   }
   result=vec4(floor(255.*(vec3(light)+gamut(light,delta)*delta)+.5)/255.,src.a);
@@ -134,6 +140,7 @@ export function createInteractiveGrade(){
   const light=uniform(basePass,'lightControls'),range=uniform(basePass,'rangeControls');
   const finish=uniform(basePass,'finishControls'),balance=uniform(basePass,'balanceControls');
   const matchGain=uniform(basePass,'matchGain'),matchOffset=uniform(basePass,'matchOffset');
+  const bandUniforms=['bandShadow','bandMid','bandHigh'].map(name=>uniform(basePass,name));
   const spatial=uniform(effectsPass,'spatial'),frame=uniform(effectsPass,'frame');
   const size=uniform(effectsPass,'size'),radius=uniform(effectsPass,'radius');
   gl.disable(gl.DITHER);
@@ -165,9 +172,10 @@ export function createInteractiveGrade(){
       gl.uniform4f(range,shadows,highlights,whites,blacks);
       gl.uniform4f(finish,saturation,vibrance,fade,0);
       gl.uniform4f(balance,.0012*temperature+.0009*tint,-.0016*temperature+.0009*tint,Number(adjusted),0);
-      const {gain,offset,strength,protectedWhite}=colorMatchParameters(match);
+      const {gain,offset,strength,protectedWhite,bands}=colorMatchParameters(match);
       gl.uniform4f(matchGain,...gain,strength);
       gl.uniform4f(matchOffset,...offset,protectedWhite??-1);
+      bandUniforms.forEach((location,index)=>gl.uniform2f(location,...bands[index]));
       gl.drawArrays(gl.TRIANGLES,0,3);
       gl.bindTexture(gl.TEXTURE_2D,graded);
     }

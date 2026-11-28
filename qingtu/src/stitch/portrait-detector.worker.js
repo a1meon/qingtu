@@ -14,6 +14,9 @@ async function create(Model,buffer,options){
 }
 
 const unit=value=>Math.max(0,Math.min(1,value));
+// MediaPipe face-mesh oval, ordered around the face from the forehead centre.
+const FACE_OVAL=[10,338,297,332,284,251,389,356,454,323,361,288,397,365,379,378,400,377,152,148,176,149,150,136,172,58,132,93,234,127,162,21,54,103,67,109];
+const round=value=>Math.round(value*10000)/10000;
 const visible=(p,threshold=.39)=>p&&p.visibility>=threshold&&p.x>=0&&p.x<=1&&p.y>=0&&p.y<=1;
 function faceGeometry(points){
   if(!points?.length)return null;
@@ -22,7 +25,8 @@ function faceGeometry(points){
   const top=unit(Math.min(...ys)),bottom=unit(Math.max(...ys));
   if(right-left<.018||bottom-top<.018)return null;
   const x=(left+right)/2,rx=(right-left)/2,lean=Math.max(-1,Math.min(1,(points[1].x-x)/rx));
-  return {x,y:(top+bottom)/2,rx,ry:(bottom-top)/2,lean};
+  const oval=points.length>=468?FACE_OVAL.map(index=>({x:round(points[index].x),y:round(points[index].y)})):undefined;
+  return {x,y:(top+bottom)/2,rx,ry:(bottom-top)/2,lean,...(oval&&{oval})};
 }
 
 function legGeometry(points){

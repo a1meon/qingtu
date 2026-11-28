@@ -1,5 +1,5 @@
 import {useCallback,useEffect,useRef,useState} from 'react';
-import {ClockCounterClockwise,FolderOpen,ImageSquare,X} from '@phosphor-icons/react';
+import {ClockCounterClockwise,FolderOpen,ImageSquare,Rows,SquaresFour,X} from '@phosphor-icons/react';
 import {Modal} from './Modal.jsx';
 import {api,desktop} from './api.js';
 
@@ -8,7 +8,9 @@ const statusText={missing:'已删除或移动',unavailable:'暂时无法访问'}
 // A page can contain many large originals. Only request small previews for
 // tiles approaching the scrollport, with at most three decodes in flight.
 const recentThumbnails=new Map();
-function HistoryTiles({scope,items,onOpen}){
+const VIEW_KEY='qingtu.history.view';
+const storedView=()=>{try{return localStorage.getItem(VIEW_KEY)==='grid'?'grid':'list';}catch{return 'list';}};
+function HistoryTiles({scope,items,onOpen,view}){
  const grid=useRef(null),[images,setImages]=useState({});
  useEffect(()=>{
   const element=grid.current,waiting=new Set(),entries=new Map(items.map(item=>[String(item.id),item]));
@@ -40,7 +42,7 @@ function HistoryTiles({scope,items,onOpen}){
   }
   return ()=>{active=false;waiting.clear();observer.disconnect();};
  },[scope,items]);
- return <ul ref={grid} className="history-list">{items.map(entry=>{
+ return <ul ref={grid} className={`history-list ${view==='list'?'history-rows':''}`}>{items.map(entry=>{
   const unavailable=statusText[entry.status],url=entry.thumbnail||images[entry.id]||recentThumbnails.get(scope+':'+entry.id);
   return <li key={entry.id} data-id={entry.id} className={unavailable?'history-unavailable':''}>
    <span className="history-thumbnail" tabIndex={url?0:undefined} aria-label={url?entry.name+' 缩略图':undefined}>{url?<img src={url} alt="" decoding="async" loading="lazy"/>:<ImageSquare size={26} aria-hidden/>}</span>
@@ -53,6 +55,8 @@ function HistoryTiles({scope,items,onOpen}){
 }
 export function ExportHistory({scope,onClose}){
  const [page,setPage]=useState(0),[result,setResult]=useState(null),[error,setError]=useState('');
+ const [view,setViewState]=useState(storedView);
+ const setView=value=>{setViewState(value);try{localStorage.setItem(VIEW_KEY,value);}catch{}};
  const request=useRef(0);
  const refresh=useCallback(async()=>{
   const id=++request.current;
@@ -71,7 +75,13 @@ export function ExportHistory({scope,onClose}){
  return <Modal label="导出历史" className="export-history-dialog" onKeyDown={e=>e.stopPropagation()} onCancel={onClose}>
   <header className="history-heading">
    <div><h2>导出历史</h2><p>{scope==='stitch'?'图像编辑':'压缩调整'}{result&&` · ${result.total} 条记录`}</p></div>
-   <button type="button" className="icon-button" aria-label="关闭导出历史" onClick={onClose}><X size={20}/></button>
+   <div className="history-tools">
+    <div className="view-switch history-view" role="radiogroup" aria-label="显示方式">
+     <button type="button" role="radio" aria-checked={view==='list'} className={view==='list'?'active':''} aria-label="列表" title="列表" onClick={()=>setView('list')}><Rows size={15} aria-hidden/></button>
+     <button type="button" role="radio" aria-checked={view==='grid'} className={view==='grid'?'active':''} aria-label="网格" title="网格" onClick={()=>setView('grid')}><SquaresFour size={15} aria-hidden/></button>
+    </div>
+    <button type="button" className="icon-button" aria-label="关闭导出历史" onClick={onClose}><X size={20}/></button>
+   </div>
   </header>
   {error&&<p className="dialog-error" role="alert">{error}</p>}
   {result?.unsaved&&<p className="dialog-error" role="status">部分导出记录仅保存在本次会话中。</p>}
@@ -79,7 +89,7 @@ export function ExportHistory({scope,onClose}){
   {result?.total===0&&<div className="history-empty"><ClockCounterClockwise aria-hidden size={32}/><p>暂无导出记录</p></div>}
   {!!result?.items.length&&<>
    {!desktop&&result.items.some(item=>item.status==='download')&&<p className="history-download-note">请在浏览器的下载记录中打开文件所在目录。</p>}
-   <HistoryTiles key={scope+result.page} scope={scope} items={result.items} onOpen={open}/>
+   <HistoryTiles key={scope+result.page} scope={scope} items={result.items} onOpen={open} view={view}/>
    {result.pages>1&&<footer className="history-pages"><button disabled={result.page===0} onClick={()=>setPage(result.page-1)}>上一页</button><span>{result.page+1} / {result.pages}</span><button disabled={result.page+1>=result.pages} onClick={()=>setPage(result.page+1)}>下一页</button></footer>}
   </>}
  </Modal>;

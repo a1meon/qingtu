@@ -21,6 +21,14 @@ import {addFlushHandler,flushWork} from './lifecycle.js';
 import {outputFormats} from './export-format.js';
 import {blockPreviewDrag,isExternalFileTransfer} from './file-drop.js';
 import {nameOrDefault} from '../engine/output-name.mjs';
+import {SpecPanel} from './SpecPanel.jsx';
+import {EmptyArt} from './EmptyArt.jsx';
+import {CUSTOM_DEFAULT,resolveSpec,specPlan,assetOk,checkAsset,formatBytes,fixesSpec} from '../engine/spec.mjs';
+
+// Spec choices are remembered per user; other compression settings keep their
+// existing reset-on-launch behaviour.
+const SPEC_STORE='qingtu.compression.spec.v1';
+const storedSpec=(()=>{try{return JSON.parse(localStorage.getItem(SPEC_STORE))||{};}catch{return {};}})();
 
 const displayName=name=>nameOrDefault(name.replace(/(?<=.)\.(?:jpe?g|png|webp|avif|tiff?)$/i,''));
 const defaults={type:'scale',percent:100,locked:true,anchor:'width',width:3840,height:2160};
@@ -37,6 +45,9 @@ export function CompressionApp(){
  const stitch=useRef(),queue=useRef(),nameEditor=useRef(),exportTask=useRef(Promise.resolve()),deleteTask=useRef(Promise.resolve()),deleteLock=useRef(false),exportLock=useRef(false);
  const [items,setItems]=useState([]),[selectedId,setSelectedId]=useState(null),[loading,setLoading]=useState(false),[deleting,setDeleting]=useState(false),[exportSelection,setExportSelection]=useState(null);
  const [target,setTarget]=useState(10),[unit,setUnit]=useState('MB'),[format,setFormat]=useState('png'),[resize,setResize]=useState(defaults);
+ const [specId,setSpecId]=useState(storedSpec.specId??'off'),[customSpec,setCustomSpec]=useState({...CUSTOM_DEFAULT,...storedSpec.custom}),[fit,setFit]=useState(storedSpec.fit??'blur');
+ const spec=useMemo(()=>resolveSpec(specId,customSpec),[specId,customSpec]);
+ useEffect(()=>{try{localStorage.setItem(SPEC_STORE,JSON.stringify({specId,custom:customSpec,fit}));}catch{}},[specId,customSpec,fit]);
  const [preview,setPreview]=useState(null),[processing,setProcessing]=useState(false),[error,setError]=useState(''),[notice,setNotice]=useState(null);
  const folder=useOutputFolder('compression',text=>setNotice({type:'error',text}));
  const [zoomSlot,setZoomSlot]=useState(null);
@@ -61,11 +72,11 @@ export function CompressionApp(){
   try{return dimensions(selected,resize);}
   catch{return {width:resize.width,height:resize.height};}
  },[selected?.id,resize]);
- const settings=useMemo(()=>({mode:'smart',targetBytes:Math.floor(Number(target)*(unit==='MB'?1000000:1000)),format,resize}),[target,unit,format,resize]);
+ const settings=useMemo(()=>({mode:'smart',targetBytes:Math.floor(Number(target)*(unit==='MB'?1000000:1000)),format,resize,spec,fit}),[target,unit,format,resize,spec,fit]);
  const pngSizes=exportItems.flatMap(file=>{
   if(format!=='png')return [];
-  try{const pixels=dimensions(file,resize);
-   if(file.format==='png'&&file.bytes<=settings.targetBytes&&pixels.width===file.width&&pixels.height===file.height)return [];
+  try{const plan=specPlan(file,resize,spec,fit),pixels={width:plan.width,height:plan.height};
+   if(file.format==='png'&&file.bytes<=settings.targetBytes&&(!spec||file.bytes<spec.maxBytes)&&!plan.reframe&&pixels.width===file.width&&pixels.height===file.height)return [];
    return [pixels];
   }catch{return [];}
  });
@@ -73,7 +84,9 @@ export function CompressionApp(){
  const settingsError=validateSettings(target,settings)||pngRange.message;
  const key=JSON.stringify(settings);
  const output=preview && preview.fileId===selected?.id && preview.key===key && !batch ? preview.result : null;
- const defaultView=output&&!output.unchanged?'compare':'original';
+ // A reframed result has a different aspect ratio, so a split comparison would
+ // misalign; show the processed image by default instead.
+ const defaultView=output?.reframed?'processed':output&&!output.unchanged?'compare':'original';
  const view=viewChoice?.id===selected?.id?viewChoice?.value??defaultView:defaultView;
  const scaleLimited=resize.type==='scale'&&selected&&Math.max(selected.width,selected.height)*Number(resize.percent)/100>MAX_EDGE;
  const scale=scaleLimited?Math.round(MAX_EDGE/Math.max(selected.width,selected.height)*1000)/10:resize.type==='scale'?resize.percent:selected?Math.round(Number(size.width)/selected.width*1000)/10:100;
@@ -136,16 +149,17 @@ export function CompressionApp(){
  async function runExport(ids){
   const files=ids?items.filter(file=>ids.includes(file.id)):[...exportItems];
   if(!files.length||batch||loading||deleting||settingsError||pngRange.checking||exportLock.current)return;
-  const config=structuredClone(settings);exportLock.current=true;cancel.current=false;setBatch({current:0,total:files.length});setNotice(null);setStatuses({});let success=0,failed=0;
+  const config=structuredClone(settings);exportLock.current=true;cancel.current=false;setBatch({current:0,total:files.length});setNotice(null);setStatuses({});let success=0,failed=0,total=0,offSpec=0;
   try{
    const destination=await folder.prepare();if(!destination)return;
    await nameEditor.current?.flush();await queue.current?.flush();
    for(let i=0;i<files.length;i++){
     if(cancel.current)break;const file=files[i];setBatch({current:i+1,total:files.length});setStatuses(old=>({...old,[file.id]:{type:'busy'}}));
-    try{const r=await api.process(file.id,config);await folder.save(r.token,destination);success++;setStatuses(old=>({...old,[file.id]:{type:'success',text:'已导出'}}));}
+    try{const r=await api.process(file.id,config);await folder.save(r.token,destination);success++;total+=r.bytes;if(config.spec&&!assetOk(config.spec,r))offSpec++;setStatuses(old=>({...old,[file.id]:{type:'success',text:'已导出'}}));}
     catch(e){failed++;setStatuses(old=>({...old,[file.id]:{type:'error',text:e.message}}));}
    }
-   setNotice({type:failed?'error':'success',text:`${cancel.current?'已取消，导出':'已导出'} ${success} 张${failed?`，${failed} 张未完成`:''}`,reveal:success>0&&desktop});
+   const overRequest=(offSpec?`；${offSpec} 张不符合 ${config.spec.label} 规格`:'')+(config.spec?.totalBytes&&total>config.spec.totalBytes?`；合计 ${formatBytes(total)}，超过单次请求 ${formatBytes(config.spec.totalBytes)}，请分批提交`:'');
+   setNotice({type:failed?'error':overRequest?'warning':'success',text:`${cancel.current?'已取消，导出':'已导出'} ${success} 张${failed?`，${failed} 张未完成`:''}${overRequest}`,reveal:success>0&&desktop});
   }catch(e){setNotice({type:'error',text:e.message});}finally{exportLock.current=false;setBatch(null);}
  }
  function exportImages(ids){if(exportLock.current)return exportTask.current;const task=runExport(ids);exportTask.current=task;return task;}
@@ -153,11 +167,25 @@ export function CompressionApp(){
  actions.current=module==='compress'?{add,export:exportAll}:{canvasCommand:command=>stitch.current?.canvasCommand(command),add:()=>stitch.current?.add(),export:()=>stitch.current?.export()};
  function editDimension(field,value){if(Number(value)>MAX_EDGE)value=String(MAX_EDGE);setResize(old=>({...old,type:'pixels',width:size.width,height:size.height,[field]:value,anchor:field}));}
 
+ // Switching units keeps the same byte ceiling (10 MB ↔ 10000 KB) instead of
+ // reinterpreting the typed number in the new unit.
+ function changeUnit(next){
+  if(next===unit)return;
+  const value=Number(target);
+  if(target!==''&&Number.isFinite(value))setTarget(next==='KB'?Math.min(100000,Math.round(value*1000)):Math.min(100,Math.max(1,Math.round(value/1000))));
+  setUnit(next);
+ }
  function reset(){setTarget(10);setUnit('MB');setFormat('png');setResize(defaults);setPreviewReset(v=>v+1);setError('');}
+ const origin=selected&&{width:selected.width,height:selected.height,bytes:selected.bytes,format:selected.format};
+ const exported=output&&{width:output.width,height:output.height,bytes:output.bytes,format:output.format};
+ const specStates=spec?Object.fromEntries(items.map(file=>[file.id,assetOk(spec,file)?{type:'ok',text:'符合规格'}:fixesSpec(fit)?{type:'fix',text:'导出时修正'}:{type:'fix',text:'不符合规格'}])):{};
+ const failing=origin&&spec?checkAsset(spec,origin).filter(row=>!row.ok).length:0;
+ const overCount=!!spec&&items.length>spec.maxCount;
+ const capped=!!spec&&settings.targetBytes>=spec.maxBytes;
  const windowButtons=<div className="window-controls"><button aria-label="最小化" onClick={()=>api.windowAction('minimize')}><Minus size={16}/></button><button aria-label="最大化或还原" onClick={()=>api.windowAction('maximize')}><Square size={13}/></button><button className="window-close" aria-label="关闭窗口" onClick={()=>api.windowAction('close')}><X size={17}/></button></div>;
  return <div data-module={module} className={`app ${inspectorOpen?'':'inspector-collapsed'}`} onDragStartCapture={e=>{if(e.target.tagName==='IMG'||e.target.closest('.canvas-card'))blockPreviewDrag(e);}} onDragOver={e=>e.preventDefault()} onDragEnter={e=>{if(!document.querySelector('dialog[open]')&&isExternalFileTransfer(e.dataTransfer)){depth.current++;setDragging(true);}}} onDragLeave={()=>{if(--depth.current<=0){setDragging(false);depth.current=0;}}} onDrop={e=>{e.preventDefault();depth.current=0;setDragging(false);if(document.querySelector('dialog[open]')||!isExternalFileTransfer(e.dataTransfer)||!e.dataTransfer.files.length)return;if(module==='compress')importFiles(e.dataTransfer.files);else stitch.current?.importFiles(e.dataTransfer.files);}}>
   <header className={`titlebar ${isMac?'mac-titlebar':''}`}>
-   <div className="brand"><img src="./assets/app-icon.png" alt="" draggable={false}/><strong>轻图</strong></div><AppUpdates busy={processing||loading||deleting||!!batch||stitchBusy} hasImages={items.length>0}/>{desktop&&!isMac&&windowButtons}
+   <div className="brand"><img src="./assets/app-icon.png" alt="" draggable={false}/><strong>轻图</strong></div><AppUpdates busy={processing||loading||deleting||!!batch||stitchBusy} hasImages={items.length>0}/><span className="titlebar-spacer"/>{desktop&&!isMac&&windowButtons}
   </header>
   <input ref={fileInput} className="sr-only" type="file" multiple accept=".jpg,.jpeg,.png,.webp,.avif,.tif,.tiff" aria-label="选择图片文件" onChange={e=>importFiles(e.target.files)}/>
   <main className="workspace">
@@ -166,7 +194,7 @@ export function CompressionApp(){
    <section className="stage" aria-label="图片预览">
     <div className={`preview-workspace ${selected?'has-image':''} ${dragging?'dragging':''}`}>
      <div className="file-toolbar">
-      <div className="compression-name-slot">{selected?<CompressionName key={selected.id} ref={nameEditor} file={selected} onRename={rename} active={module==='compress'} disabled={loading||deleting||!!batch}/>:<span className="file-toolbar-name">未选择图片</span>}</div>
+      <div className="compression-name-slot">{selected?<CompressionName key={selected.id} ref={nameEditor} file={selected} onRename={rename} active={module==='compress'} disabled={loading||deleting||!!batch}/>:<span className="file-toolbar-name">未选择图片</span>}{selected&&spec&&<span key={`${selected.id}:${failing}:${!!output}`} className={`spec-pill ${!failing?'ok':output&&fixesSpec(fit)?'fixed':'warn'}`}>{!failing?'符合规格':output&&fixesSpec(fit)?'已修正':`${failing} 项超限`}</span>}</div>
       <div className="preview-actions">
        <PreviewViewSwitch view={view} onChange={value=>setViewChoice({id:selected.id,value})} disabled={!selected}/>
        {!inspectorOpen&&<InspectorToggle panelId="export-inspector" expanded={false} setOpen={setInspectorOpen}/>}
@@ -181,24 +209,28 @@ export function CompressionApp(){
         <span className="canvas-navigation-slot" ref={setZoomSlot}/>
        </div>
       </div>:<div className="empty-state">
-       <img className="empty-illustration" src="./assets/blue-file-empty.png" alt="" draggable={false}/>
-       <button className="primary import-button" disabled={loading} onClick={add}>{loading?<SpinnerGap size={25} className="spin"/>:<Plus size={30} weight="bold"/>}{loading?'正在准备…':'添加图片'}</button>
+       <EmptyArt/>
+       <p className="empty-title">拖入图片，或从这里添加</p>
+       <p className="empty-sub">JPG · PNG · WebP · AVIF · TIFF</p>
+       <button className="primary import-button" disabled={loading} onClick={add}>{loading?<SpinnerGap size={16} className="spin"/>:<Plus size={16} weight="bold"/>}{loading?'正在准备…':'添加图片'}</button>
       </div>}
      </div>
     </div>
-    <CompressionQueue ref={queue} items={items} currentId={selected?.id} selectedIds={exportIds} selectionExplicit={exportSelection!==null} onOpen={openImage} onAdd={add} onSelect={selectExport} onSelectAll={checked=>setExportSelection(checked?null:[])} onExport={id=>exportImages([id])} onRename={rename} onDelete={remove} statuses={statuses} disabled={loading||deleting||!!batch} active={module==='compress'}/>
+    <CompressionQueue ref={queue} items={items} currentId={selected?.id} selectedIds={exportIds} selectionExplicit={exportSelection!==null} onOpen={openImage} onAdd={add} onSelect={selectExport} onSelectAll={checked=>setExportSelection(checked?null:[])} onExport={id=>exportImages([id])} onRename={rename} onDelete={remove} statuses={statuses} specStates={specStates} overCount={overCount} maxCount={spec?.maxCount} disabled={loading||deleting||!!batch} active={module==='compress'}/>
    </section>
    <div className="inspector-shell">
     <aside className="inspector" id="export-inspector" aria-label="导出设置" aria-hidden={!inspectorOpen} inert={!inspectorOpen}>
      <InspectorHeading title="设置" panelId="export-inspector" setOpen={setInspectorOpen} onReset={reset} resetDisabled={!!batch}/>
      <div className="settings-scroll">
+      <SpecPanel specId={specId} onSpec={setSpecId} spec={spec} custom={customSpec} onCustom={setCustomSpec} fit={fit} onFit={setFit} origin={origin} result={exported} processing={processing} disabled={!!batch||!inspectorOpen}/>
       <div className="control-section">
        <label htmlFor="target-size">大小上限</label>
        <div className="target-control">
         <input id="target-size" aria-describedby={pngRange.message?'compression-png-range':undefined} title="输出不超过此大小。1 MB = 1,000,000 字节。" type="number" inputMode="numeric" min={unit==='KB'?pngRange.minimum:1} max={unit==='MB'?100:100000} step="1" value={target} onChange={e=>{const value=e.target.value;if(value===''||Number.isInteger(Number(value)))setTarget(value);}} onBlur={()=>{if(target==='')setTarget(10);}} disabled={!!batch}/>
-        <Dropdown id="unit" label="文件大小单位" className="unit-dropdown" minMenuWidth={0} value={unit} onChange={setUnit} disabled={!!batch||!inspectorOpen} options={[{value:'MB',label:'MB'},{value:'KB',label:'KB'}]}/>
+        <Dropdown id="unit" label="文件大小单位" className="unit-dropdown" minMenuWidth={0} value={unit} onChange={changeUnit} disabled={!!batch||!inspectorOpen} options={[{value:'MB',label:'MB'},{value:'KB',label:'KB'}]}/>
        </div>
        {pngRange.message&&<small id="compression-png-range" className="png-budget-range" role="status">{pngRange.message}</small>}
+       {capped&&!pngRange.message&&<small className="spec-hint">按规格限制在 {formatBytes(spec.maxBytes)} 以内</small>}
       </div>
       <div className="control-section">
        <h2>尺寸</h2>
@@ -222,7 +254,7 @@ export function CompressionApp(){
    </div>
    <div className="module-content" hidden={module!=='stitch'}><StitchWorkspace ref={stitch} active={module==='stitch'} inspectorRevision={inspectorRevision} inspectorOpen={inspectorOpen} setInspectorOpen={setInspectorOpen} onBusy={setStitchBusy} onCount={setStitchCount}/></div>
   </main>
-  {notice&&module==='compress'&&<div className={`notice ${notice.type}`} role={notice.type==='error'?'alert':'status'}>{notice.type==='error'?<WarningCircle size={23} weight="bold"/>:<CheckCircle size={23} weight="fill" className="success-icon"/>}<span>{notice.text}</span>{notice.reveal&&<button onClick={folder.reveal}>打开文件夹</button>}<button className="icon-button" aria-label="关闭提示" onClick={()=>setNotice(null)}><X size={18}/></button></div>}
+  {notice&&module==='compress'&&<div className={`notice ${notice.type}`} role={notice.type==='success'?'status':'alert'}>{notice.type!=='success'?<WarningCircle size={23} weight="bold"/>:<CheckCircle size={23} weight="fill" className="success-icon"/>}<span>{notice.text}</span>{notice.reveal&&<button onClick={folder.reveal}>打开文件夹</button>}<button className="icon-button" aria-label="关闭提示" onClick={()=>setNotice(null)}><X size={18}/></button></div>}
   {dragging&&<div className="drop-overlay"><Plus size={40} weight="bold"/><span>松开以添加图片</span></div>}
  </div>;
 }
