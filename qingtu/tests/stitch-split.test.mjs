@@ -50,3 +50,33 @@ test('EXIF-oriented splits use display coordinates and preserve oriented source 
  const item={id:'original',assetId:'b'.repeat(64),width:80,height:120,bytes:source.length},p={...project(),canvas:{width:80,height:120},images:[item],initialOrder:[item.id],positions:{original:{x:0,y:0,width:80,height:120}}},images=new ImageService(),service=new StitchService({validate:()=>{},readAsset:async()=>source},images);
  const before=await service.render(p),split=splitProjectImage(p,item.id,'y',31,['top','bottom']),after=await service.render(split),pixels=await sharp(images.result(before.token).output.buffer).raw().toBuffer(),actual=await sharp(images.result(after.token).output.buffer).raw().toBuffer();assert.ok(actual.equals(pixels));assert.equal(split.images[1].source.top,31);
 });
+
+test('deleting pieces of a split image never leaves holes in structured layouts',async()=>{
+ const {removeProjectImage}=await import('../engine/stitch-reset.mjs');
+ const {calculateLayout}=await import('../engine/stitch-layout.mjs');
+ const square={id:'image',assetId:'a'.repeat(64),name:'p.png',width:1000,height:1000,bytes:3000000};
+ const quartered=layout=>{
+  let p={id:'p',canvasMode:'fixed',heightLocked:true,canvasSizing:'content',canvas:{width:1000,height:1000},sourceCanvas:{width:1000,height:1000},images:[square],initialOrder:['image'],positions:{image:{x:0,y:0,width:1000,height:1000}},edits:{},layout,grid:{rows:2,columns:2},export:{format:'png',targetBytes:1e7}};
+  p=splitProjectImage(p,'image','x',500,['L','R']);p=splitProjectImage(p,'L','y',500,['LT','LB']);p=splitProjectImage(p,'R','y',500,['RT','RB']);
+  return removeProjectImage(removeProjectImage(p,'LB'),'RT');
+ };
+ const gapless=layout=>{const area=layout.rects.reduce((s,r)=>s+r.width*r.height,0);return Math.abs(area-layout.width*layout.height)<layout.width*layout.height*.01;};
+ const row=calculateLayout(quartered('horizontal'));
+ assert.ok(gapless(row),'horizontal row has no holes');
+ assert.ok(row.rects.every(r=>r.y===0&&r.height===row.height),'both pieces share the row');
+ const column=calculateLayout(quartered('vertical'));
+ assert.ok(gapless(column)&&column.rects.every(r=>r.x===0),'vertical column has no holes');
+ assert.ok(gapless(calculateLayout(quartered('grid'))),'grid has no holes');
+ // Free layout keeps every position as placed.
+ const free=quartered('free');
+ assert.deepEqual([free.positions.LT,free.positions.RB],[{x:0,y:0,width:500,height:500},{x:500,y:500,width:500,height:500}]);
+});
+
+test('deleting from an ordinary row keeps image sizes and only closes the gap',async()=>{
+ const {removeProjectImage}=await import('../engine/stitch-reset.mjs');
+ const images=['a','b','c'].map(id=>({id,assetId:id.repeat(64),name:id+'.png',width:400,height:600,bytes:1000}));
+ const p={id:'p',canvasMode:'fixed',heightLocked:true,canvasSizing:'content',canvas:{width:1200,height:600},images,initialOrder:['a','b','c'],
+  positions:{a:{x:0,y:0,width:400,height:600},b:{x:400,y:0,width:400,height:600},c:{x:800,y:0,width:500,height:750}},edits:{},layout:'horizontal',export:{format:'png',targetBytes:1e7}};
+ const next=removeProjectImage(p,'b');
+ assert.deepEqual(next.positions.c,{x:400,y:0,width:500,height:750},'a deliberately enlarged image keeps its size');
+});
