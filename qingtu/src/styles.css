@@ -27,7 +27,7 @@
  --stage-control:#ffffff; --stage-control-hover:#e7e7ea; --fill:#efeff2; --fill-hover:#e6e6ea; --stage:#f8f8f9;
  --blue:var(--accent); --blue-edge:var(--edge-accent); --ink:var(--text); --border:var(--line-2); --canvas:var(--surface-2);
  --ease:cubic-bezier(.2,.8,.2,1); --ease-out:cubic-bezier(.22,1,.36,1); --ease-in-out:cubic-bezier(.65,0,.35,1); --spring:cubic-bezier(.32,1.28,.54,1);
- --panel-width:320px; --inspector-width:var(--panel-width); --rail-width:60px;
+ --panel-width:304px; --inspector-width:var(--panel-width); --rail-width:60px;
 }
 :root[data-theme="dark"] {
  color-scheme:dark;
@@ -611,7 +611,7 @@ body:has(.stitch-canvas[data-interacting="reorder"]) > :is(.image-tools-portal,.
  .empty-state { gap:10px; }
 }
 @media(max-width:1100px) {
- :root { --rail-width:80px; --panel-width:309px; }
+ :root { --rail-width:80px; }
  .inspector { padding-left:19px; padding-right:19px; }
  .inspector-collapsed { --inspector-width:0px; }
  .tool-button { width:56px; height:56px; }
@@ -1387,7 +1387,7 @@ input::selection { background:color-mix(in srgb,var(--accent) 24%,transparent); 
  .filmstrip { height:116px; }
 }
 @media(max-width:1100px) {
- :root { --rail-width:56px; --panel-width:296px; }
+ :root { --rail-width:56px; --panel-width:284px; }
  .inspector-collapsed { --inspector-width:0px; }
  .tool-button { width:38px; height:38px; }
  .tool-button::before { left:-9px; }

@@ -107,7 +107,7 @@ async function start(options={}) {
   };
   function createWindow(){
     rendererReady=false;
-    win=new BrowserWindow({width:1200,height:760,minWidth:980,minHeight:700,...(process.platform==='darwin'?{frame:true,titleBarStyle:'hidden',trafficLightPosition:{x:14,y:18}}:{frame:false}),backgroundColor:nativeTheme.shouldUseDarkColors?'#16181c':'#ffffff',show:!options.hidden,title:'轻图',icon:appIcon,webPreferences:{offscreen:options.offscreen===true,preload:path.join(__dirname,'preload.cjs'),contextIsolation:true,nodeIntegration:false,sandbox:true}});
+    win=new BrowserWindow({width:1176,height:744,minWidth:980,minHeight:700,...(process.platform==='darwin'?{frame:true,titleBarStyle:'hidden',trafficLightPosition:{x:14,y:18}}:{frame:false}),backgroundColor:nativeTheme.shouldUseDarkColors?'#16181c':'#ffffff',show:!options.hidden,title:'轻图',icon:appIcon,webPreferences:{offscreen:options.offscreen===true,preload:path.join(__dirname,'preload.cjs'),contextIsolation:true,nodeIntegration:false,sandbox:true}});
     win.webContents.setWindowOpenHandler(()=>({action:'deny'}));
     // The renderer's dirty-state effect can lag a committed save by one frame.
     // Only bypass beforeunload after the trusted flush protocol has completed.
