@@ -130,7 +130,7 @@ Build app UI in `src/`. Keep `.openai/hosting.json`, `worker/index.js`, `scripts
 - Use one automatic workflow, with no target/lossless mode tabs. Prefer pixel-preserving optimization; if it cannot meet the requested byte budget, search encoding quality instead of refusing solely because lossless encoding is too large. Do not label every export as lossless. Pixel dimensions and percentage scale remain editable.
 - Latest size rule (2026-10-13): MB defaults and accepts integers; 1 MB = 1,000,000 bytes, 1 KB = 1,000 bytes. Smart exports must never exceed the entered byte ceiling. Keep fitting unchanged originals. Resized or converted outputs may use the full requested budget; prioritize full-colour pixels, otherwise choose the highest fitting quality as close as possible to the ceiling. Never add neutral padding to inflate an export. Report mathematically infeasible budgets clearly.
 - Image queue belongs below the preview. Its plus import tile must have the same width and height as image thumbnail tiles. Support local file drag and drop.
-- Default window is 1280 × 820 with a comfortable horizontal proportion. Put actual processing/byte status near the preview, not in a separate footer.
+- Default window is 1200 × 760 (2026-11-28, slightly smaller than the former 1280 × 820) with a comfortable horizontal proportion. Put actual processing/byte status near the preview, not in a separate footer.
 - Treat the latest direct user layout feedback as overriding the earlier generated mock's sidebar, mode switch, footer, and theme.
 
 - Start with no images; never automatically load demo files. Default export target and reset value are 10 MB.

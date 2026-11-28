@@ -42,21 +42,25 @@ async function waitFor(win,expr){for(let n=0;n<100;n++){if(await win.webContents
   const click=selector=>js(`document.querySelector(${JSON.stringify(selector)}).click()`);
   await waitFor(win,`Array.from(document.querySelectorAll('.folder-control')).every(field=>field.value===${JSON.stringify(defaultFolder)})`);
   assert.deepEqual(await fs.readdir(pictures),[],'displaying the default does not create it');
-  assert.equal(await js("getComputedStyle(document.querySelector('.folder-picker')).backgroundColor"),'rgb(255, 255, 255)');
+  // Flat redesign (2026-11-28): the chooser is a borderless filled button.
+  assert.ok(!/rgba\(0, 0, 0, 0\)|transparent/.test(await js("getComputedStyle(document.querySelector('.folder-picker')).backgroundColor")),'the chooser has a visible fill');
   assert.equal(await js(`(()=>{
    const field=document.querySelector('.folder-control').getBoundingClientRect();
    const button=document.querySelector('.folder-picker'),bounds=button.getBoundingClientRect();
-   return bounds.top===field.top&&bounds.bottom===field.bottom&&getComputedStyle(button).boxShadow.includes('inset');
-  })()`),true,'the raised button edge fits inside the same top and bottom bounds as the path field');
-  assert.deepEqual(await js(`['.folder-control','#target-size'].map(selector=>{
+   return bounds.top===field.top&&bounds.bottom===field.bottom;
+  })()`),true,'the chooser fits the same top and bottom bounds as the path field');
+  // The path field shares the inspector fields' look (theme tokens).
+  const [folderStyle,targetStyle]=await js(`['.folder-control','#target-size'].map(selector=>{
    const style=getComputedStyle(document.querySelector(selector));
    return [style.backgroundColor,style.borderBottomWidth];
-  })`),Array(2).fill(['rgb(245, 249, 252)','4px']));
+  })`);
+  assert.deepEqual(folderStyle,targetStyle);
+  const accent=await js("(()=>{const probe=document.createElement('i');probe.style.color='var(--accent)';document.body.append(probe);const color=getComputedStyle(probe).color;probe.remove();return color;})()");
   win.webContents.debugger.attach('1.3');
   try{
    await win.webContents.debugger.sendCommand('Emulation.setFocusEmulationEnabled',{enabled:true});
    await js("document.querySelector('.folder-control').focus()");
-   await waitFor(win,"getComputedStyle(document.querySelector('.folder-control')).borderTopColor==='rgb(28, 176, 246)'");
+   await waitFor(win,`getComputedStyle(document.querySelector('.folder-control')).borderTopColor===${JSON.stringify(accent)}`);
    await js("document.querySelector('.folder-control').blur()");
   }finally{win.webContents.debugger.detach();}
   async function showHistory(count){

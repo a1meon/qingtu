@@ -1067,7 +1067,7 @@ input::selection { background:color-mix(in srgb,var(--accent) 24%,transparent); 
 
 /* Titlebar */
 .titlebar { background:var(--surface); border-bottom:1px solid var(--line); padding-left:16px; gap:2px; }
-.titlebar.mac-titlebar { padding-left:86px; }
+.titlebar.mac-titlebar { padding-left:90px; }
 .brand { gap:8px; }
 .brand img { width:20px; height:20px; border-radius:5px; }
 .brand strong { font-size:13.5px; font-weight:600; letter-spacing:.04em; color:var(--text); }
