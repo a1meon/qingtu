@@ -1,5 +1,8 @@
 [
   {"id":"squish","name":"压缩方块"},
   {"id":"bubbles","name":"气泡纸"},
-  {"id":"shutter","name":"快门相机"}
+  {"id":"shutter","name":"快门相机"},
+  {"id":"munch","name":"吃图怪"},
+  {"id":"spinner","name":"调色陀螺"},
+  {"id":"whack","name":"打噪点"}
 ]
